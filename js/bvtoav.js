@@ -32,4 +32,5 @@ function enc(x) {
 	return ''.join(r);
 	}
 }
-
+//源代码来自知乎@mcfx
+//我已经改编为js代码
