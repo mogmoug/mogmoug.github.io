@@ -2,71 +2,16 @@
 <html>
 <head>
 	<meta charset="utf-8">
-	<title>几何计算器/Geometry calculator</title>
+	<title>我的网站</title>
 </head>
 <body>
-	<script type="text/javascript">
-		console.log('Hello world!');
-		function calculating()
-		{
-			a = parseFloat(document.getElementById("number_a").value);
-			b = parseFloat(document.getElementById("number_b").value);
-			c = parseFloat(document.getElementById("number_c").value);
-			outstr = "";
-			outstr = outstr + "长方形面积：" + (a*b).toString() + "<br>";
-			outstr = outstr + "正方形面积：" + (a*a).toString() + "<br>";
-			outstr = outstr + "三角形面积：" + (a*b/2).toString() + "<br>";
-			outstr = outstr + "圆面积：" + (a*a*3.1415926).toString() + "<br>";
-			outstr = outstr + "梯形面积：" + ((a+b)*c/2).toString() + "<br>";
-			outstr = outstr + "圆环面积：" + (3.1415926*((a*a)-(b*b))).toString() + "<br>";
-			outstr = outstr + "正方形周长：" + (4*a).toString() + "<br>";
-
-			outstr = outstr + "长方体体积：" + (a*b*c).toString() + "<br>";
-			outstr = outstr + "长方体表面积：" + (2*(a*b+a*c+b*c)).toString() + "<br>";
-			outstr = outstr + "正方体体积：" + (a*a*a).toString() + "<br>";
-			outstr = outstr + "正方体表面积：" + (a*a*6).toString() + "<br>";
-			outstr = outstr + "长方形周长：" + ((a+b)*2).toString() + "<br>";
-			outstr = outstr + "圆周长(a=半径)：" + (3.1415926*2*a).toString() + "<br>";
-			outstr = outstr + "三角形周长：" + (a+b+c).toString() + "<br>";
-			outstr = outstr + "正b边形面积：" + ((b*(a*a))/(4*Math.tan((180)/(b)))).toString() + "<br>";
-			outstr = outstr + "三角形面积：" + ((1/2)*b*c*Math.sin(a)).toString() + "<br>";
-			document.getElementById("output_text").innerHTML = outstr;
-		}
-	</script>
-	<h1>几何计算器/Geometry calculator</h1>
-	<p>请分别输入a,b,c/Please enter a, b, c, respectively</p>
-	<p>点击计算按钮后，会自动计算许多的公式，都是一些很有用的几何公式</p>
-	<p>a:<input type="number" name="a" id="number_a"></p>
-	<p>b:<input type="number" name="b" id="number_b"></p>
-	<p>c:<input type="number" name="c" id="number_c"></p>
-	<button onclick="calculating()">计算/Start calculating</button><br>
-	<label id="output_text">计算结果</label>
-	<hr><b></b>
-	<h1>更多工具</h1>
-	<b>分解质因数</b><br>
-	<form name="form1" action="https://zh.numberempire.com/numberfactorizer.php" method="post">
-		请输入您需要分解的整数:<br>
-		<input name="number" size="80" maxlength="60" value="" type="text">
-		<input value="计算" type="submit">
-		<input name="return" value="1" type="hidden">
-	</form>
-	<b>表达式化简</b><br>
-	<form name="form1" action="https://zh.numberempire.com/simplifyexpression.php" method="post">
-	输入一个表达式来简化:<br>
-	<input name="function" size="80" maxlength="300" value="" type="text">
-	<input value="计算" type="submit">
-	<input name="return" value="1" type="hidden">
-	</form>
-	<b>方程求解</b><br>
-	<form name="form1" action="https://zh.numberempire.com/equationsolver.php" method="post">
-	输入逗号以分隔多个方程:<br>
-	<input name="function" size="80" maxlength="160" value="" type="text"><br>
-	<input name="var" size="10" maxlength="10" value="x" type="text">
-	<input size="40" name="answers" value="" type="hidden">
-	<input value="求解" type="submit">
-	<input name="return" value="1" type="hidden">
-	</form>
-	<hr>
-	<p>感谢<a href="https://zh.numberempire.com/">zh.numberempire.com</a>带来的更多工具</p>
+	<script type="text/javascript" src="/js.js"></script>
+	<h1>嘿，你进入了我的网站<br>不要担心，我很欢迎你</h1>
+	<p>也许这个网站不太行，但是希望你可以探索一番</p>
+	<p>这个网站是使用<a href="https://pages.github.com/">github pages</a>部署的</p>
+	<a href="/geocal/index.html">几何计算器</a>
+	<a href="https://github.com/mogmoug">我的github主页</a>
+	<a href="https://space.bilibili.com/485986360">我的bilibili主页，欢迎关注</a>
+	<p>我的邮箱：mogmoug123@outlook.com</p>
 </body>
 </html>
