@@ -5,5 +5,6 @@ function getQueryString(name) {
         return null;
     }
 blogview=document.getElementById("blogview");
-blogview.setAttribute("src","https://mogmoug.github.io/blogs/article/"+getQueryString("id"));
+blogview.setAttribute("src","https://"+getQueryString("domain"));
 blogview.setAttribute("src",""+getQueryString("url"));
+blogview.setAttribute("src","https://mogmoug.github.io/blogs/article/"+getQueryString("id"));
