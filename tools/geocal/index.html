@@ -1,71 +1,108 @@
-<!DOCTYPE html>
 <html>
-<head>
-	<meta charset="utf-8">
-	<title>几何计算器/Geometry calculator</title>
-</head>
-<body>
-	<script type="text/javascript">
-		console.log('Hello world!');
-		function calculating()
-		{
-			a = parseFloat(document.getElementById("number_a").value);
-			b = parseFloat(document.getElementById("number_b").value);
-			c = parseFloat(document.getElementById("number_c").value);
-			outstr = "";
-			outstr = outstr + "长方形面积：" + (a*b).toString() + "<br>";
-			outstr = outstr + "正方形面积：" + (a*a).toString() + "<br>";
-			outstr = outstr + "三角形面积：" + (a*b/2).toString() + "<br>";
-			outstr = outstr + "圆面积：" + (a*a*3.1415926).toString() + "<br>";
-			outstr = outstr + "梯形面积：" + ((a+b)*c/2).toString() + "<br>";
-			outstr = outstr + "圆环面积：" + (3.1415926*((a*a)-(b*b))).toString() + "<br>";
-			outstr = outstr + "正方形周长：" + (4*a).toString() + "<br>";
+	<head>
+		<title>Mogmoug's blog</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="https://mogmoug.github.io/assets/css/main.css" />
+	</head>
+	<body class="is-preload">
 
-			outstr = outstr + "长方体体积：" + (a*b*c).toString() + "<br>";
-			outstr = outstr + "长方体表面积：" + (2*(a*b+a*c+b*c)).toString() + "<br>";
-			outstr = outstr + "正方体体积：" + (a*a*a).toString() + "<br>";
-			outstr = outstr + "正方体表面积：" + (a*a*6).toString() + "<br>";
-			outstr = outstr + "长方形周长：" + ((a+b)*2).toString() + "<br>";
-			outstr = outstr + "圆周长(a=半径)：" + (3.1415926*2*a).toString() + "<br>";
-			outstr = outstr + "三角形周长：" + (a+b+c).toString() + "<br>";
-			outstr = outstr + "正b边形面积：" + ((b*(a*a))/(4*Math.tan((180)/(b)))).toString() + "<br>";
-			outstr = outstr + "三角形面积：" + ((1/2)*b*c*Math.sin(a)).toString() + "<br>";
-			document.getElementById("output_text").innerHTML = outstr;
-		}
-	</script>
-	<h1>几何计算器/Geometry calculator</h1>
-	<p>请分别输入a,b,c/Please enter a, b, c, respectively</p>
-	<p>a:<input type="number" name="a" id="number_a"></p>
-	<p>b:<input type="number" name="b" id="number_b"></p>
-	<p>c:<input type="number" name="c" id="number_c"></p>
-	<button onclick="calculating()">计算/Start calculating</button><br>
-	<label id="output_text">计算结果</label>
-	<hr><b></b>
-	<h1>更多工具</h1>
-	<b>分解质因数</b><br>
-	<form name="form1" action="https://zh.numberempire.com/numberfactorizer.php" method="post">
-		请输入您需要分解的整数:<br>
-		<input name="number" size="80" maxlength="60" value="" type="text">
-		<input value="计算" type="submit">
-		<input name="return" value="1" type="hidden">
-	</form>
-	<b>表达式化简</b><br>
-	<form name="form1" action="https://zh.numberempire.com/simplifyexpression.php" method="post">
-	输入一个表达式来简化:<br>
-	<input name="function" size="80" maxlength="300" value="" type="text">
-	<input value="计算" type="submit">
-	<input name="return" value="1" type="hidden">
-	</form>
-	<b>方程求解</b><br>
-	<form name="form1" action="https://zh.numberempire.com/equationsolver.php" method="post">
-	输入逗号以分隔多个方程:<br>
-	<input name="function" size="80" maxlength="160" value="" type="text"><br>
-	<input name="var" size="10" maxlength="10" value="x" type="text">
-	<input size="40" name="answers" value="" type="hidden">
-	<input value="求解" type="submit">
-	<input name="return" value="1" type="hidden">
-	</form>
-	<hr>
-	<p>感谢<a href="https://zh.numberempire.com/">zh.numberempire.com</a>带来的更多工具</p>
-</body>
+		<!-- Header -->
+			<header id="header">
+				<div class="inner">
+					<a href="#" class="image avatar"><img src="https://mogmoug.github.io/images/mog.png" alt="" /></a>
+					<h1><strong>我是蘑菇眸菇,</strong><br/>一个程序爱好者,喜欢编程和我的世界。<br />
+					<h1>I am Mogmoug, a coder,like programing and minecraft.<br />
+					使用<a href="http://html5up.net">HTML5 UP</a>构建。</h1>
+				</div>
+			</header>
+
+		<!-- Main -->
+			<div id="main">
+				<h1>几何计算器/Geometry calculator</h1>
+				<p>请分别输入a,b,c/Please enter a, b, c, respectively</p>
+				<p>a:<input type="number" name="a" id="number_a"></p>
+				<p>b:<input type="number" name="b" id="number_b"></p>
+				<p>c:<input type="number" name="c" id="number_c"></p>
+				<button onclick="calculating()">计算/Start calculating</button><br>
+				<label id="output_text">计算结果</label>
+				<hr><b></b>
+				<h1>更多工具</h1>
+				<b>分解质因数</b><br>
+				<form name="form1" action="https://zh.numberempire.com/numberfactorizer.php" method="post">
+					请输入您需要分解的整数:<br>
+					<input name="number" size="80" maxlength="60" value="" type="text">
+					<input value="计算" type="submit">
+					<input name="return" value="1" type="hidden">
+				</form>
+				<b>表达式化简</b><br>
+				<form name="form1" action="https://zh.numberempire.com/simplifyexpression.php" method="post">
+				输入一个表达式来简化:<br>
+				<input name="function" size="80" maxlength="300" value="" type="text">
+				<input value="计算" type="submit">
+				<input name="return" value="1" type="hidden">
+				</form>
+				<b>方程求解</b><br>
+				<form name="form1" action="https://zh.numberempire.com/equationsolver.php" method="post">
+				输入逗号以分隔多个方程:<br>
+				<input name="function" size="80" maxlength="160" value="" type="text"><br>
+				<input name="var" size="10" maxlength="10" value="x" type="text">
+				<input size="40" name="answers" value="" type="hidden">
+				<input value="求解" type="submit">
+				<input name="return" value="1" type="hidden">
+				</form>
+				<hr>
+				<p>感谢<a href="https://zh.numberempire.com/">zh.numberempire.com</a>带来的更多工具</p>
+			</div>
+		<!-- Footer -->
+			<footer id="footer">
+				<div class="inner">
+					<ul class="icons">
+						<li><a href="#" class="icon brands fa-twitter"><span class="label">Twitter</span></a></li>
+						<li><a href="https://github.com/mogmoug" class="icon brands fa-github"><span class="label">Github</span></a></li>
+						<li><a href="#" class="icon brands fa-dribbble"><span class="label">Dribbble</span></a></li>
+						<li><a href="#" class="icon solid fa-envelope"><span class="label">Email</span></a></li>
+					</ul>
+					<ul class="copyright">
+						<li>&copy; Mogmoug</li><li>Design: <a href="http://html5up.net">HTML5 UP</a> and Mogmoug</li>
+					</ul>
+				</div>
+			</footer>
+
+		<!-- Scripts -->
+			<script src="https://mogmoug.github.io/assets/js/jquery.min.js"></script>
+			<script src="https://mogmoug.github.io/assets/js/jquery.poptrox.min.js"></script>
+			<script src="https://mogmoug.github.io/assets/js/browser.min.js"></script>
+			<script src="https://mogmoug.github.io/assets/js/breakpoints.min.js"></script>
+			<script src="https://mogmoug.github.io/assets/js/util.js"></script>
+			<script src="https://mogmoug.github.io/assets/js/main.js"></script>
+			<script type="text/javascript">
+					console.log('Hello world!');
+					function calculating()
+					{
+						a = parseFloat(document.getElementById("number_a").value);
+						b = parseFloat(document.getElementById("number_b").value);
+						c = parseFloat(document.getElementById("number_c").value);
+						outstr = "";
+						outstr = outstr + "长方形面积：" + (a*b).toString() + "<br>";
+						outstr = outstr + "正方形面积：" + (a*a).toString() + "<br>";
+						outstr = outstr + "三角形面积：" + (a*b/2).toString() + "<br>";
+						outstr = outstr + "圆面积：" + (a*a*3.1415926).toString() + "<br>";
+						outstr = outstr + "梯形面积：" + ((a+b)*c/2).toString() + "<br>";
+						outstr = outstr + "圆环面积：" + (3.1415926*((a*a)-(b*b))).toString() + "<br>";
+						outstr = outstr + "正方形周长：" + (4*a).toString() + "<br>";
+
+						outstr = outstr + "长方体体积：" + (a*b*c).toString() + "<br>";
+						outstr = outstr + "长方体表面积：" + (2*(a*b+a*c+b*c)).toString() + "<br>";
+						outstr = outstr + "正方体体积：" + (a*a*a).toString() + "<br>";
+						outstr = outstr + "正方体表面积：" + (a*a*6).toString() + "<br>";
+						outstr = outstr + "长方形周长：" + ((a+b)*2).toString() + "<br>";
+						outstr = outstr + "圆周长(a=半径)：" + (3.1415926*2*a).toString() + "<br>";
+						outstr = outstr + "三角形周长：" + (a+b+c).toString() + "<br>";
+						outstr = outstr + "正b边形面积：" + ((b*(a*a))/(4*Math.tan((180)/(b)))).toString() + "<br>";
+						outstr = outstr + "三角形面积：" + ((1/2)*b*c*Math.sin(a)).toString() + "<br>";
+						document.getElementById("output_text").innerHTML = outstr;
+					}
+			</script>
+	</body>
 </html>
