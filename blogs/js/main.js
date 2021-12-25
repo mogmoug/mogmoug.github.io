@@ -5,6 +5,6 @@ function getQueryString(name) {
         return null;
     }
 blogview=document.getElementById("blogview");
-blogview.setAttribute("src","https://"+getQueryString("domain"));
-blogview.setAttribute("src",""+getQueryString("url"));
-blogview.setAttribute("src","https://mogmoug.github.io/blogs/article/"+getQueryString("id"));
+if (getQueryString("domain")!=null) blogview.setAttribute("src","https://"+getQueryString("domain"));
+if (getQueryString("web")!=null) blogview.setAttribute("src",""+getQueryString("web"));
+if (getQueryString("article")!=null) blogview.setAttribute("src","https://mogmoug.github.io/blogs/article/"+getQueryString("article"));
