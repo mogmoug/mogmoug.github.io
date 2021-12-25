@@ -1,0 +1,371 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"a",
+				"a"
+			],
+			[
+				"html",
+				"html5"
+			],
+			[
+				"len",
+				"length"
+			],
+			[
+				"gete",
+				"getElementById"
+			],
+			[
+				"bo",
+				"button"
+			],
+			[
+				"in",
+				"input"
+			],
+			[
+				"mai",
+				"main"
+			],
+			[
+				"Mat",
+				"Math_pow"
+			],
+			[
+				"htm",
+				"html"
+			],
+			[
+				"h",
+				"h1"
+			],
+			[
+				"b",
+				"br"
+			],
+			[
+				"parse",
+				"parseFloat"
+			],
+			[
+				"Num",
+				"Number"
+			],
+			[
+				"outpu",
+				"output_text"
+			],
+			[
+				"get",
+				"getElementById"
+			],
+			[
+				"num",
+				"number_c"
+			],
+			[
+				"number_",
+				"number_b"
+			],
+			[
+				"va",
+				"value"
+			],
+			[
+				"number",
+				"number_a"
+			],
+			[
+				"tos",
+				"toString"
+			],
+			[
+				"numb",
+				"number_b"
+			],
+			[
+				"getE",
+				"getElementById"
+			],
+			[
+				"p",
+				"p"
+			],
+			[
+				"co",
+				"console"
+			],
+			[
+				"on",
+				"onclick"
+			],
+			[
+				"ar",
+				"alert"
+			],
+			[
+				"con",
+				"console_log"
+			],
+			[
+				"sc",
+				"script"
+			],
+			[
+				"d",
+				"div"
+			],
+			[
+				"f",
+				"iframe"
+			]
+		]
+	},
+	"buffers":
+	[
+	],
+	"build_system": "Packages/Lua Love/LuaLove.sublime-build",
+	"build_system_choices":
+	[
+		[
+			[
+				[
+					"Packages/Lua Love/LuaLove.sublime-build",
+					""
+				],
+				[
+					"Packages/Lua Love/LuaLove.sublime-build",
+					"LuaJIT Run File"
+				],
+				[
+					"Packages/Lua Love/LuaLove.sublime-build",
+					"Lua Run File"
+				],
+				[
+					"Packages/Lua Love/LuaLove.sublime-build",
+					"ldoc: File"
+				],
+				[
+					"Packages/Lua Love/LuaLove.sublime-build",
+					"ldoc: Project"
+				]
+			],
+			[
+				"Packages/Lua Love/LuaLove.sublime-build",
+				""
+			]
+		]
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"Package Control: ",
+				"Package Control: Install Package"
+			],
+			[
+				"installpa",
+				"Package Control: Install Package"
+			],
+			[
+				"Html",
+				"Set Syntax: HTML"
+			],
+			[
+				"py",
+				"Set Syntax: Python"
+			],
+			[
+				"In",
+				"Package Control: Install Package"
+			],
+			[
+				"in",
+				"Package Control: Install Package"
+			],
+			[
+				"Packkage I",
+				"Package Control: Install Package"
+			],
+			[
+				"Pa",
+				"Package Control: Install Package"
+			]
+		],
+		"width": 0.0
+	},
+	"console":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+		"/E/work-space/clone/mogmoug.github.io"
+	],
+	"file_history":
+	[
+		"/D/LOVEGamedev3.05/Samples/游戏测试/main.lua",
+		"/E/work-space/clone/mogmoug.github.io/tools/bv2av/index.html",
+		"/D/LOVEGamedev3.05/Samples/游戏测试/游戏测试.sublime-project",
+		"/D/LOVEGamedev3.05/Samples/游戏测试/conf.lua",
+		"/D/love.js/debug/love.js",
+		"/D/ZeroBraneStudio/myprograms/LOVE-samples/hello/main.lua",
+		"/D/love.js/release-performance/love.js.mem",
+		"/D/LIKO-12_V1.1.0_Windows_x86_64/lua/ssl.lua",
+		"/C/Users/Administrator/Documents/helloworld.lua",
+		"/C/Users/Administrator/Desktop/vbs.vbs",
+		"/E/work-space/web-project/myweb/js/bvtoav.js",
+		"/D/wenmingshidai2/saves/games/Earth/1593094499163rralnmtv/1593094499163rralnmtv_1",
+		"/E/work-space/web-project/myweb/bv2av/main.js",
+		"/E/work-space/web-project/几何计算器/index.html",
+		"/E/work-space/web-project/myblog/js.js",
+		"/E/work-space/web-project/myblog/index.html",
+		"/D/SublimeTextv4.0.4113/Data/Packages/User/lualove.sublime-build"
+	],
+	"find":
+	{
+		"height": 27.0
+	},
+	"find_in_files":
+	{
+		"height": 0.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"scrollbar_highlights": true,
+		"show_context": true,
+		"use_buffer2": true,
+		"use_gitignore": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"sheets":
+			[
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 27.0
+	},
+	"input":
+	{
+		"height": 0.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.exec":
+	{
+		"height": 108.0
+	},
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"pinned_build_system": "Packages/Lua Love/LuaLove.sublime-build",
+	"project": "blog.sublime-project",
+	"replace":
+	{
+		"height": 50.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": false,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 150.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}
