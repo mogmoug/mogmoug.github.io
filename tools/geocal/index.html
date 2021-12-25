@@ -54,6 +54,89 @@
 				<input value="求解" type="submit">
 				<input name="return" value="1" type="hidden">
 				</form>
+				<b>分数计算器</b><br>
+				<form name="form1" action="https://zh.numberempire.com/fractionscalculator.php" method="post">
+				输入一个分数表达式:<br>
+				<input name="function" size="80" maxlength="160" value="" type="text">
+				<input value="计算" type="submit">
+				<input name="return" value="1" type="hidden">
+				</form>
+				<b>定积分计算器</b><br>
+				<form name="form1" action="https://zh.numberempire.com/definiteintegralcalculator.php" method="post">
+				请输入你需要积分的函数表达式:<br>
+				<input name="function" size="80" maxlength="160" value="" type="text"><br>
+				自变量: <input name="var" size="3" maxlength="3" value="x" type="text">
+				从: <input name="a" size="12" maxlength="12" value="0" type="text">
+				到: <input name="b" size="12" maxlength="12" value="1" type="text">
+				<input size="40" name="answers" value="" type="hidden">
+				<input value="计算" type="submit">
+				<input name="return" value="1" type="hidden">
+				</form>
+				<b>极限计算器</b><br>
+				<form name="form1" action="https://zh.numberempire.com/limitcalculator.php" method="post">
+				请输入一个函数并计算极限:
+				<input name="function" size="80" maxlength="160" value="" type="text"><br>
+				极限变量: <input name="var" size="3" maxlength="3" value="x" type="text">
+				展开点: <input name="val" size="12" maxlength="12" value="0" type="text">
+				<input size="40" name="answers" value="" type="hidden">
+				极限类型 <select name="limit_type">
+				<option value="two-sided">双侧极限</option>
+				<option value="plus">右侧极限</option>
+				<option value="minus">左侧极限</option>
+				</select>
+				<input name="return" value="1" type="hidden">
+				<input value="计算" type="submit">
+				</form>
+				<b>不定积分计算器</b><br>
+				<form name="form1" action="https://zh.numberempire.com/integralcalculator.php" method="post">
+				请输入你需要积分的函数表达式:<br>
+				<input name="function" size="80" maxlength="160" value="" type="text"><br>
+				自变量:<input name="var" size="3" maxlength="3" value="x" type="text">
+				<input value="计算" type="submit">
+				<input name="return" value="1" type="hidden">
+				</form>
+				<b>因式分解工具</b><br>
+				<form name="form1" action="https://zh.numberempire.com/factoringcalculator.php" method="post">
+				请输入您需要因式分解的表达式：:<br>
+				<input name="function" size="80" maxlength="300" value="" type="text">
+				<input value="计算" type="submit">
+				<input name="return" value="1" type="hidden">
+				</form>
+				<b>统计计算器</b><br>
+				<form name="form1" action="https://zh.numberempire.com/statisticscalculator.php" method="post">
+				输入一些数字，用空格、逗号或另起一行隔开:<br>
+				<textarea type="text" name="series" cols="60" rows="20"></textarea>
+				<br><table>
+				<tbody><tr><td><input name="mean" checked="checked" type="checkbox">平均数</td>
+				<td><input name="median" type="checkbox">中位数</td>
+				<td><input name="harmonic_mean" type="checkbox">调和平均数</td></tr>
+				<tr><td><input name="geometric_mean" type="checkbox">几何平均数</td>
+				<td><input name="min" type="checkbox">最小</td>
+				<td><input name="max" type="checkbox">最大</td></tr>
+				<tr><td><input name="range" type="checkbox">范围</td>
+				<td><input name="var" checked="checked" type="checkbox">方差</td>
+				<td><input name="var1" type="checkbox">更正方差</td></tr>
+				<tr><td><input name="std" type="checkbox">标准偏差</td>
+				<td><input name="std1" type="checkbox">更正的标准偏差</td>
+				<td><input name="relstd" type="checkbox">变异系数</td></tr>
+				<tr><td><input name="mean_dev" type="checkbox">平均偏差</td>
+				<td><input name="median_dev" type="checkbox">中位数偏差</td>
+				<td><input name="skewness" checked="checked" type="checkbox">偏度</td></tr>
+				</tbody></table>
+				<input value="计算" type="submit">
+				<input name="return" value="1" type="hidden">
+				</form>
+				<b>函数图像绘制工具</b><br>
+				函数输入框:<br>
+				<form name="form1" action="https://zh.numberempire.com/graphingcalculator.php" method="get">
+				<input id="functions" name="functions" value="log(x),sqrt(x),x,x^2" class="full_width" type="text"><br>
+				X 坐标, 从: <input id="xmin" name="xmin" value="0" size="10" type="text">
+				到: <input id="xmax" name="xmax" value="3" size="10" type="text"><br>
+				Y 坐标, 从: <input id="ymin" name="ymin" value="-1" size="10" type="text">
+				到: <input id="ymax" name="ymax" value="1" size="10" type="text"><br>
+				<input value="绘制图像" type="submit">
+				<input name="return" value="1" type="hidden">
+				</form>
 				<hr>
 				<p>感谢<a href="https://zh.numberempire.com/">zh.numberempire.com</a>带来的更多工具</p>
 			</div>
