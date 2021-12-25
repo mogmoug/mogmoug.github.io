@@ -1,64 +1,100 @@
-<!DOCTYPE html>
 <html>
-<head>
-	<meta charset="utf-8">
-	<title>b站工具——AVBV互转</title>
-</head>
-<body>
-	<script type="text/javascript">
-		// 作者：mcfx
-        // 链接：https://www.zhihu.com/question/381784377/answer/1099438784
-        // 来源：知乎
-        // 著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
-        function bv2av() {
-            const bv = document.getElementById('bv').value;
-            document.getElementById('av').value = dec(bv);
-        }
+	<head>
+		<title>Mogmoug's blog</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="assets/css/main.css" />
+	</head>
+	<body class="is-preload">
 
-        function av2bv() {
-            const av = +document.getElementById('av').value;
-            document.getElementById('bv').value = enc(av);
-        }
+		<!-- Header -->
+			<header id="header">
+				<div class="inner">
+					<a href="#" class="image avatar"><img src="images/mog.png" alt="" /></a>
+					<h1><strong>我是蘑菇眸菇,</strong><br/>一个程序爱好者,喜欢编程和我的世界。<br />
+					<h1>I am Mogmoug, a coder,like programing and minecraft.<br />
+					使用<a href="http://html5up.net">HTML5 UP</a>构建。</h1>
+				</div>
+			</header>
 
-        const table = 'fZodR9XQDSUm21yCkr6zBqiveYah8bt4xsWpHnJE7jL5VG3guMTKNPAwcF'
-        const tr = {}
-        for (let i = 0; i < 58; i++)
-            tr[table[i]] = i
-        const s = [11, 10, 3, 8, 4, 6]
-        const xor = 177451812
-        const add = 8728348608
+		<!-- Main -->
+			<div id="main">
+				<p>
+					<input type="text" name="avtobv" id="av">
+					<button id="avtobv_button" onclick="av2bv()">AV转换BV</button>
+				</p>
+				<p>
+					<input type="text" name="bvtoav" id="bv">
+					<button id="bvtoav_button" onclick="bv2av()">BV转换AV</button>
+				</p>
+				<hr>
+				<p>
+					作者：mcfx<br>
+					链接：<a href="https://www.zhihu.com/question/381784377/answer/1099438784">https://www.zhihu.com/question/381784377/answer/1099438784</a><br>
+					来源：<a href="https://www.zhihu.com/">知乎</a><br>
+					著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。<br>
+				</p>
+			</div>
+		<!-- Footer -->
+			<footer id="footer">
+				<div class="inner">
+					<ul class="icons">
+						<li><a href="#" class="icon brands fa-twitter"><span class="label">Twitter</span></a></li>
+						<li><a href="https://github.com/mogmoug" class="icon brands fa-github"><span class="label">Github</span></a></li>
+						<li><a href="#" class="icon brands fa-dribbble"><span class="label">Dribbble</span></a></li>
+						<li><a href="#" class="icon solid fa-envelope"><span class="label">Email</span></a></li>
+					</ul>
+					<ul class="copyright">
+						<li>&copy; Mogmoug</li><li>Design: <a href="http://html5up.net">HTML5 UP</a> and Mogmoug</li>
+					</ul>
+				</div>
+			</footer>
 
-        function dec(x) {
-            let r = 0
-            for (let i = 0; i < 6; i++) {
-                r += tr[x[s[i]]] * 58 ** i
-            }
-            return (r - add) ^ xor
-        }
-        function enc(x) {
-            x = (x ^ xor) + add
-            r = 'BV1  4 1 7  '.split('')
-            for (let i = 0; i < 6; i++) {
-                r[s[i]] = table[parseInt(x / 58 ** i) % 58]
-            }
-            return r.join('')
-        }
-	</script>
-	<p>
-		<input type="text" name="avtobv" id="av">
-		<button id="avtobv_button" onclick="av2bv()">AV转换BV</button>
-	</p>
-	<p>
-		<input type="text" name="bvtoav" id="bv">
-		<button id="bvtoav_button" onclick="bv2av()">BV转换AV</button>
-	</p>
-	<hr>
-	<p>
-		作者：mcfx<br>
-        链接：<a href="https://www.zhihu.com/question/381784377/answer/1099438784">https://www.zhihu.com/question/381784377/answer/1099438784</a><br>
-        来源：<a href="https://www.zhihu.com/">知乎</a><br>
-        著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。<br>
-	</p>
-</body>
-</body>
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/jquery.poptrox.min.js"></script>
+			<script src="assets/js/browser.min.js"></script>
+			<script src="assets/js/breakpoints.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<script src="assets/js/main.js"></script>
+			<script type="text/javascript">
+					// 作者：mcfx
+					// 链接：https://www.zhihu.com/question/381784377/answer/1099438784
+					// 来源：知乎
+					// 著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
+					function bv2av() {
+						const bv = document.getElementById('bv').value;
+						document.getElementById('av').value = dec(bv);
+					}
+
+					function av2bv() {
+						const av = +document.getElementById('av').value;
+						document.getElementById('bv').value = enc(av);
+					}
+
+					const table = 'fZodR9XQDSUm21yCkr6zBqiveYah8bt4xsWpHnJE7jL5VG3guMTKNPAwcF'
+					const tr = {}
+					for (let i = 0; i < 58; i++)
+						tr[table[i]] = i
+					const s = [11, 10, 3, 8, 4, 6]
+					const xor = 177451812
+					const add = 8728348608
+
+					function dec(x) {
+						let r = 0
+						for (let i = 0; i < 6; i++) {
+							r += tr[x[s[i]]] * 58 ** i
+						}
+						return (r - add) ^ xor
+					}
+					function enc(x) {
+						x = (x ^ xor) + add
+						r = 'BV1  4 1 7  '.split('')
+						for (let i = 0; i < 6; i++) {
+							r[s[i]] = table[parseInt(x / 58 ** i) % 58]
+						}
+						return r.join('')
+					}
+				</script>
+	</body>
 </html>
