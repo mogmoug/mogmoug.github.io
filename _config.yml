@@ -8,7 +8,7 @@ url: "https://mogmoug.github.io"
 baseurl: ""
 
 theme: minima
-minima:
+minima: jekyll-theme-tactile
   skin: auto
   date_format: "%Y-%m-%d"
   social:
