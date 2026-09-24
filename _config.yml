@@ -1,0 +1,39 @@
+title: 我的编程博客
+description: 项目复盘与学习笔记
+author: Mogmoug
+lang: zh-CN
+timezone: Asia/Shanghai
+
+url: "https://mogmoug.github.io"
+baseurl: ""
+
+theme: minima
+minima:
+  skin: auto
+  date_format: "%Y-%m-%d"
+  social:
+    - platform: github
+      user: mogmoug
+
+header_pages:
+  - about.md
+
+show_excerpts: true
+
+permalink: /:year/:month/:day/:title/
+
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+  - jekyll-seo-tag
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
