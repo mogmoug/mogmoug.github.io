@@ -1,20 +1,15 @@
-title: 我的编程博客
-description: 项目复盘与学习笔记
-author: Mogmoug
-lang: zh-CN
-timezone: Asia/Shanghai
+title: "我的编程博客"
+description: "项目复盘与学习笔记"
+author: "Mogmoug"
+lang: "zh-CN"
+timezone: "Asia/Shanghai"
 
 url: "https://mogmoug.github.io"
 baseurl: ""
 
-theme: jekyll-theme-tactile
+remote_theme: daattali/beautiful-jekyll
 
-header_pages:
-  - about.md
-
-show_excerpts: true
-
-permalink: /:year/:month/:day/:title/
+permalink: "/:year/:month/:day/:title/"
 
 markdown: kramdown
 kramdown:
@@ -22,6 +17,7 @@ kramdown:
   syntax_highlighter: rouge
 
 plugins:
+  - jekyll-remote-theme
   - jekyll-feed
   - jekyll-sitemap
   - jekyll-seo-tag
