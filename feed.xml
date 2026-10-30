@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="zh-CN">
+  <title type="text">Mogmoug · 项目复盘与学习笔记</title>
+  <subtitle type="text">记录 Rust、JavaScript、C 的学习过程，项目复盘，以及和 AI 一起写代码的实践。</subtitle>
+  <link href="https://mogmoug.github.io/feed.xml" rel="self" type="application/atom+xml" />
+  <link href="https://mogmoug.github.io/" rel="alternate" type="text/html" hreflang="zh-CN" />
+  <id>https://mogmoug.github.io/</id>
+  <updated>2026-10-30T00:00:00+08:00</updated>
+  <author>
+    <name>Mogmoug</name>
+    <uri>https://github.com/mogmoug</uri>
+  </author>
+  <entry>
+    <title type="text">学习记录 1 · Rustlings 前五章与 quiz1</title>
+    <link href="https://mogmoug.github.io/posts/rustlings-01.html" rel="alternate" type="text/html" />
+    <id>https://mogmoug.github.io/posts/rustlings-01.html</id>
+    <published>2026-09-24T00:00:00+08:00</published>
+    <updated>2026-10-30T00:00:00+08:00</updated>
+    <summary type="text">完成 Rustlings 00_intro 到 04_primitive_types 全部练习与 quiz1 的学习记录：安装步骤、常用命令、五个易错点和下一步计划。</summary>
+    <category term="rustlings" />
+    <category term="rust" />
+    <category term="学习记录" />
+    <content type="html"><![CDATA[
+      <p>完成 <code>00_intro</code> ~ <code>04_primitive_types</code> 全部练习，外加 <code>quiz1</code>。前五章主要在打语法和类型基础。</p>
+      <h2>什么是 Rustlings</h2>
+      <p>Rustlings 是由 Rust 官方维护的交互式学习项目：给你一段编译不过或测试不过的代码，你把它改对，就算过关。</p>
+      <h2>安装与初始化</h2>
+      <pre><code>rustup update
+cargo install rustlings
+rustlings init
+cd rustlings
+rustlings</code></pre>
+      <h2>已完成内容</h2>
+      <ul>
+        <li>00_intro、01_variables、02_functions、03_if、04_primitive_types、quiz1</li>
+      </ul>
+      <h2>今日易错点</h2>
+      <ul>
+        <li>变量默认不可变，需要修改时必须加 <code>mut</code>。</li>
+        <li>函数返回值加分号会变成返回 <code>()</code>。</li>
+        <li><code>if</code> 的条件必须是 <code>bool</code>。</li>
+        <li>数组是 <code>[T; N]</code>，切片 <code>&amp;[T]</code> 是借用视图。</li>
+        <li><code>char</code> 用单引号，<code>&amp;str</code> 用双引号。</li>
+      </ul>
+    ]]></content>
+  </entry>
+  <entry>
+    <title type="text">用 16 分钟做一款文字版文明：Civtext 项目复盘</title>
+    <link href="https://mogmoug.github.io/posts/civtext-retro.html" rel="alternate" type="text/html" />
+    <id>https://mogmoug.github.io/posts/civtext-retro.html</id>
+    <published>2026-09-24T00:00:00+08:00</published>
+    <updated>2026-10-30T00:00:00+08:00</updated>
+    <summary type="text">用 DeepSeek 在约 16 分钟内、以 ¥3.1983 的 API 成本，完成一个 Node.js 网页文字版文明游戏原型；核心教训是 AI 开发前必须先做规划。</summary>
+    <category term="civtext" />
+    <category term="nodejs" />
+    <category term="项目复盘" />
+    <content type="html"><![CDATA[
+      <p>一个使用 Node.js 开发的网页文字版《文明》游戏。玩家通过文本界面体验最基础的文明玩法，项目重点验证核心游戏循环与 AI 辅助开发流程。</p>
+      <h2>开发方法</h2>
+      <p>使用 DeepSeek Harness 最新版开发，核心提示词为：</p>
+      <blockquote><p>用 NodeJS 做一个文字版的文明游戏，不需要炫酷的特效。</p></blockquote>
+      <blockquote><p>实际上我希望可以做一个网页端的文字游戏，实现最基础的功能，代码行数限制在 1 万行以内。</p></blockquote>
+      <h2>成本与耗时</h2>
+      <ul>
+        <li>API 费用：¥3.1983</li>
+        <li>输入 54.6K tokens，缓存 16.8M tokens，输出 141K tokens</li>
+        <li>开发耗时约 16 分钟（2026-09-24 14:09–14:25）</li>
+      </ul>
+      <h2>项目反思</h2>
+      <p>应该先具体规划好项目，再交给 AI 完成。没有明确的功能范围、模块拆分和验收标准，AI 容易生成大量需要返工的内容。</p>
+    ]]></content>
+  </entry>
+</feed>

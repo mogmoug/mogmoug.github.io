@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>学习记录 1 · Rustlings 前五章与 quiz1 — Mogmoug</title>
+    <meta
+      name="description"
+      content="Rustlings 从 00_intro 到 04_primitive_types 的学习记录：安装步骤、常用命令、已完成内容、五个易错点和下一步计划。"
+    />
+    <meta name="author" content="Mogmoug" />
+    <link rel="canonical" href="https://mogmoug.github.io/posts/rustlings-01.html" />
+    <meta name="theme-color" content="#f5fbf7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#080f0c" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+    <link rel="alternate" type="application/atom+xml" title="Mogmoug Blog" href="/feed.xml" />
+    <link rel="stylesheet" href="/assets/css/style.css" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="Mogmoug" />
+    <meta property="og:title" content="学习记录 1 · Rustlings 前五章与 quiz1" />
+    <meta
+      property="og:description"
+      content="Rustlings 前五章 + quiz1 的学习记录：安装、常用命令、易错点与下一步。"
+    />
+    <meta property="og:url" content="https://mogmoug.github.io/posts/rustlings-01.html" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="article:published_time" content="2026-09-24" />
+    <meta property="article:tag" content="rustlings" />
+    <meta property="article:tag" content="rust" />
+    <meta name="twitter:card" content="summary" />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t) {
+            t =
+              window.matchMedia &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light";
+          }
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {}
+      })();
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": "学习记录 1 · Rustlings 前五章与 quiz1",
+        "description": "Rustlings 前五章 + quiz1 的学习记录：安装、常用命令、易错点与下一步。",
+        "datePublished": "2026-09-24",
+        "dateModified": "2026-10-30",
+        "url": "https://mogmoug.github.io/posts/rustlings-01.html",
+        "author": { "@type": "Person", "name": "Mogmoug", "url": "https://github.com/mogmoug" },
+        "keywords": ["rustlings", "rust", "学习记录"],
+        "inLanguage": "zh-CN"
+      }
+    </script>
+  </head>
+  <body>
+    <div class="progress" data-progress aria-hidden="true"></div>
+    <a class="skip-link" href="#main">跳到正文</a>
+
+    <header class="site-header">
+      <div class="wrap header-inner">
+        <a class="brand" href="/">
+          <span class="brand-dot" aria-hidden="true"></span>
+          <span>Mogmoug</span>
+        </a>
+        <nav class="site-nav" data-nav aria-label="主导航">
+          <a href="/">首页</a>
+          <a href="/archive.html">归档</a>
+          <a href="/tags.html">标签</a>
+          <a href="/about.html">关于</a>
+        </nav>
+        <div class="nav-actions">
+          <button class="icon-btn" type="button" data-search-open aria-label="搜索（按 / 键）">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+          </button>
+          <button class="icon-btn" type="button" data-theme-toggle aria-label="切换主题">
+            <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+            </svg>
+            <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+            </svg>
+          </button>
+          <button class="icon-btn nav-toggle" type="button" data-nav-toggle aria-label="打开菜单" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <path d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+      <div class="wrap">
+        <header class="article-head">
+          <nav class="breadcrumb" aria-label="面包屑">
+            <a href="/">首页</a> / <a href="/archive.html">归档</a> / <span>学习记录</span>
+          </nav>
+          <h1>学习记录 1 · Rustlings 前五章与 quiz1</h1>
+          <div class="article-meta">
+            <time datetime="2026-09-24">2026-09-24</time>
+            <span class="sep" aria-hidden="true"></span>
+            <span>约 6 分钟</span>
+            <span class="sep" aria-hidden="true"></span>
+            <span>rustlings · rust · 学习记录</span>
+          </div>
+        </header>
+
+        <div class="article-layout">
+          <article class="prose">
+            <div class="callout">
+              <span class="callout-icon" aria-hidden="true">🌱</span>
+              <div>
+                <span class="callout-title">进度速览</span>
+                <p>
+                  完成 <code>00_intro</code> ~ <code>04_primitive_types</code> 全部练习，外加
+                  <code>quiz1</code>。前五章主要在打语法和类型基础，接下来所有权才是 Rust 的真正门槛。
+                </p>
+              </div>
+            </div>
+
+            <h2>什么是 Rustlings</h2>
+            <p>
+              Rustlings 是由 Rust 官方维护的交互式学习项目。它的玩法很朴素：给你一段编译不过或测试不过的代码，
+              你把它改对，就算过关。通过这种「修好它」的循环，逐步熟悉语法、类型系统，以及 Rust 最特别的所有权机制。
+            </p>
+
+            <h2>安装与初始化</h2>
+            <ol>
+              <li>
+                <p>先更新工具链，避免版本不一致带来的奇怪问题：</p>
+                <pre><code>rustup update</code></pre>
+              </li>
+              <li>
+                <p>安装 rustlings：</p>
+                <pre><code>cargo install rustlings</code></pre>
+              </li>
+              <li>
+                <p>在代码目录中初始化练习，会生成一个 <code>rustlings/</code> 文件夹：</p>
+                <pre><code>rustlings init</code></pre>
+              </li>
+              <li>
+                <p>进入练习目录并启动，修改文件后会自动检测结果：</p>
+                <pre><code>cd rustlings
+rustlings</code></pre>
+              </li>
+            </ol>
+
+            <h2>常用命令</h2>
+            <p>记住这四条就够日常使用了：</p>
+            <pre><code>rustlings list              # 查看所有练习和进度
+rustlings run variables1    # 单独运行某个练习
+rustlings hint variables1   # 查看提示
+rustlings reset variables1  # 重置某个练习</code></pre>
+
+            <h2>已完成内容</h2>
+            <ul>
+              <li><code>00_intro</code>：了解 Rustlings 的使用方式</li>
+              <li><code>01_variables</code>：变量绑定、<code>mut</code>、类型推断、未使用变量</li>
+              <li><code>02_functions</code>：函数定义、参数、返回值、表达式与语句</li>
+              <li><code>03_if</code>：<code>if</code> / <code>else</code>、条件表达式</li>
+              <li><code>04_primitive_types</code>：整数、浮点数、<code>bool</code>、<code>char</code>、元组、数组</li>
+              <li><code>quiz1</code>：综合运用前面章节的内容</li>
+            </ul>
+
+            <h2>今日易错点</h2>
+            <div class="callout blue">
+              <span class="callout-icon" aria-hidden="true">💡</span>
+              <div>
+                <span class="callout-title">五个反复踩到的坑</span>
+                <ul>
+                  <li>变量默认不可变，需要修改时必须加 <code>mut</code>。</li>
+                  <li>函数返回值不能随意加分号，加了分号就变成了返回 <code>()</code>。</li>
+                  <li><code>if</code> 的条件必须是 <code>bool</code>，不能像 Python 那样依赖 truthy / falsy。</li>
+                  <li>数组类型是 <code>[T; N]</code>，长度固定；切片 <code>&amp;[T]</code> 是对数组或 <code>Vec</code> 的借用视图。</li>
+                  <li><code>char</code> 用单引号，是 Unicode 标量；字符串字面量 <code>&amp;str</code> 用双引号。</li>
+                </ul>
+              </div>
+            </div>
+
+            <h2>下一步</h2>
+            <p>接下来进入 <code>05_vecs</code> 和 <code>06_move_semantics</code>，重点理解三组概念：</p>
+            <ul>
+              <li><code>String</code> 与 <code>&amp;str</code> 的区别</li>
+              <li><code>Vec&lt;T&gt;</code> 与 <code>&amp;[T]</code> 的关系</li>
+              <li><code>move</code>、<code>borrow</code>、<code>mutable borrow</code></li>
+            </ul>
+            <p>
+              整体进度不错。前五章加 quiz1 基本是在打语法和类型基础，从 <code>move_semantics</code>
+              开始会明显变难——到那时再回来补这篇笔记。
+            </p>
+
+            <footer class="post-footer">
+              <div class="tags">
+                <a class="tag" href="/tags.html#rustlings">rustlings</a>
+                <a class="tag blue" href="/tags.html#rust">rust</a>
+                <a class="tag" href="/tags.html#学习记录">学习记录</a>
+              </div>
+              <a class="btn" href="/archive.html">全部文章 →</a>
+            </footer>
+
+            <nav class="post-nav" aria-label="翻页">
+              <a href="/archive.html">
+                <span class="label">返回</span>
+                <span class="title">文章归档</span>
+              </a>
+              <a class="next" href="/posts/civtext-retro.html">
+                <span class="label">下一篇</span>
+                <span class="title">用 16 分钟做一款文字版文明：Civtext 项目复盘</span>
+              </a>
+            </nav>
+          </article>
+
+          <aside class="toc" data-toc aria-label="文章目录">
+            <p class="toc-title">目录</p>
+          </aside>
+        </div>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap footer-inner">
+        <p>© 2026 Mogmoug · 用好奇心写代码</p>
+        <div class="footer-links">
+          <a href="/archive.html">归档</a>
+          <a href="/tags.html">标签</a>
+          <a href="/feed.xml">RSS</a>
+          <a href="https://github.com/mogmoug" rel="me noopener" target="_blank">GitHub</a>
+        </div>
+      </div>
+      <div class="wrap footer-note">手写静态站 · 无框架 · 无追踪</div>
+    </footer>
+
+    <button class="back-top" type="button" data-back-top aria-label="回到顶部">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="m6 15 6-6 6 6" />
+      </svg>
+    </button>
+
+    <div class="search-modal" data-search-modal role="dialog" aria-modal="true" aria-label="搜索文章" aria-hidden="true">
+      <div class="search-panel">
+        <div class="search-input-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </svg>
+          <input class="search-input" type="search" placeholder="搜索文章、标签…" data-search-input autocomplete="off" />
+          <span class="search-kbd">Esc</span>
+        </div>
+        <ul class="search-results" data-search-results></ul>
+      </div>
+    </div>
+
+    <script src="/assets/js/main.js" defer></script>
+  </body>
+</html>
