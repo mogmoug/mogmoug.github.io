@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>天气模拟系统 - 数值气象模型 (200×300网格)</title>
+    <style>
+        :root {
+            --bg: #0a0a14;
+            --panel-bg: #12122a;
+            --text: #d0d0e0;
+            --accent: #4da6ff;
+            --accent2: #ff7b4d;
+            --border: #2a2a45;
+            --btn-bg: #1a1a35;
+            --btn-hover: #252550;
+            --slider-track: #2a2a45;
+            --gold: #e8c547;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg);
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            color: var(--text);
+            overflow-x: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .header {
+            text-align: center;
+            padding: 14px 20px 6px;
+            width: 100%;
+            max-width: 1000px;
+        }
+        .header h1 {
+            font-size: 1.6em;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            background: linear-gradient(135deg, #6ec6ff, #4da6ff, #b388ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 2px;
+        }
+        .header .subtitle {
+            font-size: 0.78em;
+            color: #8899bb;
+            letter-spacing: 0.05em;
+        }
+
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 1000px;
+            gap: 10px;
+            padding: 0 10px;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            background: #000;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 60px rgba(40, 80, 180, 0.12);
+            cursor: crosshair;
+            transition: box-shadow 0.3s;
+        }
+        .canvas-wrapper:hover {
+            box-shadow: 0 8px 36px rgba(0, 0, 0, 0.6), 0 0 80px rgba(50, 100, 200, 0.18);
+        }
+        canvas {
+            display: block;
+        }
+
+        .tooltip {
+            position: absolute;
+            pointer-events: none;
+            background: rgba(10, 10, 30, 0.92);
+            border: 1px solid #556;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 0.75em;
+            color: #dde;
+            white-space: nowrap;
+            display: none;
+            z-index: 10;
+            backdrop-filter: blur(6px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+            letter-spacing: 0.03em;
+        }
+        .tooltip span {
+            display: block;
+            line-height: 1.5;
+        }
+        .tooltip .val {
+            color: #ffcc66;
+            font-weight: 600;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            align-items: center;
+            justify-content: center;
+            background: var(--panel-bg);
+            padding: 14px 20px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            width: 100%;
+            max-width: 950px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        .control-group label {
+            font-size: 0.7em;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #8899bb;
+            font-weight: 600;
+        }
+        .btn {
+            padding: 9px 18px;
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            background: var(--btn-bg);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            transition: all 0.25s;
+            white-space: nowrap;
+            font-family: inherit;
+        }
+        .btn:hover {
+            background: var(--btn-hover);
+            border-color: #556;
+            box-shadow: 0 2px 12px rgba(60, 100, 200, 0.2);
+        }
+        .btn.active {
+            background: #1e3d6e;
+            border-color: #4da6ff;
+            color: #fff;
+            box-shadow: 0 0 16px rgba(60, 140, 240, 0.3);
+        }
+        .btn.play-btn {
+            font-size: 1.1em;
+            padding: 10px 22px;
+            min-width: 70px;
+            background: #1a3a20;
+            border-color: #3a6a3a;
+            color: #8fdf8f;
+        }
+        .btn.play-btn.paused {
+            background: #3a1a1a;
+            border-color: #6a3a3a;
+            color: #df8f8f;
+        }
+        .btn.play-btn:hover {
+            box-shadow: 0 2px 16px rgba(80, 180, 80, 0.35);
+        }
+        .btn.play-btn.paused:hover {
+            box-shadow: 0 2px 16px rgba(200, 80, 80, 0.35);
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 110px;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--slider-track);
+            outline: none;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            transition: transform 0.15s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+        .speed-val {
+            font-size: 0.75em;
+            font-weight: 700;
+            color: #ffcc66;
+            min-width: 36px;
+            text-align: center;
+        }
+        .time-display {
+            font-size: 0.85em;
+            font-weight: 700;
+            color: #e8c547;
+            letter-spacing: 0.04em;
+            min-width: 100px;
+            text-align: center;
+            background: #1a1a30;
+            padding: 8px 14px;
+            border-radius: 20px;
+            border: 1px solid #333;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7em;
+            color: #99aabb;
+            letter-spacing: 0.04em;
+        }
+        .legend-bar {
+            width: 180px;
+            height: 12px;
+            border-radius: 6px;
+            flex-shrink: 0;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        @media (max-width: 700px) {
+            .controls {
+                gap: 8px;
+                padding: 10px 12px;
+            }
+            .btn {
+                padding: 6px 12px;
+                font-size: 0.75em;
+            }
+            input[type="range"] {
+                width: 70px;
+            }
+            .header h1 {
+                font-size: 1.2em;
+            }
+            canvas {
+                max-width: 100%;
+                height: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>🌍 数值天气模拟系统</h1>
+        <div class="subtitle">200×300 网格 · 温度 · 湿度 · 气压 · 风力 · 云层 · 降水</div>
+    </div>
+
+    <div class="main-container">
+        <!-- 画布容器 -->
+        <div class="canvas-wrapper" id="canvasWrapper">
+            <canvas id="weatherCanvas"></canvas>
+            <div class="tooltip" id="tooltip"></div>
+        </div>
+
+        <!-- 图例 -->
+        <div class="legend" id="legendContainer">
+            <span>温度</span>
+            <canvas class="legend-bar" id="legendBar" width="180" height="12"></canvas>
+            <span class="legend-item"><span class="legend-dot" style="background:#fff;"></span> 云/湿区</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#2244aa;"></span> 降水</span>
+            <span class="legend-item">→ 风矢量</span>
+        </div>
+
+        <!-- 控制面板 -->
+        <div class="controls" id="controls">
+            <button class="btn play-btn" id="btnPlay" title="播放/暂停模拟">▶ 播放</button>
+
+            <div class="control-group">
+                <label>模拟速度</label>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="font-size:0.7em;">慢</span>
+                    <input type="range" id="speedSlider" min="1" max="30" value="5" step="1">
+                    <span style="font-size:0.7em;">快</span>
+                </div>
+                <span class="speed-val" id="speedVal">×5</span>
+            </div>
+
+            <div class="time-display" id="timeDisplay">☀ 第1天 12:00</div>
+
+            <button class="btn active" id="btnModeTemp" data-mode="temperature">🌡 温度图</button>
+            <button class="btn" id="btnModeHumid" data-mode="humidity">💧 湿度图</button>
+            <button class="btn" id="btnModeWind" data-mode="wind">🌬 风场图</button>
+            <button class="btn" id="btnModeAll" data-mode="combined">🌈 综合图</button>
+
+            <button class="btn" id="btnPerturb" title="添加随机天气扰动">⚡ 扰动</button>
+            <button class="btn" id="btnReset" title="重置模拟">🔄 重置</button>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ============================================================
+            //  配置与常量
+            // ============================================================
+            const GRID_ROWS = 200; // 网格行数 (y方向, 北→南)
+            const GRID_COLS = 300; // 网格列数 (x方向, 西→东)
+            const SCALE = 3; // 渲染缩放因子 (每个网格单元 SCALE×SCALE 像素)
+            const CANVAS_WIDTH = GRID_COLS * SCALE; // 900px
+            const CANVAS_HEIGHT = GRID_ROWS * SCALE; // 600px
+
+            const DT_BASE = 0.08; // 基础物理时间步长 (模拟小时)
+            const DIFFUSIVITY_TEMP = 0.35; // 温度扩散系数
+            const DIFFUSIVITY_HUMID = 0.25; // 湿度扩散系数
+            const OCEAN_HEAT_CAPACITY = 8.0; // 海洋热容量倍数
+            const LAND_HEAT_CAPACITY = 1.0; // 陆地热容量
+            const EVAPORATION_RATE = 0.012; // 海洋蒸发率
+            const CONDENSATION_THRESHOLD = 0.78; // 凝结阈值(相对湿度)
+            const PRECIP_THRESHOLD = 0.92; // 降水阈值
+            const LAPSE_RATE = 0.0065; // 温度递减率 (每米海拔, 这里用任意高程单位缩放)
+
+            // ============================================================
+            //  DOM元素
+            // ============================================================
+            const canvas = document.getElementById('weatherCanvas');
+            const ctx = canvas.getContext('2d');
+            const tooltip = document.getElementById('tooltip');
+            const canvasWrapper = document.getElementById('canvasWrapper');
+            const btnPlay = document.getElementById('btnPlay');
+            const btnPerturb = document.getElementById('btnPerturb');
+            const btnReset = document.getElementById('btnReset');
+            const speedSlider = document.getElementById('speedSlider');
+            const speedVal = document.getElementById('speedVal');
+            const timeDisplay = document.getElementById('timeDisplay');
+            const legendBarCanvas = document.getElementById('legendBar');
+            const legendBarCtx = legendBarCanvas.getContext('2d');
+
+            canvas.width = CANVAS_WIDTH;
+            canvas.height = CANVAS_HEIGHT;
+
+            // ============================================================
+            //  状态变量
+            // ============================================================
+            let isPlaying = true;
+            let simSpeed = 5; // 模拟速度倍率
+            let displayMode = 'temperature'; // 'temperature' | 'humidity' | 'wind' | 'combined'
+            let simHour = 12.0; // 模拟时间 (小时, 0=午夜)
+            let simDay = 1;
+            let frameCount = 0;
+            let lastFrameTime = performance.now();
+
+            // ============================================================
+            //  网格数据 (使用 Float32Array 一维存储, 索引 = y*GRID_COLS + x)
+            // ============================================================
+            const TOTAL_CELLS = GRID_ROWS * GRID_COLS;
+            let temperature = new Float32Array(TOTAL_CELLS); // 温度 (°C)
+            let humidity = new Float32Array(TOTAL_CELLS); // 相对湿度 (0-1)
+            let uWind = new Float32Array(TOTAL_CELLS); // 东西向风速 (格点/小时, 正=东)
+            let vWind = new Float32Array(TOTAL_CELLS); // 南北向风速 (格点/小时, 正=南)
+            let pressure = new Float32Array(TOTAL_CELLS); // 气压 (hPa)
+            let elevation = new Float32Array(TOTAL_CELLS); // 地形高程
+            let landMask = new Float32Array(TOTAL_CELLS); // 陆地=1, 海洋=0
+            let heatCapacity = new Float32Array(TOTAL_CELLS); // 热容量
+            let cloudWater = new Float32Array(TOTAL_CELLS); // 云水含量 (用于追踪)
+
+            // 缓冲区
+            let tempBuffer = new Float32Array(TOTAL_CELLS);
+            let humidBuffer = new Float32Array(TOTAL_CELLS);
+            let uBuffer = new Float32Array(TOTAL_CELLS);
+            let vBuffer = new Float32Array(TOTAL_CELLS);
+
+            // ============================================================
+            //  辅助函数: 索引计算
+            // ============================================================
+            function idx(y, x) {
+                return y * GRID_COLS + x;
+            }
+
+            function clamp(val, min, max) {
+                return Math.max(min, Math.min(max, val));
+            }
+
+            // ============================================================
+            //  地形生成
+            // ============================================================
+            function generateTerrain() {
+                // 海洋在左侧和底部部分区域
+                for (let y = 0; y < GRID_ROWS; y++) {
+                    for (let x = 0; x < GRID_COLS; x++) {
+                        const i = idx(y, x);
+                        const fx = x / GRID_COLS; // 0(西) → 1(东)
+                        const fy = y / GRID_ROWS; // 0(北) → 1(南)
+
+                        // 海岸线: 使用正弦扰动
+                        const coastBase = 0.22;
+                        const coastVar = 0.06 * Math.sin(fy * 8.0) + 0.04 * Math.sin(fy * 3.5 + 2.0) + 0.03 * Math.sin(
+                            fy * 15.0);
+                        const coastX = coastBase + coastVar;
+
+                        let isLand = fx > coastX;
+                        // 南部半岛
+                        if (fy > 0.7 && fx > 0.15 && fx < 0.35) isLand = true;
+                        // 北部海湾
+                        if (fy < 0.2 && fx > 0.1 && fx < 0.35) isLand = false;
+                        // 岛屿
+                        const islandCX = 0.48;
+                        const islandCY = 0.55;
+                        const distIsland = Math.sqrt((fx - islandCX) ** 2 + (fy - islandCY) ** 2);
+                        if (distIsland < 0.06) isLand = true;
+
+                        landMask[i] = isLand ? 1.0 : 0.0;
+
+                        // 高程
+                        let elev = 0;
+                        if (isLand) {
+                            // 山脉: 南北走向
+                            const ridgeX = 0.45;
+                            const distRidge = Math.abs(fx - ridgeX);
+                            const ridgeHeight = 2200 * Math.exp(-distRidge * distRidge / 0.015) * (0.7 + 0.3 * Math.sin(
+                                fy * 4.5));
+                            // 第二山脉
+                            const ridge2X = 0.68;
+                            const distRidge2 = Math.abs(fx - ridge2X);
+                            const ridge2Height = 1600 * Math.exp(-distRidge2 * distRidge2 / 0.01) * (0.6 + 0.4 * Math.cos(
+                                fy * 5.5 + 1.5));
+                            // 南部高地
+                            const southHigh = fy > 0.75 ? 900 * (fy - 0.75) * 4 * Math.exp(-((fx - 0.55) ** 2) / 0.04) :
+                                0;
+
+                            elev = Math.max(ridgeHeight, ridge2Height, southHigh);
+                            elev += (Math.random() - 0.5) * 180; // 随机起伏
+                            elev = Math.max(0, elev);
+                        }
+                        // 海洋深度(负值,用于视觉效果)
+                        if (!isLand && fx < coastX - 0.03) {
+                            elev = -200 - Math.random() * 800;
+                        }
+                        elevation[i] = elev;
+
+                        // 热容量
+                        heatCapacity[i] = isLand ? LAND_HEAT_CAPACITY : OCEAN_HEAT_CAPACITY;
+                    }
+                }
+                // 平滑高程(仅陆地)
+                const elevSmoothed = new Float32Array(elevation);
+                for (let iter = 0; iter < 3; iter++) {
+                    for (let y = 1; y < GRID_ROWS - 1; y++) {
+                        for (let x = 1; x < GRID_COLS - 1; x++) {
+                            const i = idx(y, x);
+                            if (landMask[i] > 0.5) {
+                                elevSmoothed[i] = 0.4 * elevation[i] + 0.15 * (elevation[idx(y - 1, x)] + elevation[idx(
+                                    y + 1, x)] + elevation[idx(y, x - 1)] + elevation[idx(y, x + 1)]);
+                            }
+                        }
+                    }
+                    elevation.set(elevSmoothed);
+                }
+            }
+
+            // ============================================================
+            //  初始条件
+            // ============================================================
+            function setInitialConditions() {
+                for (let y = 0; y < GRID_ROWS; y++) {
+                    for (let x = 0; x < GRID_COLS; x++) {
+                        const i = idx(y, x);
+                        const fy = y / GRID_ROWS; // 0北→1南
+                        const fx = x / GRID_COLS;
+                        const isLand = landMask[i] > 0.5;
+                        const elev = elevation[i];
+
+                        // 基础温度: 北冷南暖, 叠加海拔效应
+                        let baseTemp = 28.0 - fy * 38.0; // 南边~28°C, 北边~-10°C
+                        baseTemp -= Math.max(0, elev) * LAPSE_RATE; // 海拔递减
+                        // 海洋调节
+                        if (!isLand) {
+                            baseTemp = baseTemp * 0.6 + 14.0; // 海洋温度更温和
+                        }
+                        // 随机扰动
+                        baseTemp += (Math.random() - 0.5) * 4.0;
+                        temperature[i] = clamp(baseTemp, -25, 40);
+
+                        // 初始湿度
+                        let baseHumid;
+                        if (!isLand) {
+                            baseHumid = 0.70 + Math.random() * 0.20; // 海洋湿润
+                        } else if (fx < 0.35 && fy > 0.3 && fy < 0.7) {
+                            baseHumid = 0.55 + Math.random() * 0.25; // 沿海
+                        } else if (elev > 1000) {
+                            baseHumid = 0.30 + Math.random() * 0.25; // 高山干燥
+                        } else {
+                            baseHumid = 0.35 + Math.random() * 0.35;
+                        }
+                        humidity[i] = clamp(baseHumid, 0.08, 0.95);
+
+                        // 初始风场为零
+                        uWind[i] = 0;
+                        vWind[i] = 0;
+                        cloudWater[i] = 0;
+                    }
+                }
+                updatePressure();
+                simHour = 12.0;
+                simDay = 1;
+            }
+
+            // ============================================================
+            //  气压计算 (基于温度和高程)
+            // ============================================================
+            function updatePressure() {
+                const P0 = 1013.25; // 海平面标准气压
+                for (let y = 0; y < GRID_ROWS; y++) {
+                    for (let x = 0; x < GRID_COLS; x++) {
+                        const i = idx(y, x);
+                        const T_kelvin = temperature[i] + 273.15;
+                        const elev = Math.max(0, elevation[i]);
+                        // 简化的气压: 静力平衡 + 温度效应
+                        const scaleHeight = 8400 * (T_kelvin / 288.15);
+                        let p = P0 * Math.exp(-elev / scaleHeight);
+                        // 热力效应: 温暖地区气压略低
+                        const tempAnomaly = temperature[i] - 15.0;
+                        p -= tempAnomaly * 1.8;
+                        pressure[i] = clamp(p, 850, 1050);
+                    }
+                }
+            }
+
+            // ============================================================
+            //  风场更新 (基于气压梯度 + 简化科里奥利力)
+            // ============================================================
+            function updateWindField() {
+                const f_coriolis = 0.0001; // 科里奥利参数(简化)
+                const windDamping = 0.85;
+
+                for (let y = 1; y < GRID_ROWS - 1; y++) {
+                    for (let x = 1; x < GRID_COLS - 1; x++) {
+                        const i = idx(y, x);
+                        const dpdx = -(pressure[idx(y, x + 1)] - pressure[idx(y, x - 1)]) / 2.0;
+                        const dpdy = -(pressure[idx(y + 1, x)] - pressure[idx(y - 1, x)]) / 2.0;
+
+                        const uOld = uWind[i];
+                        const vOld = vWind[i];
+
+                        // 气压梯度力 + 科里奥利力 + 阻尼
+                        let uNew = uOld * windDamping + dpdx * 0.6 - f_coriolis * vOld * 30;
+                        let vNew = vOld * windDamping + dpdy * 0.6 + f_coriolis * uOld * 30;
+
+                        // 地表摩擦(陆地更强)
+                        const friction = landMask[i] > 0.5 ? 0.7 : 0.92;
+                        uNew *= friction;
+                        vNew *= friction;
+
+                        uBuffer[i] = clamp(uNew, -18, 18);
+                        vBuffer[i] = clamp(vNew, -18, 18);
+                    }
+                }
+                // 边界条件
+                for (let y = 0; y < GRID_ROWS; y++) {
+                    uBuffer[idx(y, 0)] = uBuffer[idx(y, 1)];
+                    uBuffer[idx(y, GRID_COLS - 1)] = uBuffer[idx(y, GRID_COLS - 2)];
+                    vBuffer[idx(y, 0)] = vBuffer[idx(y, 1)];
+                    vBuffer[idx(y, GRID_COLS - 1)] = vBuffer[idx(y, GRID_COLS - 2)];
+                }
+                for (let x = 0; x < GRID_COLS; x++) {
+                    uBuffer[idx(0, x)] = uBuffer[idx(1, x)];
+                    uBuffer[idx(GRID_ROWS - 1, x)] = uBuffer[idx(GRID_ROWS - 2, x)];
+                    vBuffer[idx(0, x)] = vBuffer[idx(1, x)];
+                    vBuffer[idx(GRID_ROWS - 1, x)] = vBuffer[idx(GRID_ROWS - 2, x)];
+                }
+                // 平滑风场
+                for (let iter = 0; iter < 2; iter++) {
+                    const uSm = new Float32Array(uBuffer);
+                    const vSm = new Float32Array(vBuffer);
+                    for (let y = 1; y < GRID_ROWS - 1; y++) {
+                        for (let x = 1; x < GRID_COLS - 1; x++) {
+                            const i = idx(y, x);
+                            uSm[i] = 0.5 * uBuffer[i] + 0.125 * (uBuffer[idx(y - 1, x)] + uBuffer[idx(y + 1, x)] +
+                                uBuffer[idx(y, x - 1)] + uBuffer[idx(y, x + 1)]);
+                            vSm[i] = 0.5 * vBuffer[i] + 0.125 * (vBuffer[idx(y - 1, x)] + vBuffer[idx(y + 1, x)] +
+                                vBuffer[idx(y, x - 1)] + vBuffer[idx(y, x + 1)]);
+                        }
+                    }
+                    uBuffer.set(uSm);
+                    vBuffer.set(vSm);
+                }
+                uWind.set(uBuffer);
+                vWind.set(vBuffer);
+            }
+
+            // ============================================================
+            //  太阳辐射函数
+            // ============================================================
+            function getSolarRadiation(y, hour) {
+                const fy = y / GRID_ROWS; // 0北→1南
+                const latAngle = (0.5 - fy) * Math.PI; // -π/2(北)到π/2(南)
+                const declination = 0.41 * Math.cos((simDay - 172) / 365 * 2 * Math.PI); // 太阳赤纬(近似)
+                const hourAngle = (hour - 12) / 12 * Math.PI; // 时角
+                const cosZenith = Math.sin(latAngle) * Math.sin(declination) +
+                    Math.cos(latAngle) * Math.cos(declination) * Math.cos(hourAngle);
+                if (cosZenith <= 0) return 0; // 夜间
+                const solarConst = 4.8; // 缩放的太阳常数
+                return solarConst * cosZenith * (0.7 + 0.3 * cosZenith);
+            }
+
+            // ============================================================
+            //  物理更新 (单步)
+            // ============================================================
+            function physicsStep(dt) {
+                // 1. 温度更新: 扩散 + 平流 + 太阳辐射 + 长波冷却 + 潜热
+                const alpha = DIFFUSIVITY_TEMP * dt;
+                for (let y = 1; y < GRID_ROWS - 1; y++) {
+                    for (let x = 1; x < GRID_COLS - 1; x++) {
+                        const i = idx(y, x);
+                        // 扩散 (5点拉普拉斯)
+                        const laplacian = temperature[idx(y - 1, x)] + temperature[idx(y + 1, x)] +
+                            temperature[idx(y, x - 1)] + temperature[idx(y, x + 1)] -
+                            4.0 * temperature[i];
+                        let dT = alpha * laplacian;
+
+                        // 平流 (迎风格式)
+                        const u = uWind[i];
+                        const v = vWind[i];
+                        const dTdx = u > 0 ?
+                            (temperature[i] - temperature[idx(y, x - 1)]) :
+                            (temperature[idx(y, x + 1)] - temperature[i]);
+                        const dTdy = v > 0 ?
+                            (temperature[i] - temperature[idx(y - 1, x)]) :
+                            (temperature[idx(y + 1, x)] - temperature[i]);
+                        dT -= u * dTdx * dt * 0.7;
+                        dT -= v * dTdy * dt * 0.7;
+
+                        // 太阳辐射加热
+                        const solar = getSolarRadiation(y, simHour % 24);
+                        dT += solar * dt / heatCapacity[i];
+
+                        // 长波辐射冷却
+                        const coolingRate = 0.015 * (temperature[i] + 20) / heatCapacity[i];
+                        dT -= coolingRate * dt;
+
+                        // 潜热释放(凝结时)
+                        if (cloudWater[i] > 0.001 && temperature[i] < 35) {
+                            dT += cloudWater[i] * 18.0 * dt;
+                        }
+
+                        tempBuffer[i] = temperature[i] + dT;
+                    }
+                }
+                // 边界条件
+                for (let y = 0; y < GRID_ROWS; y++) {
+                    tempBuffer[idx(y, 0)] = tempBuffer[idx(y, 1)];
+                    tempBuffer[idx(y, GRID_COLS - 1)] = tempBuffer[idx(y, GRID_COLS - 2)];
+                }
+                for (let x = 0; x < GRID_COLS; x++) {
+                    tempBuffer[idx(0, x)] = tempBuffer[idx(1, x)];
+                    tempBuffer[idx(GRID_ROWS - 1, x)] = tempBuffer[idx(GRID_ROWS - 2, x)];
+                }
+                // 应用并钳制
+                for (let i = 0; i < TOTAL_CELLS; i++) {
+                    temperature[i] = clamp(tempBuffer[i], -30, 48);
+                }
+
+                // 2. 湿度更新: 扩散 + 平流 + 蒸发 - 凝结
+                const beta = DIFFUSIVITY_HUMID * dt;
+                for (let y = 1; y < GRID_ROWS - 1; y++) {
+                    for (let x = 1; x < GRID_COLS - 1; x++) {
+                        const i = idx(y, x);
+                        const lapH = humidity[idx(y - 1, x)] + humidity[idx(y + 1, x)] +
+                            humidity[idx(y, x - 1)] + humidity[idx(y, x + 1)] -
+                            4.0 * humidity[i];
+                        let dH = beta * lapH;
+
+                        // 平流
+                        const u = uWind[i];
+                        const v = vWind[i];
+                        const dHdx = u > 0 ?
+                            (humidity[i] - humidity[idx(y, x - 1)]) :
+                            (humidity[idx(y, x + 1)] - humidity[i]);
+                        const dHdy = v > 0 ?
+                            (humidity[i] - humidity[idx(y - 1, x)]) :
+                            (humidity[idx(y + 1, x)] - humidity[i]);
+                        dH -= u * dHdx * dt * 0.65;
+                        dH -= v * dHdy * dt * 0.65;
+
+                        // 蒸发(海洋和湿润地表)
+                        if (landMask[i] < 0.5) {
+                            const evapRate = EVAPORATION_RATE * (1.0 - humidity[i]) *
+                                (1.0 + 0.025 * (temperature[i] - 10.0));
+                            dH += evapRate * dt;
+                        } else if (humidity[i] < 0.5 && elevation[i] < 300) {
+                            dH += 0.003 * (1.0 - humidity[i] / 0.5) * dt;
+                        }
+
+                        // 凝结
+                        if (humidity[i] + dH > CONDENSATION_THRESHOLD) {
+                            const excess = (humidity[i] + dH) - CONDENSATION_THRESHOLD;
+                            const condRate = excess * 0.6;
+                            dH -= condRate;
+                            cloudWater[i] += condRate * 0.7;
+                        }
+
+                        // 云水衰减
+                        cloudWater[i] *= Math.exp(-0.4 * dt);
+
+                        // 降水(湿度极高时)
+                        if (humidity[i] + dH > PRECIP_THRESHOLD) {
+                            const precip = (humidity[i] + dH - PRECIP_THRESHOLD) * 0.8;
+                            dH -= precip;
+                            cloudWater[i] = Math.max(0, cloudWater[i] - precip * 0.5);
+                        }
+
+                        humidBuffer[i] = humidity[i] + dH;
+                    }
+                }
+                for (let y = 0; y < GRID_ROWS; y++) {
+                    humidBuffer[idx(y, 0)] = humidBuffer[idx(y, 1)];
+                    humidBuffer[idx(y, GRID_COLS - 1)] = humidBuffer[idx(y, GRID_COLS - 2)];
+                }
+                for (let x = 0; x < GRID_COLS; x++) {
+                    humidBuffer[idx(0, x)] = humidBuffer[idx(1, x)];
+                    humidBuffer[idx(GRID_ROWS - 1, x)] = humidBuffer[idx(GRID_ROWS - 2, x)];
+                }
+                for (let i = 0; i < TOTAL_CELLS; i++) {
+                    humidity[i] = clamp(humidBuffer[i], 0.02, 1.0);
+                    cloudWater[i] = clamp(cloudWater[i], 0, 0.3);
+                }
+            }
+
+            // ============================================================
+            //  完整物理帧更新
+            // ============================================================
+            function updatePhysics() {
+                const dt = DT_BASE * simSpeed;
+                const stepsPerFrame = Math.max(1, Math.round(simSpeed / 3));
+
+                for (let s = 0; s < stepsPerFrame; s++) {
+                    const subDt = dt / stepsPerFrame;
+                    physicsStep(subDt);
+                    simHour += subDt;
+                    while (simHour >= 24) {
+                        simHour -= 24;
+                        simDay++;
+                    }
+                }
+                updatePressure();
+                updateWindField();
+            }
+
+            // ============================================================
+            //  颜色映射
+            // ============================================================
+            function tempToColor(tempC) {
+                // 深蓝(-20) → 青(0) → 绿(8) → 黄(16) → 橙(24) → 红(32) → 深红(40+)
+                const t = clamp(tempC, -22, 44);
+                let r, g, b;
+                if (t < -8) {
+                    const f = (t + 22) / 14;
+                    r = 10 + f * 10;
+                    g = 20 + f * 80;
+                    b = 140 + f * 100;
+                } else if (t < 2) {
+                    const f = (t + 8) / 10;
+                    r = 20 + f * 40;
+                    g = 100 + f * 120;
+                    b = 220 + f * 30;
+                } else if (t < 12) {
+                    const f = (t - 2) / 10;
+                    r = 60 + f * 100;
+                    g = 200 + f * 50;
+                    b = 180 - f * 120;
+                } else if (t < 22) {
+                    const f = (t - 12) / 10;
+                    r = 160 + f * 90;
+                    g = 240 - f * 60;
+                    b = 40 - f * 25;
+                } else if (t < 32) {
+                    const f = (t - 22) / 10;
+                    r = 245 + f * 10;
+                    g = 170 - f * 90;
+                    b = 10 - f * 5;
+                } else {
+                    const f = (t - 32) / 12;
+                    r = 250;
+                    g = 60 - f * 40;
+                    b = 2;
+                }
+                return [clamp(Math.round(r), 0, 255), clamp(Math.round(g), 0, 255), clamp(Math.round(b), 0, 255)];
+            }
+
+            function humidToColor(h) {
+                const hc = clamp(h, 0, 1);
+                if (hc < 0.35) {
+                    const f = hc / 0.35;
+                    return [180 + f * 50, 140 + f * 40, 70 + f * 60];
+                } else if (hc < 0.7) {
+                    const f = (hc - 0.35) / 0.35;
+                    return [160 - f * 100, 160 - f * 50, 160 + f * 80];
+                } else {
+                    const f = (hc - 0.7) / 0.3;
+                    return [30 + f * 20, 80 - f * 50, 230 + f * 25];
+                }
+            }
+
+            // ============================================================
+            //  预计算温度颜色查找表
+            // ============================================================
+            const tempLUT = new Array(256);
+            for (let i = 0; i < 256; i++) {
+                const tc = -25 + (i / 255) * 65; // 映射 -25°C 到 +40°C
+                tempLUT[i] = tempToColor(tc);
+            }
+
+            function tempToLUTIndex(tempC) {
+                const clamped = clamp(tempC, -25, 40);
+                return Math.round((clamped + 25) / 65 * 255);
+            }
+
+            // ============================================================
+            //  渲染
+            // ============================================================
+            function render() {
+                const imageData = ctx.createImageData(CANVAS_WIDTH, CANVAS_HEIGHT);
+                const data = imageData.data;
+
+                // 渲染基础图层
+                for (let gy = 0; gy < GRID_ROWS; gy++) {
+                    for (let gx = 0; gx < GRID_COLS; gx++) {
+                        const i = idx(gy, gx);
+                        let r, g, b;
+
+                        if (displayMode === 'temperature') {
+                            const idxLUT = tempToLUTIndex(temperature[i]);
+                            [r, g, b] = tempLUT[idxLUT];
+                            // 叠加地形阴影
+                            if (landMask[i] > 0.5 && elevation[i] > 600) {
+                                const shade = Math.min(0.7, elevation[i] / 4000);
+                                r = Math.round(r * (1 - shade * 0.35));
+                                g = Math.round(g * (1 - shade * 0.3));
+                                b = Math.round(b * (1 - shade * 0.25));
+                            }
+                        } else if (displayMode === 'humidity') {
+                            [r, g, b] = humidToColor(humidity[i]);
+                        } else if (displayMode === 'wind') {
+                            // 风速大小决定颜色
+                            const speed = Math.sqrt(uWind[i] ** 2 + vWind[i] ** 2);
+                            const sNorm = clamp(speed / 15, 0, 1);
+                            r = Math.round(30 + sNorm * 200);
+                            g = Math.round(40 + sNorm * 180);
+                            b = Math.round(60 + sNorm * 140);
+                            if (landMask[i] > 0.5) {
+                                r = Math.round(r * 0.7 + 30);
+                                g = Math.round(g * 0.7 + 25);
+                                b = Math.round(b * 0.7 + 20);
+                            }
+                        } else { // combined
+                            const idxLUT = tempToLUTIndex(temperature[i]);
+                            [r, g, b] = tempLUT[idxLUT];
+                            if (landMask[i] > 0.5 && elevation[i] > 600) {
+                                const shade = Math.min(0.7, elevation[i] / 4000);
+                                r = Math.round(r * (1 - shade * 0.35));
+                                g = Math.round(g * (1 - shade * 0.3));
+                                b = Math.round(b * (1 - shade * 0.25));
+                            }
+                        }
+
+                        // 填充 SCALE×SCALE 像素块
+                        const pxStartY = gy * SCALE;
+                        const pxStartX = gx * SCALE;
+                        for (let dy = 0; dy < SCALE; dy++) {
+                            for (let dx = 0; dx < SCALE; dx++) {
+                                const px = (pxStartY + dy) * CANVAS_WIDTH + (pxStartX + dx);
+                                const pi = px * 4;
+                                data[pi] = r;
+                                data[pi + 1] = g;
+                                data[pi + 2] = b;
+                                data[pi + 3] = 255;
+                            }
+                        }
+                    }
+                }
+
+                // 在综合模式或湿度模式下叠加云层和降水
+                if (displayMode === 'combined' || displayMode === 'humidity') {
+                    for (let gy = 0; gy < GRID_ROWS; gy++) {
+                        for (let gx = 0; gx < GRID_COLS; gx++) {
+                            const i = idx(gy, gx);
+                            const h = humidity[i];
+                            const cw = cloudWater[i];
+
+                            if (h > CONDENSATION_THRESHOLD || cw > 0.002) {
+                                const alpha = clamp((h - CONDENSATION_THRESHOLD) / (1 - CONDENSATION_THRESHOLD) + cw *
+                                    3, 0, 0.75);
+                                const isPrecip = h > PRECIP_THRESHOLD || cw > 0.04;
+                                const overlayR = isPrecip ? 30 : 240;
+                                const overlayG = isPrecip ? 40 : 240;
+                                const overlayB = isPrecip ? 160 : 250;
+                                const pxStartY = gy * SCALE;
+                                const pxStartX = gx * SCALE;
+                                for (let dy = 0; dy < SCALE; dy++) {
+                                    for (let dx = 0; dx < SCALE; dx++) {
+                                        const px = (pxStartY + dy) * CANVAS_WIDTH + (pxStartX + dx);
+                                        const pi = px * 4;
+                                        const a = alpha;
+                                        data[pi] = Math.round(data[pi] * (1 - a) + overlayR * a);
+                                        data[pi + 1] = Math.round(data[pi + 1] * (1 - a) + overlayG * a);
+                                        data[pi + 2] = Math.round(data[pi + 2] * (1 - a) + overlayB * a);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                ctx.putImageData(imageData, 0, 0);
+
+                // 绘制风矢量 (在所有模式下)
+                const arrowStep = 7; // 每7个网格单元绘制一个箭头
+                const arrowColor = displayMode === 'wind' ? 'rgba(255,255,200,0.9)' : 'rgba(255,255,255,0.7)';
+                const arrowColorStrong = displayMode === 'wind' ? 'rgba(255,200,100,0.95)' : 'rgba(255,255,200,0.85)';
+                ctx.strokeStyle = arrowColor;
+                ctx.fillStyle = arrowColor;
+                ctx.lineWidth = 1.0;
+
+                for (let gy = arrowStep; gy < GRID_ROWS - arrowStep; gy += arrowStep) {
+                    for (let gx = arrowStep; gx < GRID_COLS - arrowStep; gx += arrowStep) {
+                        const i = idx(gy, gx);
+                        const u = uWind[i];
+                        const v = vWind[i];
+                        const speed = Math.sqrt(u * u + v * v);
+                        if (speed < 0.15) continue;
+
+                        const cx = gx * SCALE + SCALE / 2;
+                        const cy = gy * SCALE + SCALE / 2;
+                        const len = Math.min(speed * 1.8, SCALE * arrowStep * 0.8);
+                        const angle = Math.atan2(-v, u); // v正=南(下), canvas y轴向下
+                        const ex = cx + Math.cos(angle) * len;
+                        const ey = cy + Math.sin(angle) * len;
+
+                        const useStrong = speed > 6;
+                        ctx.strokeStyle = useStrong ? arrowColorStrong : arrowColor;
+                        ctx.fillStyle = useStrong ? arrowColorStrong : arrowColor;
+                        ctx.lineWidth = useStrong ? 1.4 : 0.8;
+
+                        ctx.beginPath();
+                        ctx.moveTo(cx, cy);
+                        ctx.lineTo(ex, ey);
+                        ctx.stroke();
+
+                        // 箭头头部
+                        if (len > 3) {
+                            const headLen = len * 0.3;
+                            const headAngle = 0.55;
+                            const hx1 = ex - Math.cos(angle - headAngle) * headLen;
+                            const hy1 = ey - Math.sin(angle - headAngle) * headLen;
+                            const hx2 = ex - Math.cos(angle + headAngle) * headLen;
+                            const hy2 = ey - Math.sin(angle + headAngle) * headLen;
+                            ctx.beginPath();
+                            ctx.moveTo(ex, ey);
+                            ctx.lineTo(hx1, hy1);
+                            ctx.lineTo(hx2, hy2);
+                            ctx.closePath();
+                            ctx.fill();
+                        }
+                    }
+                }
+
+                // 绘制海岸线
+                ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+                ctx.lineWidth = 1.2;
+                for (let gy = 1; gy < GRID_ROWS - 1; gy++) {
+                    for (let gx = 1; gx < GRID_COLS - 1; gx++) {
+                        const i = idx(gy, gx);
+                        const isLand = landMask[i] > 0.5;
+                        const neighbors = [
+                            idx(gy - 1, gx), idx(gy + 1, gx), idx(gy, gx - 1), idx(gy, gx + 1)
+                        ];
+                        const hasOceanNeighbor = neighbors.some(ni => landMask[ni] < 0.5);
+                        if (isLand && hasOceanNeighbor) {
+                            const px = gx * SCALE;
+                            const py = gy * SCALE;
+                            ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                            ctx.fillRect(px, py, SCALE, SCALE);
+                        }
+                    }
+                }
+            }
+
+            // ============================================================
+            //  图例渲染
+            // ============================================================
+            function renderLegend() {
+                const w = legendBarCanvas.width;
+                const h = legendBarCanvas.height;
+                const imageData = legendBarCtx.createImageData(w, h);
+                const data = imageData.data;
+                for (let x = 0; x < w; x++) {
+                    const tc = -25 + (x / w) * 65;
+                    const [r, g, b] = tempToColor(tc);
+                    for (let dy = 0; dy < h; dy++) {
+                        const pi = (dy * w + x) * 4;
+                        data[pi] = r;
+                        data[pi + 1] = g;
+                        data[pi + 2] = b;
+                        data[pi + 3] = 255;
+                    }
+                }
+                legendBarCtx.putImageData(imageData, 0, 0);
+                // 标签
+                legendBarCtx.fillStyle = '#aabbcc';
+                legendBarCtx.font = '9px "Segoe UI","PingFang SC",sans-serif';
+                legendBarCtx.fillText('-25°C', 1, h - 1);
+                legendBarCtx.fillText('0°C', w * 0.38, h - 1);
+                legendBarCtx.fillText('20°C', w * 0.7, h - 1);
+                legendBarCtx.fillText('40°C', w - 30, h - 1);
+            }
+
+            // ============================================================
+            //  鼠标提示
+            // ============================================================
+            canvas.addEventListener('mousemove', function(e) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = CANVAS_WIDTH / rect.width;
+                const scaleY = CANVAS_HEIGHT / rect.height;
+                const mx = (e.clientX - rect.left) * scaleX;
+                const my = (e.clientY - rect.top) * scaleY;
+                const gx = Math.floor(mx / SCALE);
+                const gy = Math.floor(my / SCALE);
+                if (gx >= 0 && gx < GRID_COLS && gy >= 0 && gy < GRID_ROWS) {
+                    const i = idx(gy, gx);
+                    const spd = Math.sqrt(uWind[i] ** 2 + vWind[i] ** 2);
+                    const windDir = Math.atan2(-vWind[i], uWind[i]) * 180 / Math.PI;
+                    const dirStr = windDir < -157.5 ? '←西' : windDir < -112.5 ? '↖西北' : windDir < -67.5 ? '↑北' :
+                        windDir < -22.5 ? '↗东北' : windDir < 22.5 ? '→东' : windDir < 67.5 ? '↘东南' :
+                        windDir < 112.5 ? '↓南' : windDir < 157.5 ? '↙西南' : '←西';
+                    tooltip.innerHTML = `
+                <span>📍 位置: (${gx}, ${gy}) ${landMask[i]>0.5?'🏔陆地':'🌊海洋'} ${elevation[i]>500?'⛰高'+Math.round(elevation[i])+'m':''}</span>
+                <span>🌡 温度: <span class="val">${temperature[i].toFixed(1)}°C</span></span>
+                <span>💧 湿度: <span class="val">${(humidity[i]*100).toFixed(0)}%</span></span>
+                <span>🌬 风速: <span class="val">${spd.toFixed(1)}</span> 格点/时 ${dirStr}</span>
+                <span>📊 气压: <span class="val">${pressure[i].toFixed(1)} hPa</span></span>
+                ${cloudWater[i]>0.005?`<span>☁ 云水: <span class="val">${(cloudWater[i]*100).toFixed(1)}%</span></span>`:''}
+              `;
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = (e.clientX - canvasWrapper.getBoundingClientRect().left + 18) + 'px';
+                    tooltip.style.top = (e.clientY - canvasWrapper.getBoundingClientRect().top - 80) + 'px';
+                } else {
+                    tooltip.style.display = 'none';
+                }
+            });
+            canvas.addEventListener('mouseleave', function() {
+                tooltip.style.display = 'none';
+            });
+
+            // ============================================================
+            //  扰动函数
+            // ============================================================
+            function addPerturbation() {
+                const cx = Math.floor(Math.random() * (GRID_COLS - 40)) + 20;
+                const cy = Math.floor(Math.random() * (GRID_ROWS - 40)) + 20;
+                const radius = 8 + Math.random() * 20;
+                const tempAnomaly = (Math.random() - 0.5) * 16;
+                const humidAnomaly = (Math.random() - 0.3) * 0.45;
+                for (let y = Math.max(0, cy - radius); y < Math.min(GRID_ROWS, cy + radius); y++) {
+                    for (let x = Math.max(0, cx - radius); x < Math.min(GRID_COLS, cx + radius); x++) {
+                        const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+                        if (dist < radius) {
+                            const i = idx(y, x);
+                            const factor = Math.exp(-dist * dist / (radius * radius * 0.4));
+                            temperature[i] = clamp(temperature[i] + tempAnomaly * factor, -28, 46);
+                            humidity[i] = clamp(humidity[i] + humidAnomaly * factor, 0.03, 0.97);
+                        }
+                    }
+                }
+                updatePressure();
+                updateWindField();
+            }
+
+            // ============================================================
+            //  按钮事件
+            // ============================================================
+            btnPlay.addEventListener('click', function() {
+                isPlaying = !isPlaying;
+                btnPlay.textContent = isPlaying ? '⏸ 暂停' : '▶ 播放';
+                btnPlay.classList.toggle('paused', !isPlaying);
+            });
+
+            btnPerturb.addEventListener('click', function() {
+                addPerturbation();
+                // 视觉反馈
+                btnPerturb.style.transform = 'scale(1.15)';
+                setTimeout(() => { btnPerturb.style.transform = 'scale(1)'; }, 150);
+            });
+
+            btnReset.addEventListener('click', function() {
+                generateTerrain();
+                setInitialConditions();
+                updatePressure();
+                updateWindField();
+                simHour = 12;
+                simDay = 1;
+                frameCount = 0;
+                for (let i = 0; i < TOTAL_CELLS; i++) cloudWater[i] = 0;
+                updateTimeDisplay();
+            });
+
+            speedSlider.addEventListener('input', function() {
+                simSpeed = parseInt(this.value);
+                speedVal.textContent = '×' + simSpeed;
+            });
+
+            // 显示模式按钮
+            const modeButtons = {
+                temperature: document.getElementById('btnModeTemp'),
+                humidity: document.getElementById('btnModeHumid'),
+                wind: document.getElementById('btnModeWind'),
+                combined: document.getElementById('btnModeAll'),
+            };
+
+            Object.entries(modeButtons).forEach(([mode, btn]) => {
+                btn.addEventListener('click', function() {
+                    displayMode = mode;
+                    Object.values(modeButtons).forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                });
+            });
+
+            // 键盘快捷键
+            document.addEventListener('keydown', function(e) {
+                switch (e.key.toLowerCase()) {
+                    case ' ':
+                        e.preventDefault();
+                        isPlaying = !isPlaying;
+                        btnPlay.textContent = isPlaying ? '⏸ 暂停' : '▶ 播放';
+                        btnPlay.classList.toggle('paused', !isPlaying);
+                        break;
+                    case '1':
+                        displayMode = 'temperature';
+                        updateModeButtons();
+                        break;
+                    case '2':
+                        displayMode = 'humidity';
+                        updateModeButtons();
+                        break;
+                    case '3':
+                        displayMode = 'wind';
+                        updateModeButtons();
+                        break;
+                    case '4':
+                        displayMode = 'combined';
+                        updateModeButtons();
+                        break;
+                    case 'p':
+                        addPerturbation();
+                        break;
+                    case 'arrowleft':
+                        simSpeed = Math.max(1, simSpeed - 1);
+                        speedSlider.value = simSpeed;
+                        speedVal.textContent = '×' + simSpeed;
+                        break;
+                    case 'arrowright':
+                        simSpeed = Math.min(30, simSpeed + 1);
+                        speedSlider.value = simSpeed;
+                        speedVal.textContent = '×' + simSpeed;
+                        break;
+                }
+            });
+
+            function updateModeButtons() {
+                Object.entries(modeButtons).forEach(([mode, btn]) => {
+                    btn.classList.toggle('active', mode === displayMode);
+                });
+            }
+
+            function updateTimeDisplay() {
+                const hourInt = Math.floor(simHour);
+                const minute = Math.floor((simHour - hourInt) * 60);
+                const hourStr = hourInt.toString().padStart(2, '0');
+                const minStr = minute.toString().padStart(2, '0');
+                const dayIcon = simHour >= 6 && simHour < 19 ? '☀' : '🌙';
+                timeDisplay.textContent = `${dayIcon} 第${simDay}天 ${hourStr}:${minStr}`;
+            }
+
+            // ============================================================
+            //  主循环
+            // ============================================================
+            function mainLoop(timestamp) {
+                const dtReal = (timestamp - lastFrameTime) / 1000;
+                lastFrameTime = timestamp;
+
+                if (isPlaying) {
+                    updatePhysics();
+                    updateTimeDisplay();
+                }
+
+                render();
+                frameCount++;
+
+                // 每300帧更新图例(避免频繁更新)
+                if (frameCount % 300 === 0) {
+                    renderLegend();
+                }
+
+                requestAnimationFrame(mainLoop);
+            }
+
+            // ============================================================
+            //  初始化
+            // ============================================================
+            function init() {
+                generateTerrain();
+                setInitialConditions();
+                updatePressure();
+                updateWindField();
+                renderLegend();
+                updateTimeDisplay();
+                btnPlay.textContent = '⏸ 暂停';
+                btnPlay.classList.remove('paused');
+                isPlaying = true;
+                speedVal.textContent = '×' + simSpeed;
+                speedSlider.value = simSpeed;
+                lastFrameTime = performance.now();
+                requestAnimationFrame(mainLoop);
+            }
+
+            // 响应窗口大小变化
+            function resizeCanvas() {
+                const maxWidth = Math.min(window.innerWidth - 24, 950);
+                const aspectRatio = CANVAS_WIDTH / CANVAS_HEIGHT;
+                const displayWidth = maxWidth;
+                const displayHeight = displayWidth / aspectRatio;
+                canvas.style.width = displayWidth + 'px';
+                canvas.style.height = displayHeight + 'px';
+            }
+
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            // 启动
+            init();
+
+            console.log('🌍 天气模拟系统已就绪');
+            console.log('  网格: 200×300 = 60,000 个单元格');
+            console.log('  物理模型: 温度扩散+平流+辐射 | 湿度扩散+平流+蒸发+凝结 | 气压梯度风');
+            console.log('  操作: 空格=播放/暂停 | 1-4=显示模式 | P=扰动 | ←→=速度');
+            console.log('  鼠标悬停查看详细数据');
+        })();
+    </script>
+</body>
+</html>

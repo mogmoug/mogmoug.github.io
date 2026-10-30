@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>自由落体模拟：重力做功与功率 | 物理可视化</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none; /* 避免拖动按钮文字，不影响输入 */
+        }
+
+        body {
+            background: linear-gradient(145deg, #1a2a3a 0%, #0f1a24 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', 'Poppins', 'Roboto', 'Noto Sans', system-ui, sans-serif;
+            margin: 0;
+            padding: 24px;
+        }
+
+        /* 主卡片 */
+        .sim-card {
+            max-width: 1100px;
+            width: 100%;
+            background: rgba(22, 34, 48, 0.85);
+            backdrop-filter: blur(2px);
+            border-radius: 3rem;
+            box-shadow: 0 20px 35px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            padding: 1.5rem;
+            transition: all 0.2s;
+        }
+
+        /* 标题区 */
+        .title {
+            text-align: center;
+            color: #c0e0ff;
+            font-weight: 600;
+            font-size: 1.6rem;
+            letter-spacing: -0.5px;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            margin-bottom: 1rem;
+        }
+        .sub {
+            text-align: center;
+            color: #8aaec0;
+            font-size: 0.9rem;
+            margin-bottom: 1.8rem;
+            border-bottom: 1px dashed #2c4c6e;
+            display: inline-block;
+            width: auto;
+            margin-left: auto;
+            margin-right: auto;
+            padding-bottom: 6px;
+        }
+        .params {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+            background: #07121c80;
+            border-radius: 2rem;
+            padding: 0.6rem 1.2rem;
+            margin-bottom: 1.5rem;
+            font-weight: 500;
+            color: #bbd9ff;
+        }
+        .params span {
+            background: #0f212f;
+            padding: 0.2rem 1rem;
+            border-radius: 2rem;
+            font-family: monospace;
+            font-size: 1rem;
+            font-weight: bold;
+            color: #f3c26b;
+        }
+
+        /* 两列布局: 左侧canvas动画 + 右侧实时数据 */
+        .main-dashboard {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            margin-bottom: 1.8rem;
+        }
+        .canvas-area {
+            flex: 2;
+            min-width: 260px;
+            background: #0b1721;
+            border-radius: 2rem;
+            padding: 1rem;
+            box-shadow: inset 0 0 8px #00000030, 0 8px 18px rgba(0,0,0,0.3);
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            background: radial-gradient(circle at 20% 30%, #182f3f, #071016);
+            border-radius: 1.2rem;
+            box-shadow: 0 0 0 2px #2a4b66;
+            cursor: pointer;
+        }
+        .info-panel {
+            flex: 1.2;
+            min-width: 240px;
+            background: #0f1b26d9;
+            backdrop-filter: blur(4px);
+            border-radius: 1.8rem;
+            padding: 1rem 1.3rem;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            border: 1px solid #2d5a7a;
+        }
+        .data-card {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .data-item {
+            background: #07121e70;
+            border-radius: 1.5rem;
+            padding: 0.6rem 1rem;
+            border-left: 5px solid #f3b33d;
+        }
+        .data-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #8da9c2;
+        }
+        .data-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            color: #f5e7c8;
+            line-height: 1.2;
+            word-break: break-word;
+        }
+        .unit {
+            font-size: 0.9rem;
+            font-weight: normal;
+            color: #7c9cba;
+        }
+        .highlight {
+            color: #ffcf6e;
+        }
+
+        /* 控制栏 */
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+            margin: 1.2rem 0 1rem;
+        }
+        button {
+            background: #203e54;
+            border: none;
+            font-weight: bold;
+            font-size: 1rem;
+            padding: 0.5rem 1.4rem;
+            border-radius: 3rem;
+            color: #f0f4fa;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 2px 6px black;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        button:active {
+            transform: scale(0.96);
+        }
+        button:hover {
+            background: #2f5a78;
+            box-shadow: 0 4px 12px black;
+        }
+        .slider-container {
+            background: #0b1922;
+            padding: 0.5rem 1.2rem;
+            border-radius: 3rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        input[type="range"] {
+            width: 260px;
+            height: 4px;
+            -webkit-appearance: none;
+            background: #2f5f7a;
+            border-radius: 5px;
+            outline: none;
+        }
+        input[type="range"]:focus {
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #ffb347;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 6px #ffcf70;
+            border: none;
+        }
+        .time-label {
+            background: #00000066;
+            padding: 0.2rem 0.8rem;
+            border-radius: 2rem;
+            font-family: monospace;
+            font-weight: bold;
+            color: #b9e2ff;
+        }
+        footer {
+            text-align: center;
+            font-size: 0.7rem;
+            color: #4f6f85;
+            margin-top: 1rem;
+        }
+        @media (max-width: 680px) {
+            .data-value { font-size: 1.3rem; }
+            .sim-card { padding: 1rem; }
+            button { padding: 0.4rem 1rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="sim-card">
+    <div class="title">⚡ 自由落体 · 重力做功 & 瞬时功率 ⚡</div>
+    <div class="params">
+        <span>质量 m = 2 kg</span>
+        <span>重力加速度 g = 10 m/s²</span>
+        <span>初始高度 H = 20 m</span>
+        <span>落地时间 t = 2 s</span>
+    </div>
+
+    <div class="main-dashboard">
+        <!-- canvas 动画区 -->
+        <div class="canvas-area">
+            <canvas id="simCanvas" width="560" height="360" style="width:100%; height:auto; max-width:560px; aspect-ratio:560/360;"></canvas>
+            <div style="display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color:#5f89a0;">
+                <span>⛰️ 起始点 (20m)</span>
+                <span>🌍 地面 (0m)</span>
+            </div>
+        </div>
+
+        <!-- 实时动态面板 -->
+        <div class="info-panel">
+            <div class="data-card">
+                <div class="data-item">
+                    <div class="data-label">⏱️ 当前时间</div>
+                    <div class="data-value"><span id="timeValue">0.00</span><span class="unit"> s</span></div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">📉 下落距离</div>
+                    <div class="data-value"><span id="fallDist">0.00</span><span class="unit"> m</span></div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">⚡ 瞬时速度</div>
+                    <div class="data-value"><span id="velocity">0.00</span><span class="unit"> m/s</span></div>
+                </div>
+                <div class="data-item" style="border-left-color: #4cbfa6;">
+                    <div class="data-label">🔨 重力做功 (W = m·g·h下落)</div>
+                    <div class="data-value"><span id="workDone">0.00</span><span class="unit"> J</span></div>
+                </div>
+                <div class="data-item" style="border-left-color: #ff9f4a;">
+                    <div class="data-label">🔥 瞬时功率 (P = mg·v)</div>
+                    <div class="data-value"><span id="powerInst">0.00</span><span class="unit"> W</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 控制区域 -->
+    <div class="controls">
+        <button id="playBtn">▶ 播放动画</button>
+        <button id="pauseBtn">⏸️ 暂停</button>
+        <button id="resetBtn">🔄 重置</button>
+    </div>
+    <div class="slider-container">
+        <span style="font-size:0.85rem;">🎚️ 手动时间轴</span>
+        <input type="range" id="timeSlider" min="0" max="2" step="0.002" value="0">
+        <span id="sliderTimeShow" class="time-label">0.00 s</span>
+    </div>
+    <footer>
+        💡 动态计算：重力做功 W = mg·Δh (下落距离) &nbsp;|&nbsp; 瞬时功率 P = mg·v = mg²·t<br>
+        📐 物体质量2kg，g=10m/s²，初始高度20m，自由落体2s后落地，忽略空气阻力
+    </footer>
+</div>
+
+<script>
+    // ---------- 物理参数 ----------
+    const mass = 2.0;       // kg
+    const g = 10.0;         // m/s²
+    const totalTime = 2.0;  // 落地用时 s
+    const initHeight = 0.5 * g * totalTime * totalTime;  // 20 m
+
+    // 质量*重力
+    const weight = mass * g;   // 20 N
+
+    // DOM 元素
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // 显示元素
+    const timeSpan = document.getElementById('timeValue');
+    const fallDistSpan = document.getElementById('fallDist');
+    const velocitySpan = document.getElementById('velocity');
+    const workSpan = document.getElementById('workDone');
+    const powerSpan = document.getElementById('powerInst');
+    const timeSlider = document.getElementById('timeSlider');
+    const sliderTimeShow = document.getElementById('sliderTimeShow');
+
+    // 动画控制变量
+    let currentTime = 0.0;            // 当前模拟时间 [0, 2]
+    let animationId = null;
+    let animating = false;
+    let animStartTimestamp = 0;        // performance时间基点
+    let animStartCurrentTime = 0;       // 动画开始时 currentTime 的值
+    
+    // 画布尺寸参数 (固定逻辑尺寸: 560x360)
+    const canvasWidth = 560;
+    const canvasHeight = 360;
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+    
+    // 地面 Y 坐标 (像素)
+    const groundY = canvasHeight - 32;
+    const topY = 28;                  // 顶部留白起始点
+    // 物理高度映射: 最高点20m -> topY, 地面0m -> groundY
+    const maxHeightMeters = initHeight;   // 20m
+    
+    // 辅助函数: 根据当前剩余高度(m) 计算小球Y坐标 (像素)
+    function getYFromHeight(currentHeightMeters) {
+        // currentHeightMeters: 当前离地高度(0~20)
+        let clampedHeight = Math.min(maxHeightMeters, Math.max(0, currentHeightMeters));
+        let t = clampedHeight / maxHeightMeters;   // 1为最高,0为地面
+        let y = groundY - t * (groundY - topY);
+        return y;
+    }
+    
+    // 核心物理计算: 给定时间t (0~2) 返回 { fallenDist, velocity, work, power, currentHeight }
+    function computePhysics(t) {
+        let clampedT = Math.min(totalTime, Math.max(0, t));
+        // 下落距离  s = 1/2 * g * t²
+        let fallenDist = 0.5 * g * clampedT * clampedT;
+        if (fallenDist > initHeight) fallenDist = initHeight;
+        let velocity = g * clampedT;
+        // 重力做功 = m * g * 下落距离 (正功)
+        let work = mass * g * fallenDist;
+        // 瞬时功率 = m * g * v = mg * (gt) = mg²·t
+        let power = mass * g * velocity;
+        // 当前离地高度
+        let currentHeight = initHeight - fallenDist;
+        if (currentHeight < 0) currentHeight = 0;
+        return {
+            fallenDist: fallenDist,
+            velocity: velocity,
+            work: work,
+            power: power,
+            currentHeight: currentHeight,
+            t: clampedT
+        };
+    }
+    
+    // 更新所有UI、画布、滑块基于 currentTime
+    function updateAllFromCurrentTime() {
+        // 边界裁剪
+        let t_clamped = Math.min(totalTime, Math.max(0, currentTime));
+        if (t_clamped !== currentTime) currentTime = t_clamped;
+        
+        const phys = computePhysics(currentTime);
+        
+        // 更新文字面板
+        timeSpan.innerText = phys.t.toFixed(3);
+        fallDistSpan.innerText = phys.fallenDist.toFixed(2);
+        velocitySpan.innerText = phys.velocity.toFixed(2);
+        workSpan.innerText = phys.work.toFixed(2);
+        powerSpan.innerText = phys.power.toFixed(2);
+        
+        // 更新滑块 (防止滑块事件死循环，但直接修改value不会触发input)
+        if (timeSlider.value !== phys.t.toFixed(3)) {
+            timeSlider.value = phys.t;
+        }
+        sliderTimeShow.innerText = phys.t.toFixed(3) + " s";
+        
+        // 绘制画布: 小球位置 + 动态辅助信息
+        drawCanvas(phys.currentHeight, phys.t);
+    }
+    
+    // 绘制场景 (小球、地面、标尺、动态阴影)
+    function drawCanvas(currentHeightMeters, timeSec) {
+        if (!ctx) return;
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+        
+        // 背景渐变(天空氛围)
+        const gradSky = ctx.createLinearGradient(0, 0, 0, groundY-20);
+        gradSky.addColorStop(0, '#142b38');
+        gradSky.addColorStop(1, '#1e3f4d');
+        ctx.fillStyle = gradSky;
+        ctx.fillRect(0, 0, canvasWidth, groundY-6);
+        // 地面区域
+        ctx.fillStyle = '#4a6a3b';
+        ctx.fillRect(0, groundY-6, canvasWidth, 12);
+        ctx.fillStyle = '#8b5a2b';
+        ctx.fillRect(0, groundY-2, canvasWidth, 8);
+        // 土壤高光
+        ctx.fillStyle = '#b87c3a';
+        ctx.fillRect(0, groundY, canvasWidth, 4);
+        ctx.fillStyle = '#d49c4c';
+        for(let i=0;i<12;i++) {
+            ctx.fillRect(i*50, groundY-3, 3, 6);
+        }
+        
+        // 绘制虚线辅助参考线 (高度参考)
+        ctx.beginPath();
+        ctx.setLineDash([6, 8]);
+        ctx.strokeStyle = '#56b4e9a0';
+        ctx.lineWidth = 1;
+        // 分别在 5m, 10m, 15m 高度画指示线
+        for(let h = 5; h <= 15; h+=5) {
+            let yPos = getYFromHeight(h);
+            ctx.beginPath();
+            ctx.moveTo(30, yPos);
+            ctx.lineTo(canvasWidth-30, yPos);
+            ctx.stroke();
+            ctx.fillStyle = '#7faec980';
+            ctx.font = "bold 12px 'Segoe UI'";
+            ctx.shadowBlur = 0;
+            ctx.fillText(h+"m", 12, yPos-3);
+        }
+        ctx.setLineDash([]);
+        
+        // 绘制起始高度标线 (顶部虚线)
+        ctx.beginPath();
+        ctx.strokeStyle = '#ffbc6e';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([10, 8]);
+        let startY = getYFromHeight(initHeight);
+        ctx.moveTo(20, startY);
+        ctx.lineTo(canvasWidth-20, startY);
+        ctx.stroke();
+        ctx.fillStyle = '#ffbc6ecc';
+        ctx.font = "italic 11px monospace";
+        ctx.fillText("起点 20m", canvasWidth-70, startY-4);
+        ctx.setLineDash([]);
+        
+        // 绘制小球 (带光影)
+        let ballY = getYFromHeight(currentHeightMeters);
+        let radius = 16;
+        // 径向渐变
+        const gradBall = ctx.createRadialGradient(ballX(radius)-4, ballY-4, 5, ballX(radius), ballY, radius);
+        gradBall.addColorStop(0, '#ffd966');
+        gradBall.addColorStop(1, '#d98c2b');
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = "rgba(0,0,0,0.6)";
+        ctx.beginPath();
+        ctx.arc(ballX(radius), ballY, radius, 0, Math.PI*2);
+        ctx.fillStyle = gradBall;
+        ctx.fill();
+        ctx.shadowBlur = 4;
+        ctx.beginPath();
+        ctx.arc(ballX(radius)-3, ballY-3, 4, 0, Math.PI*2);
+        ctx.fillStyle = '#fff9e0';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(ballX(radius)-4, ballY-5, 2, 0, Math.PI*2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        // 速度/功率动态小标记
+        ctx.font = "bold 14px 'Segoe UI'";
+        ctx.fillStyle = '#FFE5A3';
+        ctx.shadowBlur = 3;
+        ctx.fillText("⚽", ballX(radius)-12, ballY-10);
+        
+        // 显示当前下落高度数值
+        ctx.font = "500 12px 'JetBrains Mono'";
+        ctx.fillStyle = '#cfe6ff';
+        ctx.fillText(`h = ${currentHeightMeters.toFixed(2)} m`, ballX(radius)-30, ballY-18);
+        
+        // 辅助显示时间对应的功率标签
+        ctx.font = "bold 14px monospace";
+        ctx.fillStyle = '#ffda99';
+        ctx.shadowBlur = 0;
+        
+        // 右下角显示动态物理值
+        ctx.fillStyle = '#B8E1FC';
+        ctx.font = "bold 12px 'Segoe UI'";
+        ctx.fillText(`t = ${timeSec.toFixed(2)} s`, canvasWidth-100, groundY-12);
+        ctx.fillStyle = '#EFC9AF';
+        ctx.fillText(`P = ${(mass*g*g*timeSec).toFixed(1)} W`, canvasWidth-100, groundY-28);
+        
+        // 地板阴影
+        ctx.fillStyle = '#00000030';
+        ctx.beginPath();
+        ctx.ellipse(ballX(radius), groundY-2, radius*1.2, radius*0.5, 0, 0, Math.PI*2);
+        ctx.fill();
+        // 防抖复位阴影
+        ctx.shadowBlur = 0;
+        
+        function ballX(r) {
+            let centerX = canvasWidth/2;
+            return centerX;
+        }
+    }
+    
+    // 动画循环 (基于真实时间)
+    function startAnimation() {
+        if (animating) return;
+        // 如果当前时间已经到达终点，重置至0后再播放更符合直觉? 用户点击播放若已经落地，重新模拟更方便。
+        if (currentTime >= totalTime - 0.001) {
+            // 落地状态，自动重置再播放（提升体验，无需手动点重置）
+            resetSimulation();
+        }
+        animating = true;
+        // 记录开始时刻和时间基准
+        animStartTimestamp = performance.now();
+        animStartCurrentTime = currentTime;
+        function step(now) {
+            if (!animating) return;
+            const elapsed = (performance.now() - animStartTimestamp) / 1000; // 秒
+            let newTime = animStartCurrentTime + elapsed;
+            if (newTime >= totalTime) {
+                newTime = totalTime;
+                currentTime = newTime;
+                updateAllFromCurrentTime();
+                stopAnimation();  // 动画结束
+                return;
+            }
+            currentTime = newTime;
+            updateAllFromCurrentTime();
+            animationId = requestAnimationFrame(step);
+        }
+        if (animationId) cancelAnimationFrame(animationId);
+        animationId = requestAnimationFrame(step);
+    }
+    
+    function stopAnimation() {
+        if (animationId) {
+            cancelAnimationFrame(animationId);
+            animationId = null;
+        }
+        animating = false;
+    }
+    
+    function pauseAnimation() {
+        if (animating) {
+            stopAnimation();
+        }
+    }
+    
+    function resetSimulation() {
+        stopAnimation();       // 停止动画
+        currentTime = 0.0;
+        updateAllFromCurrentTime();  // 刷新界面和滑块、画图
+    }
+    
+    // 滑块拖动时的事件 (手动改变时间)
+    function onSliderChange() {
+        // 如果动画播放中，则先停止动画，让用户手动控制
+        if (animating) {
+            stopAnimation();
+        }
+        let sliderVal = parseFloat(timeSlider.value);
+        if (isNaN(sliderVal)) sliderVal = 0;
+        sliderVal = Math.min(totalTime, Math.max(0, sliderVal));
+        currentTime = sliderVal;
+        updateAllFromCurrentTime();
+    }
+    
+    // 按钮事件绑定
+    function initControls() {
+        const playBtn = document.getElementById('playBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        
+        playBtn.addEventListener('click', () => {
+            startAnimation();
+        });
+        pauseBtn.addEventListener('click', () => {
+            pauseAnimation();
+        });
+        resetBtn.addEventListener('click', () => {
+            resetSimulation();
+        });
+        timeSlider.addEventListener('input', (e) => {
+            // 手动滑动时，同步
+            if (animating) stopAnimation();
+            let val = parseFloat(e.target.value);
+            currentTime = Math.min(totalTime, Math.max(0, val));
+            updateAllFromCurrentTime();
+        });
+        // 额外保险，防止滑块change二次调用input已经覆盖
+        timeSlider.addEventListener('change', () => {
+            if (animating) stopAnimation();
+            let val = parseFloat(timeSlider.value);
+            currentTime = Math.min(totalTime, Math.max(0, val));
+            updateAllFromCurrentTime();
+        });
+    }
+    
+    // 窗口自适应保持canvas像素比
+    function handleCanvasSize() {
+        // 保持canvas绘图尺寸固定，css自适应，无需额外处理
+    }
+    
+    // 初始化默认场景 (t=0)
+    function initScene() {
+        currentTime = 0;
+        updateAllFromCurrentTime();
+        initControls();
+        window.addEventListener('resize', () => {
+            // 重绘一下即可
+            if (!animating) {
+                const phys = computePhysics(currentTime);
+                drawCanvas(phys.currentHeight, currentTime);
+            }
+        });
+    }
+    
+    // 开始运行模拟
+    initScene();
+</script>
+</body>
+</html>

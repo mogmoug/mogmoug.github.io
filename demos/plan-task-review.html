@@ -1,0 +1,1615 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>计划 · 任务 · 笔记</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    color-scheme:light;
+    --bg:#f4f5f7; --sidebar:#ffffff; --panel:#ffffff;
+    --text:#1c1f23; --muted:#7a8290; --border:#e6e8ec;
+    --accent:#5b5bd6; --accent-soft:#eeeefc; --danger:#e5484d;
+    --shadow:0 1px 2px rgba(16,24,40,.04),0 6px 20px rgba(16,24,40,.06);
+    --radius:14px;
+  }
+  [data-theme="dark"]{
+    color-scheme:dark;
+    --bg:#0f1115; --sidebar:#16181d; --panel:#1a1d23;
+    --text:#e8eaed; --muted:#8b93a1; --border:#282c34;
+    --accent:#7c7cf0; --accent-soft:#23253a; --danger:#f2585d;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+  }
+  html,body{height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    background:var(--bg);color:var(--text);overflow:hidden;
+    -webkit-font-smoothing:antialiased;font-size:14px;line-height:1.5;
+  }
+  button,input,textarea,select{font-family:inherit}
+  svg{display:block}
+
+  /* ---------- 布局 ---------- */
+  .app{display:flex;height:100vh;height:100dvh}
+
+  /* ---------- 侧栏 ---------- */
+  .sidebar{
+    width:234px;flex-shrink:0;background:var(--sidebar);
+    border-right:1px solid var(--border);display:flex;flex-direction:column;
+    padding:18px 14px;gap:6px;
+  }
+  .brand{display:flex;align-items:center;gap:10px;padding:4px 8px 18px}
+  .brand-logo{
+    width:34px;height:34px;border-radius:10px;flex-shrink:0;
+    background:linear-gradient(135deg,#6366f1,#a855f7);
+    display:grid;place-items:center;color:#fff;font-weight:700;font-size:16px;
+    box-shadow:0 4px 12px rgba(99,102,241,.35);
+  }
+  .brand-text{font-weight:700;font-size:15px;letter-spacing:.2px}
+  .brand-text small{display:block;font-weight:400;font-size:11px;color:var(--muted)}
+
+  .nav{display:flex;flex-direction:column;gap:4px}
+  .nav-item{
+    display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+    padding:10px 12px;border-radius:10px;border:none;background:none;
+    color:var(--muted);font-size:14px;font-weight:500;cursor:pointer;
+    transition:background .15s,color .15s;
+  }
+  .nav-item svg{width:17px;height:17px;flex-shrink:0}
+  .nav-item:hover{background:var(--accent-soft);color:var(--text)}
+  .nav-item.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+  .nav-item .count{
+    margin-left:auto;font-size:11px;font-weight:600;padding:1px 7px;
+    border-radius:20px;background:var(--border);color:var(--muted);
+  }
+  .nav-item.active .count{background:var(--accent);color:#fff}
+
+  .sidebar-footer{
+    margin-top:auto;padding:12px 14px;border-radius:12px;
+    background:var(--bg);font-size:12px;color:var(--muted);
+  }
+  .stat-line{display:flex;justify-content:space-between;padding:2px 0}
+  .stat-line b{color:var(--text);font-weight:600}
+
+  /* ---------- 主区 ---------- */
+  .main{flex:1;display:flex;flex-direction:column;min-width:0}
+  .topbar{
+    display:flex;align-items:center;gap:12px;padding:16px 26px;
+    border-bottom:1px solid var(--border);background:var(--sidebar);
+  }
+  .topbar h1{font-size:19px;font-weight:700;letter-spacing:.2px}
+  .search{position:relative;margin-left:auto}
+  .search svg{
+    position:absolute;left:11px;top:50%;transform:translateY(-50%);
+    width:15px;height:15px;color:var(--muted);pointer-events:none;
+  }
+  .search input{
+    width:230px;padding:9px 12px 9px 33px;border-radius:10px;
+    border:1px solid var(--border);background:var(--bg);color:var(--text);
+    font-size:13px;outline:none;transition:.15s;
+  }
+  .search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .search input::placeholder{color:var(--muted)}
+
+  .btn{
+    border:none;border-radius:10px;padding:9px 15px;font-size:13px;
+    font-weight:600;cursor:pointer;transition:.15s;display:inline-flex;
+    align-items:center;gap:6px;white-space:nowrap;
+  }
+  .btn svg{width:15px;height:15px}
+  .btn-primary{background:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(91,91,214,.3)}
+  .btn-primary:hover{filter:brightness(1.08);transform:translateY(-1px)}
+  .btn-primary:active{transform:none}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
+  .btn-ghost:hover{background:var(--bg);color:var(--text)}
+
+  .icon-btn{
+    width:28px;height:28px;border-radius:8px;border:none;background:transparent;
+    color:var(--muted);display:grid;place-items:center;cursor:pointer;
+    transition:.15s;flex-shrink:0;
+  }
+  .icon-btn svg{width:15px;height:15px}
+  .icon-btn:hover{background:var(--bg);color:var(--text)}
+  .icon-btn.danger:hover{background:rgba(229,72,77,.12);color:var(--danger)}
+
+  .content{flex:1;overflow-y:auto;padding:24px 26px 60px}
+  .content::-webkit-scrollbar{width:10px}
+  .content::-webkit-scrollbar-thumb{background:var(--border);border-radius:10px;border:3px solid var(--bg)}
+
+  /* ---------- 卡片 ---------- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(276px,1fr));gap:16px}
+  .card{
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    box-shadow:var(--shadow);cursor:pointer;transition:transform .18s,box-shadow .18s,border-color .18s;
+    overflow:hidden;position:relative;display:flex;flex-direction:column;
+  }
+  .card:hover{transform:translateY(-2px);border-color:var(--accent);box-shadow:0 8px 26px rgba(16,24,40,.1)}
+  [data-theme="dark"] .card:hover{box-shadow:0 8px 26px rgba(0,0,0,.5)}
+  .card-top{height:4px;width:100%}
+  .card-body{padding:16px 17px 15px;display:flex;flex-direction:column;gap:10px;flex:1}
+  .card-head{display:flex;align-items:flex-start;gap:8px}
+  .card-head h3{font-size:15px;font-weight:650;line-height:1.4;flex:1;word-break:break-word}
+  .card-head .icon-btn{opacity:0;transition:opacity .15s,background .15s,color .15s}
+  .card:hover .card-head .icon-btn{opacity:1}
+  .card-text{
+    font-size:13px;color:var(--muted);line-height:1.6;word-break:break-word;
+    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+  }
+  .meta{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+  .meta svg{width:13px;height:13px;flex-shrink:0}
+
+  .progress-row{display:flex;align-items:center;gap:9px;margin-top:auto}
+  .progress{flex:1;height:6px;background:var(--border);border-radius:20px;overflow:hidden}
+  .progress .bar{height:100%;border-radius:20px;transition:width .35s ease}
+  .pct{font-size:12px;font-weight:600;color:var(--muted);min-width:34px;text-align:right}
+  .card-foot{
+    display:flex;justify-content:space-between;align-items:center;gap:8px;
+    font-size:12px;color:var(--muted);padding-top:2px;
+  }
+
+  .tags{display:flex;flex-wrap:wrap;gap:5px}
+  .tag{
+    font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;
+    background:var(--accent-soft);color:var(--accent);
+  }
+  .md-badge{
+    display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;
+    letter-spacing:.4px;padding:1px 7px;border-radius:6px;
+    background:var(--bg);border:1px solid var(--border);color:var(--muted);
+  }
+
+  /* ---------- 任务列表 ---------- */
+  .toolbar{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+  .chip{
+    border:1px solid var(--border);background:transparent;color:var(--muted);
+    padding:6px 13px;border-radius:20px;font-size:12.5px;font-weight:600;
+    cursor:pointer;transition:.15s;
+  }
+  .chip:hover{color:var(--text);border-color:var(--muted)}
+  .chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .toolbar .spacer{flex:1}
+  .toolbar .hint{font-size:12.5px;color:var(--muted)}
+
+  .task-list{display:flex;flex-direction:column;gap:9px}
+  .task{
+    display:flex;align-items:flex-start;gap:12px;padding:13px 16px;
+    background:var(--panel);border:1px solid var(--border);border-radius:12px;
+    cursor:pointer;transition:.15s;
+  }
+  .task:hover{border-color:var(--accent);transform:translateX(2px)}
+  .task.is-done{opacity:.55}
+  .task.is-done .task-title{text-decoration:line-through;color:var(--muted)}
+  .check{
+    width:20px;height:20px;border-radius:6px;flex-shrink:0;margin-top:1px;
+    border:2px solid var(--border);background:transparent;cursor:pointer;
+    display:grid;place-items:center;color:#fff;transition:.15s;padding:0;
+  }
+  .check:hover{border-color:var(--accent)}
+  .check.on{background:var(--accent);border-color:var(--accent)}
+  .check svg{width:12px;height:12px}
+  .task-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+  .task-title{font-size:14px;font-weight:550;line-height:1.45;word-break:break-word}
+  .task-meta{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:11.5px;color:var(--muted)}
+  .task-meta svg{width:12px;height:12px}
+  .prio{display:inline-flex;align-items:center;padding:1px 8px;border-radius:20px;font-size:11px;font-weight:700}
+  .prio.high{background:rgba(239,68,68,.14);color:#ef4444}
+  .prio.mid{background:rgba(245,158,11,.16);color:#d97706}
+  .prio.low{background:rgba(16,185,129,.14);color:#059669}
+  [data-theme="dark"] .prio.mid{color:#fbbf24}
+  [data-theme="dark"] .prio.low{color:#34d399}
+  .due{display:inline-flex;align-items:center;gap:4px}
+  .due.overdue{color:var(--danger);font-weight:600}
+  .plan-tag{
+    display:inline-flex;align-items:center;gap:5px;padding:1px 9px;border-radius:20px;
+    background:var(--bg);border:1px solid var(--border);font-weight:600;
+  }
+  .plan-tag::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--c,#6366f1)}
+  .task .icon-btn{opacity:0;margin-top:1px}
+  .task:hover .icon-btn{opacity:1}
+
+  /* ---------- 空状态 ---------- */
+  .empty{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:70px 20px;text-align:center;gap:10px;color:var(--muted);
+  }
+  .empty-icon{
+    width:58px;height:58px;border-radius:18px;display:grid;place-items:center;
+    background:var(--accent-soft);color:var(--accent);margin-bottom:4px;
+  }
+  .empty-icon svg{width:26px;height:26px}
+  .empty h3{font-size:15px;color:var(--text);font-weight:650}
+  .empty p{font-size:13px;max-width:300px;line-height:1.6}
+
+  /* ---------- 弹窗 ---------- */
+  .overlay{
+    position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;
+    padding:20px;background:rgba(10,12,18,.45);backdrop-filter:blur(3px);
+    opacity:0;pointer-events:none;transition:opacity .2s;
+  }
+  .overlay.show{opacity:1;pointer-events:auto}
+  .modal{
+    width:100%;max-width:520px;max-height:90vh;display:flex;flex-direction:column;
+    background:var(--panel);border:1px solid var(--border);border-radius:18px;
+    box-shadow:0 24px 60px rgba(0,0,0,.28);
+    transform:translateY(10px) scale(.98);transition:transform .2s;
+  }
+  .overlay.show .modal{transform:none}
+  .modal.wide{max-width:740px}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:20px 22px 6px;gap:10px}
+  .modal-head h2{font-size:17px;font-weight:700}
+  #modalForm{padding:8px 22px 20px;overflow-y:auto}
+  #modalForm::-webkit-scrollbar{width:9px}
+  #modalForm::-webkit-scrollbar-thumb{background:var(--border);border-radius:10px;border:3px solid var(--panel)}
+
+  .field{display:flex;flex-direction:column;gap:7px;margin-bottom:15px}
+  .field>span{font-size:12.5px;font-weight:600;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
+  .field>span b{color:var(--accent);font-weight:700}
+  .field input,.field textarea,.field select{
+    width:100%;padding:10px 12px;border-radius:10px;
+    border:1px solid var(--border);background:var(--bg);color:var(--text);
+    font-size:14px;outline:none;transition:.15s;resize:vertical;
+  }
+  .field input:focus,.field textarea:focus,.field select:focus{
+    border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);
+  }
+  .field input::placeholder,.field textarea::placeholder{color:var(--muted)}
+  .field-row{display:flex;gap:12px}
+  .field-row .field{flex:1;min-width:0}
+
+  .swatches{display:flex;gap:8px;flex-wrap:wrap}
+  .swatch{
+    width:28px;height:28px;border-radius:9px;border:2px solid transparent;
+    cursor:pointer;transition:.15s;padding:0;
+  }
+  .swatch:hover{transform:scale(1.1)}
+  .swatch.on{border-color:var(--text);transform:scale(1.1)}
+
+  input[type="range"]{
+    -webkit-appearance:none;appearance:none;height:6px;border-radius:20px;
+    background:var(--border);padding:0;border:none;
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:17px;height:17px;border-radius:50%;
+    background:var(--accent);cursor:pointer;border:3px solid var(--panel);
+    box-shadow:0 1px 4px rgba(0,0,0,.25);
+  }
+  input[type="range"]::-moz-range-thumb{
+    width:14px;height:14px;border-radius:50%;background:var(--accent);
+    cursor:pointer;border:3px solid var(--panel);
+  }
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:6px}
+
+  /* ---------- 编辑器区块 ---------- */
+  .modal-tabs{
+    display:flex;align-items:center;gap:2px;margin-bottom:14px;
+    border-bottom:1px solid var(--border);
+  }
+  .modal-tabs .tab{
+    border:none;background:none;color:var(--muted);font-size:13px;font-weight:600;
+    padding:7px 13px;cursor:pointer;border-radius:8px 8px 0 0;
+    border-bottom:2px solid transparent;margin-bottom:-1px;transition:.15s;
+  }
+  .modal-tabs .tab:hover{color:var(--text)}
+  .modal-tabs .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .modal-tabs .tab-hint{margin-left:auto;font-size:11.5px;color:var(--muted);padding-bottom:6px}
+
+  .editor-block{
+    border:1px solid var(--border);border-radius:12px;overflow:hidden;
+    margin-bottom:16px;background:var(--panel);
+  }
+  .editor-host{height:340px;position:relative;background:var(--panel)}
+  .preview-pane{
+    height:340px;overflow-y:auto;padding:16px 20px;background:var(--panel);
+  }
+  .preview-pane::-webkit-scrollbar{width:9px}
+  .preview-pane::-webkit-scrollbar-thumb{background:var(--border);border-radius:10px;border:3px solid var(--panel)}
+
+  .editor-loading{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    gap:9px;color:var(--muted);font-size:13px;
+  }
+  .spinner{
+    width:14px;height:14px;border-radius:50%;
+    border:2px solid var(--border);border-top-color:var(--accent);
+    animation:spin .7s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .fallback-editor{
+    width:100%;height:100%;border:none;outline:none;resize:none;
+    background:var(--panel);color:var(--text);padding:14px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:13px;line-height:1.7;
+  }
+
+  /* ---------- Markdown 预览样式 ---------- */
+  .markdown-body{font-size:13.5px;line-height:1.78;color:var(--text);word-wrap:break-word}
+  .markdown-body>:first-child{margin-top:0}
+  .markdown-body>:last-child{margin-bottom:0}
+  .markdown-body h1{font-size:20px;font-weight:700;margin:18px 0 10px}
+  .markdown-body h2{font-size:17px;font-weight:700;margin:16px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+  .markdown-body h3{font-size:15px;font-weight:650;margin:14px 0 7px}
+  .markdown-body h4,.markdown-body h5,.markdown-body h6{font-size:13.5px;font-weight:650;margin:12px 0 6px}
+  .markdown-body p{margin:8px 0}
+  .markdown-body ul,.markdown-body ol{margin:8px 0;padding-left:22px}
+  .markdown-body li{margin:3px 0}
+  .markdown-body blockquote{
+    margin:10px 0;padding:7px 14px;border-left:3px solid var(--accent);
+    background:var(--accent-soft);border-radius:0 8px 8px 0;color:var(--muted);
+  }
+  .markdown-body blockquote p{margin:3px 0}
+  .markdown-body pre.md-code{
+    background:var(--bg);border:1px solid var(--border);border-radius:10px;
+    padding:12px 14px;overflow-x:auto;margin:10px 0;
+  }
+  .markdown-body pre.md-code code{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:12.5px;line-height:1.6;white-space:pre;
+  }
+  .markdown-body code.md-inline-code{
+    background:var(--accent-soft);color:var(--accent);padding:1px 6px;border-radius:6px;
+    font-size:12.5px;font-family:ui-monospace,Menlo,Consolas,monospace;
+  }
+  .markdown-body a{color:var(--accent);text-decoration:none;border-bottom:1px solid currentColor}
+  .markdown-body hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+  .markdown-body img{max-width:100%;border-radius:10px;margin:6px 0}
+  .markdown-body del{color:var(--muted)}
+  .md-empty{color:var(--muted);font-style:italic}
+
+  /* ---------- 响应式 ---------- */
+  @media (max-width:760px){
+    .app{flex-direction:column}
+    .sidebar{
+      width:100%;flex-direction:row;align-items:center;gap:4px;
+      padding:8px 10px;border-right:none;border-bottom:1px solid var(--border);
+      overflow-x:auto;
+    }
+    .brand{padding:0 6px 0 0}
+    .brand-text{display:none}
+    .nav{flex-direction:row;gap:2px}
+    .nav-item{padding:8px 12px;white-space:nowrap}
+    .nav-item .count{display:none}
+    .sidebar-footer{display:none}
+    .topbar{padding:12px 14px;flex-wrap:wrap;gap:10px}
+    .topbar h1{font-size:17px}
+    .search{margin-left:0;order:3;width:100%}
+    .search input{width:100%}
+    .content{padding:16px 14px 50px}
+    .grid{grid-template-columns:1fr}
+    .field-row{flex-direction:column;gap:0}
+    .editor-host,.preview-pane{height:260px}
+    .modal-head{padding:16px 16px 4px}
+    #modalForm{padding:6px 16px 16px}
+    .modal-tabs .tab-hint{display:none}
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">P</div>
+      <div class="brand-text">工作台<small>计划 · 任务 · 笔记</small></div>
+    </div>
+
+    <nav class="nav">
+      <button class="nav-item active" data-view="plans">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>
+        <span>计划</span><span class="count" id="countPlans">0</span>
+      </button>
+      <button class="nav-item" data-view="tasks">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="m8.5 12.2 2.4 2.4 4.6-5.2"/></svg>
+        <span>任务</span><span class="count" id="countTasks">0</span>
+      </button>
+      <button class="nav-item" data-view="notes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h9l5 5v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/><path d="M8 13h7M8 17h5"/></svg>
+        <span>笔记</span><span class="count" id="countNotes">0</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="stat-line"><span>待办任务</span><b id="statTodo">0</b></div>
+      <div class="stat-line"><span>已完成</span><b id="statDone">0</b></div>
+      <div class="stat-line"><span>笔记数</span><b id="statNotes">0</b></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <h1 id="viewTitle">计划</h1>
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>
+        <input type="search" id="searchInput" placeholder="搜索…">
+      </div>
+      <button class="icon-btn" id="themeBtn" title="切换主题"></button>
+      <button class="btn btn-primary" id="addBtn"></button>
+    </header>
+
+    <div class="content" id="content"></div>
+  </main>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal" id="modalBox">
+    <div class="modal-head">
+      <h2 id="modalTitle">新建</h2>
+      <button class="icon-btn" id="modalClose" title="关闭">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <form id="modalForm" autocomplete="off"></form>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   图标 / 常量
+================================================================ */
+const ICONS = {
+  plus:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9.5 7V5.4a1.4 1.4 0 0 1 1.4-1.4h2.2a1.4 1.4 0 0 1 1.4 1.4V7"/><path d="m6.5 7 .9 12.2a1.5 1.5 0 0 0 1.5 1.4h6.2a1.5 1.5 0 0 0 1.5-1.4L17.5 7"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7"/></svg>',
+  cal:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="16" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg>',
+  sun:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg>',
+  moon:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/></svg>',
+  empty: {
+    plans: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>',
+    tasks: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="m8.5 12.2 2.4 2.4 4.6-5.2"/></svg>',
+    notes: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h9l5 5v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/></svg>'
+  }
+};
+
+const PRIO = {
+  high: { label: '高优先级', short: '高' },
+  mid:  { label: '中优先级', short: '中' },
+  low:  { label: '低优先级', short: '低' }
+};
+
+const VIEW_META = {
+  plans: { title: '计划', add: '新建计划' },
+  tasks: { title: '任务', add: '新建任务' },
+  notes: { title: '笔记', add: '新建笔记' }
+};
+
+const PLAN_COLORS = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#8b5cf6', '#14b8a6'];
+
+/* ================================================================
+   状态
+================================================================ */
+const STORAGE_KEY = 'ptn-workspace-v2';
+
+const state = {
+  view: 'plans',
+  query: '',
+  filter: 'all',
+  theme: 'light',
+  plans: [],
+  tasks: [],
+  notes: []
+};
+
+const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const addDays = n => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
+
+/* ================================================================
+   工具：HTML 转义
+================================================================ */
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+const esc = escapeHtml;
+
+/* ================================================================
+   轻量 Markdown 渲染（预览用）
+================================================================ */
+function mdInline(s) {
+  let t = escapeHtml(s);
+
+  // 行内代码（先占位，避免内部被其它规则改写）
+  const codes = [];
+  t = t.replace(/`([^`]+)`/g, (m, c) => {
+    codes.push(c);
+    return '\u0000CODE' + (codes.length - 1) + '\u0000';
+  });
+
+  // 图片
+  t = t.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (m, alt, url) =>
+    /^(https?:|data:image\/)/i.test(url)
+      ? '<img src="' + url + '" alt="' + alt + '" loading="lazy">'
+      : m
+  );
+
+  // 链接
+  t = t.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, text, url) =>
+    /^(https?:|mailto:)/i.test(url)
+      ? '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + text + '</a>'
+      : text
+  );
+
+  // 粗体 / 斜体 / 删除线
+  t = t.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+  t = t.replace(/__([^_\n]+)__/g, '<strong>$1</strong>');
+  t = t.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+  t = t.replace(/(^|[^_\w])_([^_\n]+)_/g, '$1<em>$2</em>');
+  t = t.replace(/~~([^~\n]+)~~/g, '<del>$1</del>');
+
+  // 还原行内代码
+  t = t.replace(/\u0000CODE(\d+)\u0000/g, (m, i) =>
+    '<code class="md-inline-code">' + codes[+i] + '</code>'
+  );
+
+  return t;
+}
+
+function renderMarkdown(src) {
+  if (!src || !String(src).trim()) return '<p class="md-empty">还没有内容，切到「编辑」开始写吧。</p>';
+
+  const lines = String(src).replace(/\r\n?/g, '\n').split('\n');
+  let html = '';
+  let i = 0;
+  let inCode = false;
+  let codeBuf = [];
+  let listType = null;
+
+  const closeList = () => {
+    if (listType) { html += '</' + listType + '>'; listType = null; }
+  };
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // 代码块围栏
+    const fence = line.match(/^\s*```/);
+    if (fence) {
+      if (!inCode) { closeList(); inCode = true; codeBuf = []; }
+      else { html += '<pre class="md-code"><code>' + escapeHtml(codeBuf.join('\n')) + '</code></pre>'; inCode = false; }
+      i++; continue;
+    }
+    if (inCode) { codeBuf.push(line); i++; continue; }
+
+    // 空行
+    if (!line.trim()) { closeList(); i++; continue; }
+
+    // 分隔线
+    if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) { closeList(); html += '<hr>'; i++; continue; }
+
+    // 标题
+    const h = line.match(/^(#{1,6})\s+(.*)$/);
+    if (h) {
+      closeList();
+      const lv = h[1].length;
+      html += '<h' + lv + '>' + mdInline(h[2]) + '</h' + lv + '>';
+      i++; continue;
+    }
+
+    // 引用
+    if (/^\s*>/.test(line)) {
+      closeList();
+      const buf = [];
+      while (i < lines.length && /^\s*>/.test(lines[i])) {
+        buf.push(lines[i].replace(/^\s*>\s?/, ''));
+        i++;
+      }
+      html += '<blockquote>' + renderMarkdown(buf.join('\n')) + '</blockquote>';
+      continue;
+    }
+
+    // 无序列表
+    const ul = line.match(/^\s*[-*+]\s+(.*)$/);
+    if (ul) {
+      if (listType !== 'ul') { closeList(); html += '<ul>'; listType = 'ul'; }
+      html += '<li>' + mdInline(ul[1]) + '</li>';
+      i++; continue;
+    }
+
+    // 有序列表
+    const ol = line.match(/^\s*\d+[.)]\s+(.*)$/);
+    if (ol) {
+      if (listType !== 'ol') { closeList(); html += '<ol>'; listType = 'ol'; }
+      html += '<li>' + mdInline(ol[1]) + '</li>';
+      i++; continue;
+    }
+
+    // 段落
+    closeList();
+    const buf = [line];
+    i++;
+    while (
+      i < lines.length &&
+      lines[i].trim() &&
+      !/^\s*(#{1,6}\s|>|[-*+]\s|\d+[.)]\s|```)/.test(lines[i])
+    ) { buf.push(lines[i]); i++; }
+    html += '<p>' + mdInline(buf.join(' ')) + '</p>';
+  }
+
+  if (inCode) html += '<pre class="md-code"><code>' + escapeHtml(codeBuf.join('\n')) + '</code></pre>';
+  closeList();
+  return html;
+}
+
+/* Markdown → 纯文本摘要（卡片用） */
+function mdToText(md, maxLen = 130) {
+  const text = String(md || '')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`([^`]*)`/g, '$1')
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+    .replace(/^\s{0,3}>\s?/gm, '')
+    .replace(/^\s*[-*+]\s+/gm, '')
+    .replace(/^\s*\d+[.)]\s+/gm, '')
+    .replace(/[*_~]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text.length > maxLen ? text.slice(0, maxLen) + '…' : text;
+}
+
+/* ================================================================
+   持久化
+================================================================ */
+function save() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      theme: state.theme,
+      plans: state.plans,
+      tasks: state.tasks,
+      notes: state.notes
+    }));
+  } catch (e) { console.warn('保存失败', e); }
+}
+
+function load() {
+  let raw = null;
+  try { raw = localStorage.getItem(STORAGE_KEY); } catch (e) { /* ignore */ }
+
+  if (raw) {
+    try {
+      const d = JSON.parse(raw);
+      state.plans = (Array.isArray(d.plans) ? d.plans : []).map(p => ({
+        ...p,
+        content: p.content != null ? p.content : (p.desc || '')
+      }));
+      state.tasks = Array.isArray(d.tasks) ? d.tasks : [];
+      state.notes = (Array.isArray(d.notes) ? d.notes : []).map(n => ({
+        ...n,
+        content: n.content != null ? n.content : ''
+      }));
+      state.theme = d.theme === 'dark' ? 'dark' : 'light';
+      return;
+    } catch (e) { /* 数据损坏，走种子 */ }
+  }
+  seed();
+  save();
+}
+
+function seed() {
+  const p1 = {
+    id: uid(),
+    title: '产品官网改版',
+    content: [
+      '# 产品官网改版',
+      '',
+      '## 目标',
+      '',
+      '- 重构首页与文档站，提升首屏加载速度',
+      '- 统一设计语言，降低长期维护成本',
+      '- 注册转化率提升 **20%**',
+      '',
+      '## 关键结果',
+      '',
+      '1. 首屏加载时间 < `1.5s`',
+      '2. 首页视觉稿评审通过',
+      '3. 上线后一周无 P0 事故',
+      '',
+      '> 负责人：产品组 · 设计组 · 前端组',
+      '',
+      '---',
+      '',
+      '### 备注',
+      '',
+      '参考 `design/redesign-v2.fig`，接口沿用现有 BFF 层。'
+    ].join('\n'),
+    start: todayStr(),
+    end: addDays(30),
+    color: '#6366f1',
+    progress: 40,
+    createdAt: Date.now()
+  };
+
+  const p2 = {
+    id: uid(),
+    title: '个人学习计划',
+    content: [
+      '# 个人学习计划',
+      '',
+      '## 本阶段主题',
+      '',
+      '- 前端工程化（构建、CI/CD）',
+      '- 浏览器性能优化',
+      '- TypeScript 类型体操',
+      '',
+      '## 每周节奏',
+      '',
+      '- 周一 ~ 周三：阅读 + 笔记',
+      '- 周四：动手实验',
+      '- 周末：复盘输出'
+    ].join('\n'),
+    start: todayStr(),
+    end: addDays(60),
+    color: '#10b981',
+    progress: 15,
+    createdAt: Date.now() - 1000
+  };
+
+  state.plans = [p1, p2];
+
+  state.tasks = [
+    { id: uid(), title: '梳理现有页面信息架构', desc: '', done: true,  priority: 'high', due: addDays(2),  planId: p1.id, createdAt: Date.now() },
+    { id: uid(), title: '完成首页视觉稿评审',     desc: '', done: false, priority: 'high', due: addDays(5),  planId: p1.id, createdAt: Date.now() - 500 },
+    { id: uid(), title: '配置 CDN 与图片压缩',     desc: '', done: false, priority: 'mid',  due: addDays(10), planId: p1.id, createdAt: Date.now() - 900 },
+    { id: uid(), title: '整理本周学习笔记',         desc: '', done: false, priority: 'low',  due: '',          planId: '',    createdAt: Date.now() - 1200 }
+  ];
+
+  state.notes = [
+    {
+      id: uid(),
+      title: '会议纪要 · 改版启动会',
+      content: [
+        '# 改版启动会',
+        '',
+        '**时间**：周一 10:00',
+        '',
+        '## 结论',
+        '',
+        '1. 本周内确定信息架构',
+        '2. 视觉稿下周三前出第一版',
+        '3. 性能目标：首屏 `1.5s` 以内',
+        '',
+        '## 待跟进',
+        '',
+        '- [ ] 输出 IA 文档',
+        '- [ ] 确认埋点方案'
+      ].join('\n'),
+      tags: ['工作', '会议'],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    },
+    {
+      id: uid(),
+      title: '性能优化清单',
+      content: [
+        '# 性能优化清单',
+        '',
+        '- 图片：WebP + 懒加载',
+        '- 字体：`font-display: swap`',
+        '- 打包：路由级 `code splitting`',
+        '- 缓存：静态资源长缓存 + 内容哈希',
+        '',
+        '> 先测量，再优化。'
+      ].join('\n'),
+      tags: ['前端', '性能'],
+      createdAt: Date.now() - 864e5,
+      updatedAt: Date.now() - 864e5
+    }
+  ];
+}
+
+/* ================================================================
+   Monaco Editor 加载
+================================================================ */
+const MONACO_VERSION = '0.45.0';
+const MONACO_BASE = 'https://cdn.jsdelivr.net/npm/monaco-editor@' + MONACO_VERSION + '/min/vs';
+
+let monacoPromise = null;
+
+function defineMonacoThemes(monaco) {
+  monaco.editor.defineTheme('app-light', {
+    base: 'vs',
+    inherit: true,
+    rules: [
+      { token: 'comment', foreground: '94a3b8', fontStyle: 'italic' },
+      { token: 'keyword', foreground: '7c3aed' },
+      { token: 'string', foreground: '059669' },
+      { token: 'number', foreground: 'd97706' },
+      { token: 'type', foreground: '0ea5e9' }
+    ],
+    colors: {
+      'editor.background': '#ffffff',
+      'editor.foreground': '#1c1f23',
+      'editorGutter.background': '#ffffff',
+      'editorLineNumber.foreground': '#c3c8d0',
+      'editorLineNumber.activeForeground': '#5b5bd6',
+      'editor.lineHighlightBackground': '#f7f8fa',
+      'editorCursor.foreground': '#5b5bd6',
+      'editor.selectionBackground': '#dcdcfb',
+      'editorWidget.background': '#ffffff',
+      'editorWidget.border': '#e6e8ec',
+      'editorSuggestWidget.background': '#ffffff',
+      'editorSuggestWidget.selectedBackground': '#eeeefc',
+      'editorHoverWidget.background': '#ffffff',
+      'editorHoverWidget.border': '#e6e8ec'
+    }
+  });
+
+  monaco.editor.defineTheme('app-dark', {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [
+      { token: 'comment', foreground: '6b7280', fontStyle: 'italic' },
+      { token: 'keyword', foreground: 'a78bfa' },
+      { token: 'string', foreground: '6ee7b7' },
+      { token: 'number', foreground: 'fbbf24' },
+      { token: 'type', foreground: '7dd3fc' }
+    ],
+    colors: {
+      'editor.background': '#1a1d23',
+      'editor.foreground': '#e8eaed',
+      'editorGutter.background': '#1a1d23',
+      'editorLineNumber.foreground': '#4a5160',
+      'editorLineNumber.activeForeground': '#7c7cf0',
+      'editor.lineHighlightBackground': '#20242b',
+      'editorCursor.foreground': '#7c7cf0',
+      'editor.selectionBackground': '#2f3350',
+      'editorWidget.background': '#1f232a',
+      'editorWidget.border': '#282c34',
+      'editorSuggestWidget.background': '#1f232a',
+      'editorSuggestWidget.selectedBackground': '#2a2f3d',
+      'editorHoverWidget.background': '#1f232a',
+      'editorHoverWidget.border': '#282c34'
+    }
+  });
+}
+
+function getMonaco() {
+  if (monacoPromise) return monacoPromise;
+
+  monacoPromise = new Promise((resolve, reject) => {
+    if (window.monaco && window.monaco.editor) { resolve(window.monaco); return; }
+
+    let settled = false;
+    const fail = err => { if (!settled) { settled = true; reject(err); } };
+    const ok = m => { if (!settled) { settled = true; resolve(m); } };
+
+    const timer = setTimeout(() => fail(new Error('Monaco 加载超时')), 15000);
+
+    const boot = () => {
+      if (typeof window.require === 'undefined') { fail(new Error('loader.js 未就绪')); return; }
+      try {
+        window.require.config({ paths: { vs: MONACO_BASE } });
+        window.require(['vs/editor/editor.main'], () => {
+          clearTimeout(timer);
+          try { defineMonacoThemes(window.monaco); } catch (e) { console.warn(e); }
+          ok(window.monaco);
+        }, err => { clearTimeout(timer); fail(err || new Error('编辑器模块加载失败')); });
+      } catch (e) { clearTimeout(timer); fail(e); }
+    };
+
+    if (typeof window.require !== 'undefined') { boot(); return; }
+
+    const s = document.createElement('script');
+    s.src = MONACO_BASE + '/loader.js';
+    s.onload = boot;
+    s.onerror = () => { clearTimeout(timer); fail(new Error('无法加载 Monaco 资源（请检查网络）')); };
+    document.head.appendChild(s);
+  });
+
+  return monacoPromise;
+}
+
+/* ================================================================
+   弹窗基础
+================================================================ */
+const contentEl  = document.getElementById('content');
+const titleEl    = document.getElementById('viewTitle');
+const searchEl   = document.getElementById('searchInput');
+const addBtn     = document.getElementById('addBtn');
+const themeBtn   = document.getElementById('themeBtn');
+const overlay    = document.getElementById('overlay');
+const modalBox   = document.getElementById('modalBox');
+const modalTitle = document.getElementById('modalTitle');
+const modalForm  = document.getElementById('modalForm');
+
+let modalHandler = null;      // 提交回调
+let closeTimer = null;
+
+/* 编辑器运行时状态 */
+const editorState = {
+  instance: null,
+  observer: null,
+  fallback: null,
+  mode: 'edit'
+};
+
+function clearEditor() {
+  if (editorState.observer) { try { editorState.observer.disconnect(); } catch (e) {} editorState.observer = null; }
+  if (editorState.instance) { try { editorState.instance.dispose(); } catch (e) {} editorState.instance = null; }
+  editorState.fallback = null;
+  editorState.mode = 'edit';
+}
+
+function getEditorValue() {
+  if (editorState.instance) return editorState.instance.getValue();
+  if (editorState.fallback) return editorState.fallback.value;
+  return '';
+}
+
+function closeModal() {
+  overlay.classList.remove('show');
+  modalBox.classList.remove('wide');
+  modalHandler = null;
+  clearEditor();
+  clearTimeout(closeTimer);
+  closeTimer = setTimeout(() => { if (!overlay.classList.contains('show')) modalForm.innerHTML = ''; }, 220);
+}
+
+function prepareOpen() {
+  clearTimeout(closeTimer);
+  clearEditor();
+  modalHandler = null;
+}
+
+overlay.addEventListener('mousedown', e => { if (e.target === overlay) closeModal(); });
+document.getElementById('modalClose').addEventListener('click', closeModal);
+modalForm.addEventListener('click', e => { if (e.target.closest('[data-close]')) closeModal(); });
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && overlay.classList.contains('show')) {
+    // 让 Monaco 自己先处理 Esc（关闭补全/悬浮）
+    if (e.target && e.target.closest && e.target.closest('.monaco-editor')) return;
+    closeModal();
+  }
+});
+
+modalForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(modalForm).entries());
+  const handler = modalHandler;
+  const content = getEditorValue();
+  closeModal();
+  if (handler) handler(data, content);
+});
+
+/* ================================================================
+   弹窗：普通表单（任务）
+================================================================ */
+function openPlainModal(title, bodyHtml, submitLabel, onSubmit) {
+  prepareOpen();
+  modalBox.classList.remove('wide');
+  modalTitle.textContent = title;
+  modalForm.innerHTML = bodyHtml + `
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" data-close>取消</button>
+      <button type="submit" class="btn btn-primary">${esc(submitLabel)}</button>
+    </div>`;
+  modalHandler = onSubmit;
+  overlay.classList.add('show');
+  const first = modalForm.querySelector('input:not([type=hidden]),textarea,select');
+  if (first) setTimeout(() => first.focus(), 60);
+}
+
+/* ================================================================
+   弹窗：带 Monaco 编辑器（计划 / 笔记）
+================================================================ */
+async function openEditorModal(cfg) {
+  const { title, metaHtml, submitLabel, content, placeholder, onSubmit } = cfg;
+
+  prepareOpen();
+  modalBox.classList.add('wide');
+  modalTitle.textContent = title;
+
+  modalForm.innerHTML = `
+    <div class="modal-tabs">
+      <button type="button" class="tab active" data-mode="edit">编辑</button>
+      <button type="button" class="tab" data-mode="preview">预览</button>
+      <span class="tab-hint">支持 Markdown 语法</span>
+    </div>
+    ${metaHtml}
+    <div class="editor-block">
+      <div class="editor-host" id="editorHost">
+        <div class="editor-loading"><span class="spinner"></span> 正在加载编辑器…</div>
+      </div>
+      <div class="preview-pane markdown-body" id="previewPane" hidden></div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" data-close>取消</button>
+      <button type="submit" class="btn btn-primary">${esc(submitLabel)}</button>
+    </div>`;
+
+  modalHandler = onSubmit;
+  overlay.classList.add('show');
+
+  const host = modalForm.querySelector('#editorHost');
+  const previewPane = modalForm.querySelector('#previewPane');
+  const tabs = Array.from(modalForm.querySelectorAll('.tab'));
+
+  /* 编辑 / 预览 切换 */
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const mode = tab.dataset.mode;
+      if (mode === editorState.mode) return;
+      editorState.mode = mode;
+      tabs.forEach(t => t.classList.toggle('active', t === tab));
+
+      if (mode === 'preview') {
+        previewPane.innerHTML = renderMarkdown(getEditorValue());
+        previewPane.hidden = false;
+        host.hidden = true;
+      } else {
+        host.hidden = false;
+        previewPane.hidden = true;
+        requestAnimationFrame(() => {
+          if (editorState.instance) editorState.instance.layout();
+        });
+      }
+    });
+  });
+
+  /* 挂载编辑器 */
+  try {
+    const monaco = await getMonaco();
+    if (!host.isConnected) return;   // 弹窗已被关闭
+
+    host.innerHTML = '';
+    const editor = monaco.editor.create(host, {
+      value: content || '',
+      language: 'markdown',
+      theme: state.theme === 'dark' ? 'app-dark' : 'app-light',
+      automaticLayout: false,
+      minimap: { enabled: false },
+      fontSize: 13.5,
+      lineHeight: 24,
+      fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, 'PingFang SC', 'Microsoft YaHei', monospace",
+      fontLigatures: false,
+      wordWrap: 'on',
+      wrappingIndent: 'same',
+      lineNumbers: 'on',
+      lineNumbersMinChars: 3,
+      glyphMargin: false,
+      folding: true,
+      scrollBeyondLastLine: false,
+      renderLineHighlight: 'all',
+      smoothScrolling: true,
+      cursorBlinking: 'smooth',
+      padding: { top: 12, bottom: 14 },
+      scrollbar: { verticalScrollbarSize: 9, horizontalScrollbarSize: 9, useShadows: false },
+      overviewRulerLanes: 0,
+      hideCursorInOverviewRuler: true,
+      overviewRulerBorder: false,
+      tabSize: 2,
+      placeholder: placeholder || '',
+      quickSuggestions: false,
+      suggestOnTriggerCharacters: false,
+      wordBasedSuggestions: 'off',
+      occurrencesHighlight: 'off',
+      fixedOverflowWidgets: true,
+      contextmenu: true,
+      links: true
+    });
+
+    editorState.instance = editor;
+
+    const ro = new ResizeObserver(() => { try { editor.layout(); } catch (e) {} });
+    ro.observe(host);
+    editorState.observer = ro;
+
+    // 首次布局
+    requestAnimationFrame(() => { try { editor.layout(); editor.focus(); } catch (e) {} });
+
+  } catch (err) {
+    console.warn('Monaco 不可用，已降级为纯文本编辑器：', err);
+    if (!host.isConnected) return;
+    host.innerHTML = '';
+    const ta = document.createElement('textarea');
+    ta.className = 'fallback-editor';
+    ta.spellcheck = false;
+    ta.value = content || '';
+    ta.placeholder = placeholder || '';
+    host.appendChild(ta);
+    editorState.fallback = ta;
+    setTimeout(() => ta.focus(), 50);
+  }
+}
+
+/* ================================================================
+   弹窗：计划
+================================================================ */
+function openPlanModal(id) {
+  const plan = id ? state.plans.find(p => p.id === id) : null;
+  const d = plan || {
+    title: '', content: '', start: todayStr(), end: addDays(14),
+    color: '#6366f1', progress: 0
+  };
+
+  const metaHtml = `
+    <label class="field"><span>标题</span>
+      <input name="title" required maxlength="60" placeholder="例如：Q1 产品迭代计划" value="${esc(d.title)}">
+    </label>
+    <div class="field-row">
+      <label class="field"><span>开始日期</span>
+        <input type="date" name="start" value="${esc(d.start || '')}">
+      </label>
+      <label class="field"><span>结束日期</span>
+        <input type="date" name="end" value="${esc(d.end || '')}">
+      </label>
+    </div>
+    <div class="field"><span>主题色</span>
+      <div class="swatches">
+        ${PLAN_COLORS.map(c => `<button type="button" class="swatch ${c === d.color ? 'on' : ''}" data-color="${c}" style="background:${c}"></button>`).join('')}
+      </div>
+      <input type="hidden" name="color" value="${esc(d.color || '#6366f1')}">
+    </div>
+    <label class="field"><span>进度 <b class="pct-label">${Number(d.progress) || 0}%</b></span>
+      <input type="range" name="progress" min="0" max="100" step="5" value="${Number(d.progress) || 0}">
+    </label>`;
+
+  openEditorModal({
+    title: plan ? '编辑计划' : '新建计划',
+    metaHtml,
+    submitLabel: plan ? '保存' : '创建',
+    content: d.content || '',
+    placeholder: '用 Markdown 写下目标、关键结果、里程碑…',
+    onSubmit: (data, content) => {
+      const item = {
+        id: plan ? plan.id : uid(),
+        title: (data.title || '').trim(),
+        content: content || '',
+        start: data.start || '',
+        end: data.end || '',
+        color: data.color || '#6366f1',
+        progress: Number(data.progress) || 0,
+        createdAt: plan ? plan.createdAt : Date.now()
+      };
+      if (!item.title) return;
+      if (plan) state.plans = state.plans.map(x => x.id === plan.id ? item : x);
+      else state.plans.unshift(item);
+      save(); render();
+    }
+  });
+
+  // 颜色选择
+  modalForm.querySelectorAll('.swatch').forEach(btn => {
+    btn.addEventListener('click', () => {
+      modalForm.querySelectorAll('.swatch').forEach(b => b.classList.remove('on'));
+      btn.classList.add('on');
+      const hidden = modalForm.querySelector('input[name="color"]');
+      if (hidden) hidden.value = btn.dataset.color;
+    });
+  });
+
+  // 进度滑块实时显示
+  const range = modalForm.querySelector('input[type="range"]');
+  const label = modalForm.querySelector('.pct-label');
+  if (range && label) {
+    range.addEventListener('input', () => { label.textContent = range.value + '%'; });
+  }
+}
+
+/* ================================================================
+   弹窗：任务
+================================================================ */
+function openTaskModal(id, presetPlanId) {
+  const task = id ? state.tasks.find(t => t.id === id) : null;
+  const d = task || {
+    title: '', desc: '', priority: 'mid', due: '',
+    planId: presetPlanId || ''
+  };
+
+  const planOptions = ['<option value="">（不关联计划）</option>']
+    .concat(state.plans.map(p =>
+      `<option value="${p.id}" ${d.planId === p.id ? 'selected' : ''}>${esc(p.title)}</option>`
+    )).join('');
+
+  openPlainModal(task ? '编辑任务' : '新建任务', `
+    <label class="field"><span>任务内容</span>
+      <input name="title" required maxlength="100" placeholder="要做什么？" value="${esc(d.title)}">
+    </label>
+    <label class="field"><span>备注</span>
+      <textarea name="desc" rows="3" placeholder="补充细节（可选）">${esc(d.desc || '')}</textarea>
+    </label>
+    <div class="field-row">
+      <label class="field"><span>优先级</span>
+        <select name="priority">
+          <option value="high" ${d.priority === 'high' ? 'selected' : ''}>高</option>
+          <option value="mid"  ${d.priority === 'mid'  ? 'selected' : ''}>中</option>
+          <option value="low"  ${d.priority === 'low'  ? 'selected' : ''}>低</option>
+        </select>
+      </label>
+      <label class="field"><span>截止日期</span>
+        <input type="date" name="due" value="${esc(d.due || '')}">
+      </label>
+    </div>
+    <label class="field"><span>关联计划</span>
+      <select name="planId">${planOptions}</select>
+    </label>
+  `, task ? '保存' : '创建', data => {
+    const item = {
+      id: task ? task.id : uid(),
+      title: (data.title || '').trim(),
+      desc: (data.desc || '').trim(),
+      done: task ? task.done : false,
+      priority: data.priority || 'mid',
+      due: data.due || '',
+      planId: data.planId || '',
+      createdAt: task ? task.createdAt : Date.now()
+    };
+    if (!item.title) return;
+    if (task) state.tasks = state.tasks.map(x => x.id === task.id ? item : x);
+    else state.tasks.unshift(item);
+    save(); render();
+  });
+}
+
+/* ================================================================
+   弹窗：笔记
+================================================================ */
+function openNoteModal(id) {
+  const note = id ? state.notes.find(n => n.id === id) : null;
+  const d = note || { title: '', content: '', tags: [] };
+  const tagStr = Array.isArray(d.tags) ? d.tags.join(', ') : '';
+
+  const metaHtml = `
+    <label class="field"><span>标题</span>
+      <input name="title" required maxlength="80" placeholder="笔记标题" value="${esc(d.title)}">
+    </label>
+    <label class="field"><span>标签（用逗号分隔）</span>
+      <input name="tags" placeholder="工作, 灵感, 待整理" value="${esc(tagStr)}">
+    </label>`;
+
+  openEditorModal({
+    title: note ? '编辑笔记' : '新建笔记',
+    metaHtml,
+    submitLabel: note ? '保存' : '创建',
+    content: d.content || '',
+    placeholder: '写点什么…支持 Markdown',
+    onSubmit: (data, content) => {
+      const tags = (data.tags || '')
+        .split(/[,，]/)
+        .map(s => s.trim())
+        .filter(Boolean)
+        .slice(0, 8);
+
+      const item = {
+        id: note ? note.id : uid(),
+        title: (data.title || '').trim(),
+        content: content || '',
+        tags,
+        createdAt: note ? note.createdAt : Date.now(),
+        updatedAt: Date.now()
+      };
+      if (!item.title) return;
+      if (note) state.notes = state.notes.map(x => x.id === note.id ? item : x);
+      else state.notes.unshift(item);
+      save(); render();
+    }
+  });
+}
+
+/* ================================================================
+   渲染：导航
+================================================================ */
+function renderNav() {
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.view === state.view);
+  });
+
+  const todo = state.tasks.filter(t => !t.done).length;
+  const done = state.tasks.filter(t => t.done).length;
+
+  document.getElementById('countPlans').textContent = state.plans.length;
+  document.getElementById('countTasks').textContent = todo;
+  document.getElementById('countNotes').textContent = state.notes.length;
+
+  document.getElementById('statTodo').textContent  = todo;
+  document.getElementById('statDone').textContent  = done;
+  document.getElementById('statNotes').textContent = state.notes.length;
+
+  titleEl.textContent = VIEW_META[state.view].title;
+  addBtn.innerHTML = ICONS.plus + '<span>' + VIEW_META[state.view].add + '</span>';
+  themeBtn.innerHTML = state.theme === 'dark' ? ICONS.sun : ICONS.moon;
+}
+
+/* ================================================================
+   渲染：空状态
+================================================================ */
+function emptyState(view, title, sub) {
+  return `<div class="empty">
+    <div class="empty-icon">${ICONS.empty[view]}</div>
+    <h3>${esc(title)}</h3>
+    <p>${esc(sub)}</p>
+  </div>`;
+}
+
+/* ================================================================
+   渲染：计划
+================================================================ */
+function planCard(p) {
+  const tasks = state.tasks.filter(t => t.planId === p.id);
+  const done  = tasks.filter(t => t.done).length;
+  const progress = Math.max(0, Math.min(100, Number(p.progress) || 0));
+  const dateStr = (p.start || p.end) ? `${p.start || '—'} → ${p.end || '—'}` : '';
+  const summary = mdToText(p.content, 110);
+
+  return `
+  <article class="card" data-open="plan" data-id="${p.id}">
+    <div class="card-top" style="background:${esc(p.color || '#6366f1')}"></div>
+    <div class="card-body">
+      <div class="card-head">
+        <h3>${esc(p.title)}</h3>
+        <button class="icon-btn danger" data-del="plan" data-id="${p.id}" title="删除计划">${ICONS.trash}</button>
+      </div>
+      ${summary
+        ? `<p class="card-text">${esc(summary)}</p>`
+        : `<p class="card-text" style="opacity:.7">（暂无详细内容，点击编辑）</p>`}
+      ${dateStr ? `<div class="meta">${ICONS.cal}<span>${esc(dateStr)}</span></div>` : ''}
+      <div class="progress-row">
+        <div class="progress"><div class="bar" style="width:${progress}%;background:${esc(p.color || '#6366f1')}"></div></div>
+        <span class="pct">${progress}%</span>
+      </div>
+      <div class="card-foot">
+        <span>${tasks.length ? `${done}/${tasks.length} 个任务完成` : '暂无关联任务'}</span>
+        <span class="md-badge">MD</span>
+      </div>
+    </div>
+  </article>`;
+}
+
+function renderPlans() {
+  const q = state.query.trim().toLowerCase();
+  let list = state.plans.filter(p =>
+    !q ||
+    (p.title || '').toLowerCase().includes(q) ||
+    (p.content || '').toLowerCase().includes(q)
+  );
+  list = list.slice().sort((a, b) => (a.end || '9999-99').localeCompare(b.end || '9999-99'));
+
+  if (!list.length) {
+    contentEl.innerHTML = emptyState('plans',
+      q ? '没有找到匹配的计划' : '还没有计划',
+      q ? '试试换个关键词搜索。' : '点击右上角「新建计划」，用 Markdown 写下目标与关键结果。');
+    return;
+  }
+  contentEl.innerHTML = `<div class="grid">${list.map(planCard).join('')}</div>`;
+}
+
+/* ================================================================
+   渲染：任务
+================================================================ */
+function taskItem(t) {
+  const plan = state.plans.find(p => p.id === t.planId);
+  const today = todayStr();
+  const overdue = !t.done && t.due && t.due < today;
+  const prio = PRIO[t.priority] ? t.priority : 'mid';
+
+  return `
+  <div class="task ${t.done ? 'is-done' : ''}" data-open="task" data-id="${t.id}">
+    <button class="check ${t.done ? 'on' : ''}" data-toggle="${t.id}" title="标记完成">${t.done ? ICONS.check : ''}</button>
+    <div class="task-main">
+      <div class="task-title">${esc(t.title)}</div>
+      <div class="task-meta">
+        <span class="prio ${prio}">${PRIO[prio].short}</span>
+        ${t.due ? `<span class="due ${overdue ? 'overdue' : ''}">${ICONS.cal}${esc(t.due)}${overdue ? ' · 已逾期' : ''}</span>` : ''}
+        ${plan ? `<span class="plan-tag" style="--c:${esc(plan.color || '#6366f1')}">${esc(plan.title)}</span>` : ''}
+      </div>
+    </div>
+    <button class="icon-btn danger" data-del="task" data-id="${t.id}" title="删除任务">${ICONS.trash}</button>
+  </div>`;
+}
+
+function renderTasks() {
+  const q = state.query.trim().toLowerCase();
+  let list = state.tasks.filter(t =>
+    !q || (t.title || '').toLowerCase().includes(q) || (t.desc || '').toLowerCase().includes(q)
+  );
+
+  const totalActive = list.filter(t => !t.done).length;
+  const totalDone   = list.filter(t => t.done).length;
+
+  if (state.filter === 'active') list = list.filter(t => !t.done);
+  if (state.filter === 'done')   list = list.filter(t => t.done);
+
+  const order = { high: 0, mid: 1, low: 2 };
+  list.sort((a, b) => {
+    if (!!a.done !== !!b.done) return a.done ? 1 : -1;
+    const pa = order[a.priority] ?? 1, pb = order[b.priority] ?? 1;
+    if (pa !== pb) return pa - pb;
+    if (a.due && b.due) return a.due.localeCompare(b.due);
+    if (a.due) return -1;
+    if (b.due) return 1;
+    return (b.createdAt || 0) - (a.createdAt || 0);
+  });
+
+  const toolbar = `
+    <div class="toolbar">
+      <button class="chip ${state.filter === 'all' ? 'active' : ''}" data-filter="all">全部</button>
+      <button class="chip ${state.filter === 'active' ? 'active' : ''}" data-filter="active">待办 ${totalActive}</button>
+      <button class="chip ${state.filter === 'done' ? 'active' : ''}" data-filter="done">已完成 ${totalDone}</button>
+      <span class="spacer"></span>
+      <span class="hint">共 ${list.length} 项</span>
+    </div>`;
+
+  if (!list.length) {
+    contentEl.innerHTML = toolbar + emptyState('tasks',
+      q ? '没有找到匹配的任务' : (state.filter === 'done' ? '还没有完成的任务' : '暂无任务'),
+      q ? '试试换个关键词搜索。' : '点击右上角「新建任务」，把要做的事拆小一点。');
+    return;
+  }
+  contentEl.innerHTML = toolbar + `<div class="task-list">${list.map(taskItem).join('')}</div>`;
+}
+
+/* ================================================================
+   渲染：笔记
+================================================================ */
+function fmtTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  if (d.toDateString() === now.toDateString()) return `今天 ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const y = new Date(now.getTime() - 864e5);
+  if (d.toDateString() === y.toDateString()) return `昨天 ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function noteCard(n) {
+  const tags = Array.isArray(n.tags) ? n.tags : [];
+  const summary = mdToText(n.content, 150);
+  const len = (n.content || '').length;
+
+  return `
+  <article class="card" data-open="note" data-id="${n.id}">
+    <div class="card-body">
+      <div class="card-head">
+        <h3>${esc(n.title || '无标题笔记')}</h3>
+        <button class="icon-btn danger" data-del="note" data-id="${n.id}" title="删除笔记">${ICONS.trash}</button>
+      </div>
+      ${summary
+        ? `<p class="card-text">${esc(summary)}</p>`
+        : `<p class="card-text" style="opacity:.7">（空白笔记，点击编辑）</p>`}
+      ${tags.length ? `<div class="tags">${tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
+      <div class="card-foot">
+        <span>${fmtTime(n.updatedAt || n.createdAt)}</span>
+        <span>${len} 字 · <span class="md-badge">MD</span></span>
+      </div>
+    </div>
+  </article>`;
+}
+
+function renderNotes() {
+  const q = state.query.trim().toLowerCase();
+  let list = state.notes.filter(n =>
+    !q ||
+    (n.title || '').toLowerCase().includes(q) ||
+    (n.content || '').toLowerCase().includes(q) ||
+    (Array.isArray(n.tags) && n.tags.some(t => t.toLowerCase().includes(q)))
+  );
+  list = list.slice().sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0));
+
+  if (!list.length) {
+    contentEl.innerHTML = emptyState('notes',
+      q ? '没有找到匹配的笔记' : '还没有笔记',
+      q ? '试试换个关键词搜索。' : '点击右上角「新建笔记」，用 Markdown 随手记录。');
+    return;
+  }
+  contentEl.innerHTML = `<div class="grid">${list.map(noteCard).join('')}</div>`;
+}
+
+/* ================================================================
+   总渲染
+================================================================ */
+function render() {
+  renderNav();
+  renderContent();
+}
+
+function renderContent() {
+  if (state.view === 'plans') renderPlans();
+  else if (state.view === 'tasks') renderTasks();
+  else renderNotes();
+}
+
+/* ================================================================
+   交互
+================================================================ */
+function openItem(type, id) {
+  if (type === 'plan') openPlanModal(id);
+  else if (type === 'task') openTaskModal(id);
+  else openNoteModal(id);
+}
+
+function handleDelete(type, id) {
+  const names = { plan: '计划', task: '任务', note: '笔记' };
+  if (!confirm(`确定要删除这个${names[type]}吗？此操作不可撤销。`)) return;
+
+  if (type === 'plan') {
+    state.plans = state.plans.filter(x => x.id !== id);
+    state.tasks = state.tasks.map(t => t.planId === id ? { ...t, planId: '' } : t);
+  } else if (type === 'task') {
+    state.tasks = state.tasks.filter(x => x.id !== id);
+  } else {
+    state.notes = state.notes.filter(x => x.id !== id);
+  }
+  save(); render();
+}
+
+function toggleTask(id) {
+  state.tasks = state.tasks.map(t => t.id === id ? { ...t, done: !t.done } : t);
+  save(); render();
+}
+
+/* 内容区事件委托 */
+contentEl.addEventListener('click', e => {
+  const delBtn = e.target.closest('[data-del]');
+  if (delBtn) { e.stopPropagation(); handleDelete(delBtn.dataset.del, delBtn.dataset.id); return; }
+
+  const toggleBtn = e.target.closest('[data-toggle]');
+  if (toggleBtn) { e.stopPropagation(); toggleTask(toggleBtn.dataset.toggle); return; }
+
+  const chip = e.target.closest('[data-filter]');
+  if (chip) { state.filter = chip.dataset.filter; renderContent(); return; }
+
+  const openEl = e.target.closest('[data-open]');
+  if (openEl) openItem(openEl.dataset.open, openEl.dataset.id);
+});
+
+/* 侧栏导航 */
+document.querySelectorAll('.nav-item').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.view = btn.dataset.view;
+    state.filter = 'all';
+    state.query = '';
+    searchEl.value = '';
+    render();
+  });
+});
+
+/* 搜索 */
+let searchTimer = null;
+searchEl.addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    state.query = searchEl.value;
+    renderContent();
+  }, 120);
+});
+
+/* 新建按钮 */
+addBtn.addEventListener('click', () => {
+  if (state.view === 'plans') openPlanModal();
+  else if (state.view === 'tasks') openTaskModal();
+  else openNoteModal();
+});
+
+/* 主题切换 */
+themeBtn.addEventListener('click', () => {
+  state.theme = state.theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', state.theme);
+  if (window.monaco && window.monaco.editor) {
+    try {
+      window.monaco.editor.setTheme(state.theme === 'dark' ? 'app-dark' : 'app-light');
+    } catch (e) { /* ignore */ }
+  }
+  save();
+  renderNav();
+});
+
+/* ================================================================
+   启动
+================================================================ */
+load();
+document.documentElement.setAttribute('data-theme', state.theme);
+render();
+
+/* 预热 Monaco（空闲时后台加载，首次打开弹窗更快） */
+if ('requestIdleCallback' in window) {
+  requestIdleCallback(() => { getMonaco().catch(() => {}); }, { timeout: 4000 });
+} else {
+  setTimeout(() => { getMonaco().catch(() => {}); }, 2500);
+}
+</script>
+</body>
+</html>

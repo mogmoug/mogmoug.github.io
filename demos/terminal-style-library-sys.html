@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>学生作业图书馆管理系统 · Terminal</title>
+<style>
+  :root {
+    --green:   #35ff6f;
+    --dim:     #1f8a45;
+    --cyan:    #4fd6ff;
+    --yellow:  #ffd93d;
+    --red:     #ff5f56;
+    --magenta: #d977ff;
+    --white:   #d8ffe6;
+    --bg:      #050a06;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: var(--bg);
+  }
+
+  body {
+    color: var(--green);
+    font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas,
+                 'SF Mono', Menlo, 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.55;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* CRT 扫描线 */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 100;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(0,0,0,0) 0px,
+      rgba(0,0,0,0) 2px,
+      rgba(0,0,0,.16) 2px,
+      rgba(0,0,0,.16) 4px
+    );
+  }
+
+  /* 屏幕四周的暗角 */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 99;
+    background: radial-gradient(ellipse at center,
+                rgba(0,0,0,0) 45%, rgba(0,0,0,.55) 100%);
+  }
+
+  #terminal {
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 22px 24px 80px;
+    text-shadow: 0 0 6px rgba(53, 255, 111, .32);
+    scrollbar-width: thin;
+    scrollbar-color: #1f8a45 transparent;
+  }
+  #terminal::-webkit-scrollbar { width: 8px; }
+  #terminal::-webkit-scrollbar-thumb {
+    background: #1a5c30;
+    border-radius: 4px;
+  }
+  #terminal::-webkit-scrollbar-track { background: transparent; }
+
+  .line {
+    white-space: pre-wrap;
+    word-break: break-word;
+    min-height: 1.55em;
+  }
+
+  /* 颜色 */
+  .c-green   { color: var(--green); }
+  .c-cyan    { color: var(--cyan);    text-shadow: 0 0 6px rgba(79,214,255,.35); }
+  .c-yellow  { color: var(--yellow);  text-shadow: 0 0 6px rgba(255,217,61,.35); }
+  .c-red     { color: var(--red);     text-shadow: 0 0 6px rgba(255,95,86,.35); }
+  .c-dim     { color: var(--dim);     text-shadow: none; }
+  .c-magenta { color: var(--magenta); text-shadow: 0 0 6px rgba(217,119,255,.35); }
+  .c-white   { color: var(--white);   }
+  .c-bold    { color: var(--white); font-weight: 700; }
+
+  /* 输入行 */
+  #input-line {
+    display: flex;
+    align-items: baseline;
+    white-space: pre;
+  }
+  .ps1 { color: var(--cyan); }
+  .ps2 { color: var(--magenta); }
+
+  #cmd {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-left: .6em;
+    background: transparent;
+    border: 0;
+    outline: 0;
+    padding: 0;
+    color: var(--green);
+    caret-color: var(--green);
+    font: inherit;
+    text-shadow: inherit;
+  }
+
+  @media (max-width: 640px) {
+    body { font-size: 12px; }
+    #terminal { padding: 14px 12px 60px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="terminal">
+  <div id="output"></div>
+  <div id="input-line">
+    <span class="ps1">student@library</span><span class="c-dim">:</span><span class="ps2">~</span><span class="c-dim">$</span>
+    <input id="cmd" type="text" autocomplete="off" autocorrect="off"
+           autocapitalize="off" spellcheck="false" autofocus>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+ *  0. 基础工具
+ * =======================================================*/
+const termEl  = document.getElementById('terminal');
+const outEl   = document.getElementById('output');
+const inputEl = document.getElementById('cmd');
+
+const esc = s => String(s).replace(/[&<>"']/g, c =>
+  ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+
+function out(html = '') {
+  const d = document.createElement('div');
+  d.className = 'line';
+  d.innerHTML = (html === '') ? '&nbsp;' : html;
+  outEl.appendChild(d);
+  termEl.scrollTop = termEl.scrollHeight;
+  return d;
+}
+
+/* 颜色包装 */
+const span = (cls, t) => `<span class="${cls}">${esc(t)}</span>`;
+const G = t => span('c-green',   t);
+const C = t => span('c-cyan',    t);
+const Y = t => span('c-yellow',  t);
+const E = t => span('c-red',     t);
+const D = t => span('c-dim',     t);
+const M = t => span('c-magenta', t);
+const W = t => span('c-white',   t);
+const B = t => span('c-bold',    t);
+
+function ok(t)   { out('  ' + G('✓') + ' ' + esc(t)); }
+function bad(t)  { out('  ' + E('✗') + ' ' + esc(t)); }
+function info(t) { out('  ' + D('·') + ' ' + esc(t)); }
+function usage(u){ out('  ' + E('✗') + ' ' + esc('参数不正确'));
+                   out('  ' + D('用法: ' + u)); }
+
+/* 中英文混排宽度计算（中文按 2 列） */
+const WIDE = /[\u1100-\u115F\u2E80-\u303E\u3041-\u33FF\u3400-\u4DBF\u4E00-\u9FFF\uA000-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6]/;
+const cw = ch => WIDE.test(ch) ? 2 : 1;
+function dispWidth(s) { let w = 0; for (const ch of s) w += cw(ch); return w; }
+function padEnd(s, width) {
+  const d = width - dispWidth(s);
+  return d > 0 ? s + ' '.repeat(d) : s;
+}
+function trunc(s, maxW) {
+  if (dispWidth(s) <= maxW) return s;
+  let r = '', w = 0;
+  for (const ch of s) {
+    const c = cw(ch);
+    if (w + c > maxW - 1) break;
+    r += ch; w += c;
+  }
+  return r + '…';
+}
+
+/* 表格输出 */
+function printTable(headers, rows) {
+  const cols = headers.length;
+  const w = [];
+  for (let i = 0; i < cols; i++) {
+    let m = dispWidth(headers[i]);
+    for (const r of rows) m = Math.max(m, dispWidth(String(r[i] ?? '')));
+    w[i] = m;
+  }
+  const fmt = arr => ('  ' + arr.map((c, i) => padEnd(String(c ?? ''), w[i]))
+                             .join('  ')).replace(/\s+$/, '');
+  out(C(fmt(headers)));
+  out(D(fmt(w.map(x => '-'.repeat(x)))));
+  for (const r of rows) out(esc(fmt(r)));
+}
+
+/* =========================================================
+ *  1. 日期工具
+ * =======================================================*/
+const fmtDate = d =>
+  d.getFullYear() + '-' +
+  String(d.getMonth() + 1).padStart(2, '0') + '-' +
+  String(d.getDate()).padStart(2, '0');
+const addDays  = (d, n) => { const x = new Date(d.getTime()); x.setDate(x.getDate() + n); return x; };
+const todayStr = () => fmtDate(new Date());
+const dayDiff  = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
+
+/* =========================================================
+ *  2. 数据层
+ * =======================================================*/
+const STORAGE_KEY  = 'lib-terminal-v1';
+const MAX_BORROW   = 3;
+const LOAN_DAYS    = 30;
+const FINE_PER_DAY = 0.2;
+
+function defaultState() {
+  const now = new Date();
+
+  const books = [
+    ['B001', 'C程序设计语言',              'Brian W. Kernighan / Dennis M. Ritchie', '机械工业出版社', 5],
+    ['B002', '算法导论',                    'Thomas H. Cormen',                       '机械工业出版社', 3],
+    ['B003', '深入理解计算机系统',          'Randal E. Bryant',                       '机械工业出版社', 4],
+    ['B004', 'JavaScript高级程序设计',      'Matt Frisbie',                           '人民邮电出版社', 6],
+    ['B005', '数据结构与算法分析',          'Mark Allen Weiss',                       '机械工业出版社', 3],
+    ['B006', '计算机网络：自顶向下方法',    'James F. Kurose',                        '机械工业出版社', 2],
+  ].map(([id, title, author, press, total]) =>
+    ({ id, title, author, press, total, avail: total }));
+
+  const students = [
+    { sno: '20230101', name: '张三', cls: '计算机2301' },
+    { sno: '20230102', name: '李四', cls: '计算机2301' },
+    { sno: '20230103', name: '王五', cls: '软件工程2302' },
+  ];
+
+  const loans = [
+    { id: 'L001', bookId: 'B003', sno: '20230101',
+      borrowDate: fmtDate(addDays(now, -10)), dueDate: fmtDate(addDays(now, 20)), returnDate: null },
+    { id: 'L002', bookId: 'B005', sno: '20230102',
+      borrowDate: fmtDate(addDays(now, -40)), dueDate: fmtDate(addDays(now, -10)), returnDate: null },
+  ];
+  loans.forEach(l => {
+    const b = books.find(x => x.id === l.bookId);
+    if (b) b.avail--;
+  });
+
+  return { books, students, loans, seq: { book: 7, loan: 3 } };
+}
+
+let state;
+try {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  state = raw ? JSON.parse(raw) : defaultState();
+  if (!state || !state.books) state = defaultState();
+} catch (e) {
+  state = defaultState();
+}
+
+function save() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+}
+
+const findBook    = id => state.books.find(b => b.id.toLowerCase() === String(id).toLowerCase());
+const findStudent = sno => state.students.find(s => s.sno === String(sno));
+const isOverdue   = l => !l.returnDate && l.dueDate < todayStr();
+
+/* =========================================================
+ *  3. 命令实现
+ * =======================================================*/
+
+/* ---- 系统 ---- */
+function printBanner() {
+  const L = '='.repeat(58);
+  out(G('  ' + L));
+  out('  ' + C('学生作业图书馆管理系统') + D('   ·   ') + C('Student Library System') + D('   v1.0.0'));
+  out(G('  ' + L));
+  out(D('  输入 ') + Y('help') + D(' 查看全部命令，输入 ') + Y('books') + D(' 浏览书库。'));
+  out();
+}
+
+function cmdHelp() {
+  out('  ' + B('可用命令') + D('（Tab 补全命令，↑/↓ 浏览历史，Ctrl+L 清屏）'));
+  out();
+
+  const sections = [
+    ['图书管理', [
+      ['books',                              '列出全部图书'],
+      ['book <书号>',                        '查看图书详情'],
+      ['search <关键词>',                    '搜索图书（书名/作者/出版社/书号）'],
+      ['addbook <书名>|<作者>|<出版社> [|数量]', '新增图书'],
+      ['delbook <书号>',                     '删除图书'],
+    ]],
+    ['学生管理', [
+      ['students',                           '列出全部学生'],
+      ['student <学号>',                     '查看学生详情及在借图书'],
+      ['addstudent <姓名>|<学号>|<班级>',    '新增学生'],
+    ]],
+    ['借阅管理', [
+      ['borrow <学号> <书号>',               '办理借书'],
+      ['return <书号> [学号]',               '办理还书'],
+      ['loans [--all]',                      '查看借阅记录'],
+      ['stats',                              '查看系统统计'],
+    ]],
+    ['系统', [
+      ['clear',        '清屏（Ctrl+L）'],
+      ['history',      '查看命令历史'],
+      ['date',         '显示当前日期时间'],
+      ['echo <文本>',  '原样输出文本'],
+      ['whoami',       '显示当前用户'],
+      ['about',        '关于本系统'],
+      ['banner',       '重新显示横幅'],
+      ['reset --yes',  '重置全部数据'],
+    ]],
+  ];
+
+  for (const [title, items] of sections) {
+    out('  ' + M('▎') + ' ' + B(title));
+    for (const [c, d] of items) {
+      out('    ' + C(padEnd(c, 38)) + D(d));
+    }
+    out();
+  }
+}
+
+function cmdClear() { outEl.innerHTML = ''; }
+
+function cmdHistory() {
+  if (!history.length) return info('暂无历史命令');
+  history.forEach((h, i) =>
+    out('  ' + D(padEnd(String(i + 1), 5)) + esc(h)));
+}
+
+function cmdDate() {
+  const d = new Date();
+  const week = ['日','一','二','三','四','五','六'][d.getDay()];
+  out('  ' + W(d.toLocaleString('zh-CN', { hour12: false })) + D(`  星期${week}`));
+}
+
+function cmdEcho(args) { out(esc(args.join(' '))); }
+
+function cmdWhoami() { out('student'); }
+
+function cmdAbout() {
+  out('  ' + B('学生作业图书馆管理系统') + D('  v1.0.0'));
+  out();
+  out('  ' + D('一个运行在浏览器里的模拟终端程序，用于演示命令行交互风格的'));
+  out('  ' + D('图书馆借阅管理功能。所有命令均为前端模拟，无后端依赖。'));
+  out();
+  out('  ' + D('技术栈  : ') + W('HTML + CSS + JavaScript'));
+  out('  ' + D('数据存储: ') + W('localStorage（刷新页面后数据保留）'));
+  out('  ' + D('借阅规则: ') + W(`每人最多 ${MAX_BORROW} 本，借期 ${LOAN_DAYS} 天，逾期每天 ${FINE_PER_DAY} 元`));
+}
+
+function cmdReset(args) {
+  if (args[0] !== '--yes') {
+    out('  ' + Y('⚠ 警告: ') + W('该操作将清空所有图书、学生与借阅记录，且不可恢复。'));
+    out('  ' + D('如确认，请输入: ') + C('reset --yes'));
+    return;
+  }
+  state = defaultState();
+  save();
+  ok('数据已重置为初始状态');
+}
+
+function cmdSudo() {
+  out('  ' + Y('Nice try. ') + D('你并不是 root，这台机器上也没有 sudoers 文件。'));
+}
+
+/* ---- 图书 ---- */
+function cmdBooks() {
+  if (!state.books.length) return info('书库为空，可使用 addbook 添加图书');
+  const rows = state.books.map(b => [
+    b.id,
+    trunc(b.title, 24),
+    trunc(b.author, 22),
+    `${b.avail}/${b.total}`
+  ]);
+  printTable(['书号', '书名', '作者', '在架/馆藏'], rows);
+  out('  ' + D(`共 ${state.books.length} 种图书`));
+}
+
+function cmdBook(args) {
+  const id = args[0];
+  if (!id) return usage('book <书号>');
+  const b = findBook(id);
+  if (!b) return bad(`书号 ${id} 不存在`);
+
+  out('  ' + C('书号  ') + W(b.id));
+  out('  ' + C('书名  ') + W(b.title));
+  out('  ' + C('作者  ') + W(b.author));
+  out('  ' + C('出版社') + W(b.press || '—'));
+  out('  ' + C('馆藏  ') + W(`${b.avail} / ${b.total} 册在架`));
+
+  const holders = state.loans
+    .filter(l => l.bookId === b.id && !l.returnDate)
+    .map(l => {
+      const s = findStudent(l.sno);
+      return `${s ? s.name : '未知'}(${l.sno})`;
+    });
+  out('  ' + C('在借人') + (holders.length ? W(holders.join('、')) : D('无')));
+}
+
+function cmdSearch(args) {
+  const kw = args.join(' ').trim();
+  if (!kw) return usage('search <关键词>');
+  const k = kw.toLowerCase();
+  const hits = state.books.filter(b =>
+    b.id.toLowerCase().includes(k) ||
+    b.title.toLowerCase().includes(k) ||
+    b.author.toLowerCase().includes(k) ||
+    (b.press || '').toLowerCase().includes(k));
+
+  if (!hits.length) return info(`未找到与 “${kw}” 相关的图书`);
+
+  printTable(['书号', '书名', '作者', '在架/馆藏'],
+    hits.map(b => [b.id, trunc(b.title, 24), trunc(b.author, 22), `${b.avail}/${b.total}`]));
+  out('  ' + D(`匹配到 ${hits.length} 条结果`));
+}
+
+function cmdAddbook(args) {
+  if (!args.length) return usage('addbook <书名> | <作者> | <出版社> [| 数量]');
+
+  let parts = args.includes('|')
+    ? args.join(' ').split('|').map(s => s.trim())
+    : args.slice();
+  parts = parts.filter(Boolean);
+
+  if (parts.length < 3) return usage('addbook <书名> | <作者> | <出版社> [| 数量]');
+
+  const [title, author, press, cntRaw] = parts;
+  let cnt = cntRaw ? parseInt(cntRaw, 10) : 1;
+  if (isNaN(cnt) || cnt < 1) return bad('数量必须是大于 0 的整数');
+  cnt = Math.min(cnt, 99);
+
+  const dup = state.books.find(b => b.title === title);
+  if (dup) return bad(`图书《${title}》已存在（书号 ${dup.id}）`);
+
+  const id = 'B' + String(state.seq.book++).padStart(3, '0');
+  state.books.push({ id, title, author, press, total: cnt, avail: cnt });
+  save();
+  ok(`已添加《${title}》  书号 ${id}  馆藏 ${cnt} 册`);
+}
+
+function cmdDelbook(args) {
+  const id = args[0];
+  if (!id) return usage('delbook <书号>');
+  const idx = state.books.findIndex(b => b.id.toLowerCase() === id.toLowerCase());
+  if (idx < 0) return bad(`书号 ${id} 不存在`);
+
+  const b = state.books[idx];
+  if (state.loans.some(l => l.bookId === b.id && !l.returnDate))
+    return bad(`《${b.title}》尚有未归还的借阅，无法删除`);
+
+  state.books.splice(idx, 1);
+  save();
+  ok(`已删除《${b.title}》（${b.id}）`);
+}
+
+/* ---- 学生 ---- */
+function cmdStudents() {
+  if (!state.students.length) return info('暂无学生记录，可使用 addstudent 添加');
+  const rows = state.students.map(s => {
+    const n = state.loans.filter(l => l.sno === s.sno && !l.returnDate).length;
+    return [s.sno, s.name, s.cls, String(n)];
+  });
+  printTable(['学号', '姓名', '班级', '在借'], rows);
+  out('  ' + D(`共 ${state.students.length} 名学生`));
+}
+
+function cmdStudent(args) {
+  const sno = args[0];
+  if (!sno) return usage('student <学号>');
+  const s = findStudent(sno);
+  if (!s) return bad(`学号 ${sno} 不存在`);
+
+  out('  ' + C('学号  ') + W(s.sno));
+  out('  ' + C('姓名  ') + W(s.name));
+  out('  ' + C('班级  ') + W(s.cls));
+
+  const cur = state.loans.filter(l => l.sno === sno && !l.returnDate);
+  out('  ' + C('在借  ') + W(`${cur.length} / ${MAX_BORROW} 本`));
+
+  if (cur.length) {
+    out();
+    printTable(['记录', '书名', '借出日期', '应还日期', '状态'],
+      cur.map(l => {
+        const b = state.books.find(x => x.id === l.bookId);
+        return [
+          l.id,
+          trunc(b ? b.title : '(已删除)', 20),
+          l.borrowDate,
+          l.dueDate,
+          isOverdue(l) ? '已逾期' : '在借'
+        ];
+      }));
+  }
+}
+
+function cmdAddstudent(args) {
+  if (!args.length) return usage('addstudent <姓名> | <学号> | <班级>');
+
+  let parts = args.includes('|')
+    ? args.join(' ').split('|').map(s => s.trim())
+    : args.slice();
+  parts = parts.filter(Boolean);
+
+  if (parts.length < 3) return usage('addstudent <姓名> | <学号> | <班级>');
+
+  const [name, sno, cls] = parts;
+  if (!/^\d{4,}$/.test(sno)) return bad('学号格式不正确（应为 4 位以上数字，例如 20230104）');
+  if (findStudent(sno))      return bad(`学号 ${sno} 已存在`);
+
+  state.students.push({ sno, name, cls });
+  save();
+  ok(`已添加学生 ${name}（${sno}，${cls}）`);
+}
+
+/* ---- 借阅 ---- */
+function cmdBorrow(args) {
+  const [sno, bookId] = args;
+  if (!sno || !bookId) return usage('borrow <学号> <书号>');
+
+  const stu = findStudent(sno);
+  if (!stu) return bad(`学号 ${sno} 不存在`);
+
+  const bk = findBook(bookId);
+  if (!bk) return bad(`书号 ${bookId} 不存在`);
+
+  if (bk.avail <= 0) return bad(`《${bk.title}》已全部借出，暂无可借副本`);
+
+  const cur = state.loans.filter(l => l.sno === sno && !l.returnDate);
+  if (cur.length >= MAX_BORROW)
+    return bad(`${stu.name} 已达借阅上限（${MAX_BORROW} 本），请先归还部分图书`);
+  if (cur.some(l => l.bookId === bk.id))
+    return bad(`${stu.name} 已借阅《${bk.title}》且尚未归还`);
+
+  const borrowDate = todayStr();
+  const dueDate    = fmtDate(addDays(new Date(), LOAN_DAYS));
+  const id         = 'L' + String(state.seq.loan++).padStart(3, '0');
+
+  state.loans.push({ id, bookId: bk.id, sno, borrowDate, dueDate, returnDate: null });
+  bk.avail--;
+  save();
+
+  ok('借阅成功');
+  out('  ' + D('记录号  : ') + W(id));
+  out('  ' + D('图  书  : ') + W(`《${bk.title}》(${bk.id})`));
+  out('  ' + D('借 阅 人: ') + W(`${stu.name}（${stu.sno} · ${stu.cls}）`));
+  out('  ' + D('借出日期: ') + W(borrowDate));
+  out('  ' + D('应还日期: ') + Y(dueDate) + D(`（借期 ${LOAN_DAYS} 天）`));
+}
+
+function cmdReturn(args) {
+  const [bookId, sno] = args;
+  if (!bookId) return usage('return <书号> [学号]');
+
+  const bk = findBook(bookId);
+  if (!bk) return bad(`书号 ${bookId} 不存在`);
+
+  let cands = state.loans.filter(l => l.bookId === bk.id && !l.returnDate);
+  if (sno) cands = cands.filter(l => l.sno === sno);
+
+  if (!cands.length) return bad(`没有找到《${bk.title}》的未归还记录`);
+  if (cands.length > 1)
+    return bad(`《${bk.title}》存在多条未归还记录，请指定学号：return ${bk.id} <学号>`);
+
+  const l = cands[0];
+  l.returnDate = todayStr();
+  bk.avail = Math.min(bk.total, bk.avail + 1);
+  save();
+
+  const stu = findStudent(l.sno);
+  ok(`《${bk.title}》归还成功`);
+  out('  ' + D('借 阅 人: ') + W(stu ? `${stu.name}（${stu.sno}）` : l.sno));
+  out('  ' + D('借出日期: ') + W(l.borrowDate));
+  out('  ' + D('应还日期: ') + W(l.dueDate));
+
+  if (l.returnDate > l.dueDate) {
+    const days = dayDiff(l.dueDate, l.returnDate);
+    out('  ' + D('归还日期: ') + W(l.returnDate));
+    out('  ' + E('⚠ 逾期  : ') + Y(`${days} 天，产生滞纳金 ${(days * FINE_PER_DAY).toFixed(1)} 元`));
+  } else {
+    out('  ' + D('归还日期: ') + W(l.returnDate) + G('  （按期归还）'));
+  }
+}
+
+function cmdLoans(args) {
+  const all = args.includes('--all') || args.includes('-a');
+  const list = all ? state.loans : state.loans.filter(l => !l.returnDate);
+
+  if (!list.length)
+    return info(all ? '暂无借阅记录' : '当前没有在借的图书（使用 loans --all 查看历史记录）');
+
+  const rows = list.map(l => {
+    const b = state.books.find(x => x.id === l.bookId);
+    const s = findStudent(l.sno);
+    let st = '在借';
+    if (l.returnDate) st = '已归还';
+    else if (isOverdue(l)) st = '已逾期';
+    return [
+      l.id,
+      trunc(b ? b.title : '(已删除)', 18),
+      s ? `${s.name}` : l.sno,
+      l.borrowDate,
+      l.dueDate,
+      st
+    ];
+  });
+
+  printTable(['记录', '书名', '借阅人', '借出日期', '应还日期', '状态'], rows);
+  out('  ' + D(`共 ${list.length} 条` + (all ? '' : '（使用 loans --all 查看全部记录）')));
+}
+
+function cmdStats() {
+  const totalCopies = state.books.reduce((a, b) => a + b.total, 0);
+  const availCopies = state.books.reduce((a, b) => a + b.avail, 0);
+  const active   = state.loans.filter(l => !l.returnDate);
+  const overdue  = active.filter(isOverdue);
+  const returned = state.loans.filter(l => l.returnDate).length;
+
+  const rows = [
+    ['图书种类', `${state.books.length} 种`],
+    ['馆藏册数', `${totalCopies} 册`],
+    ['在架册数', `${availCopies} 册`],
+    ['在借册数', `${totalCopies - availCopies} 册`],
+    ['学生人数', `${state.students.length} 人`],
+    ['在借记录', `${active.length} 条`],
+    ['逾期记录', `${overdue.length} 条`],
+    ['历史归还', `${returned} 条`],
+  ];
+
+  out('  ' + M('▎') + ' ' + B('系统统计'));
+  out('  ' + D('-'.repeat(36)));
+  rows.forEach(([k, v]) => out('  ' + D(padEnd(k, 12)) + W(v)));
+}
+
+/* =========================================================
+ *  4. 命令注册
+ * =======================================================*/
+const COMMANDS = {
+  help:      cmdHelp,
+  banner:    printBanner,
+  clear:     cmdClear,
+  history:   cmdHistory,
+  date:      cmdDate,
+  echo:      cmdEcho,
+  whoami:    cmdWhoami,
+  about:     cmdAbout,
+  reset:     cmdReset,
+  sudo:      cmdSudo,
+
+  books:     cmdBooks,
+  book:      cmdBook,
+  search:    cmdSearch,
+  addbook:   cmdAddbook,
+  delbook:   cmdDelbook,
+
+  students:  cmdStudents,
+  student:   cmdStudent,
+  addstudent:cmdAddstudent,
+
+  borrow:    cmdBorrow,
+  return:    cmdReturn,
+  loans:     cmdLoans,
+  stats:     cmdStats,
+};
+
+/* =========================================================
+ *  5. 解析与执行
+ * =======================================================*/
+function tokenize(s) {
+  const res = [];
+  let cur = '', quote = null;
+  for (const ch of s) {
+    if (quote) {
+      if (ch === quote) quote = null;
+      else cur += ch;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+    } else if (/\s/.test(ch)) {
+      if (cur) { res.push(cur); cur = ''; }
+    } else {
+      cur += ch;
+    }
+  }
+  if (cur) res.push(cur);
+  return res;
+}
+
+function execute(raw) {
+  const tokens = tokenize(raw.trim());
+  if (!tokens.length) return;
+
+  const name = tokens[0].toLowerCase();
+  const args = tokens.slice(1);
+  const fn   = COMMANDS[name];
+
+  if (!fn) {
+    out('  ' + E('✗') + ' ' + W(`未找到命令: ${name}`));
+    out('  ' + D('输入 help 查看可用命令列表'));
+    return;
+  }
+
+  try {
+    fn(args);
+  } catch (e) {
+    out('  ' + E('✗') + ' ' + W('命令执行出错: ' + e.message));
+  }
+}
+
+/* =========================================================
+ *  6. 输入交互
+ * =======================================================*/
+let history = [];
+let histIdx = -1;
+
+const PS1 = '<span class="ps1">student@library</span>' +
+            '<span class="c-dim">:</span>' +
+            '<span class="ps2">~</span>' +
+            '<span class="c-dim">$</span>';
+
+inputEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const raw = inputEl.value;
+    inputEl.value = '';
+    histIdx = -1;
+
+    out(PS1 + ' ' + esc(raw));
+
+    const trimmed = raw.trim();
+    if (trimmed) {
+      if (history[history.length - 1] !== trimmed) history.push(trimmed);
+      execute(trimmed);
+    }
+    termEl.scrollTop = termEl.scrollHeight;
+
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    navigateHistory(-1);
+
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    navigateHistory(1);
+
+  } else if (e.key === 'Tab') {
+    e.preventDefault();
+    tabComplete();
+
+  } else if (e.key === 'l' && e.ctrlKey) {
+    e.preventDefault();
+    cmdClear();
+
+  } else if (e.key === 'c' && e.ctrlKey) {
+    e.preventDefault();
+    out(PS1 + ' ' + esc(inputEl.value) + '^C');
+    inputEl.value = '';
+  }
+});
+
+function navigateHistory(dir) {
+  if (!history.length) return;
+  if (histIdx === -1) histIdx = history.length;
+  histIdx = Math.max(0, Math.min(history.length, histIdx + dir));
+  inputEl.value = (histIdx >= history.length) ? '' : history[histIdx];
+  const len = inputEl.value.length;
+  setTimeout(() => inputEl.setSelectionRange(len, len), 0);
+}
+
+function tabComplete() {
+  const val = inputEl.value;
+  if (/\s/.test(val)) return;              // 只补全命令名
+  const matches = Object.keys(COMMANDS)
+    .filter(c => c.startsWith(val.toLowerCase()))
+    .sort();
+
+  if (matches.length === 1) {
+    inputEl.value = matches[0] + ' ';
+  } else if (matches.length > 1) {
+    out(PS1 + ' ' + esc(val));
+    out('  ' + matches.map(m => C(m)).join('  '));
+  }
+}
+
+/* 点击任意位置聚焦输入框 */
+termEl.addEventListener('mouseup', () => {
+  if (!window.getSelection().toString()) inputEl.focus();
+});
+document.addEventListener('click', () => inputEl.focus());
+
+/* =========================================================
+ *  7. 启动
+ * =======================================================*/
+function boot() {
+  outEl.innerHTML = '';
+  printBanner();
+
+  const overdue = state.loans.filter(isOverdue);
+  if (overdue.length) {
+    out('  ' + Y('⚠') + ' ' + W(`当前有 ${overdue.length} 条借阅记录已逾期，可输入 `) +
+        C('loans') + W(' 查看。'));
+    out();
+  }
+  inputEl.focus();
+}
+
+boot();
+</script>
+</body>
+</html>

@@ -1,0 +1,1970 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>macOS 模拟</title>
+    <style>
+        :root {
+            --menu-height: 28px;
+            --dock-height: 58px;
+            --dock-padding: 8px;
+            --window-radius: 12px;
+            --titlebar-height: 38px;
+            --bg-gradient-start: #1a1a2e;
+            --bg-gradient-mid1: #2d1b3d;
+            --bg-gradient-mid2: #1b3a4b;
+            --bg-gradient-mid3: #1a3a2a;
+            --bg-gradient-end: #1a1a2e;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-font-smoothing: antialiased;
+            cursor: default;
+            background: #000;
+        }
+
+        /* ========== 桌面壁纸 ========== */
+        .desktop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            background:
+                radial-gradient(ellipse at 20% 20%, #4a3080 0%, transparent 55%),
+                radial-gradient(ellipse at 75% 15%, #1a5c6e 0%, transparent 50%),
+                radial-gradient(ellipse at 40% 60%, #1e4a3a 0%, transparent 45%),
+                radial-gradient(ellipse at 70% 70%, #3d2b5c 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 85%, #162840 0%, transparent 40%),
+                radial-gradient(ellipse at 85% 40%, #2a1050 0%, transparent 35%),
+                linear-gradient(160deg, #0d1117 0%, #161b2c 25%, #1a1f35 50%, #0f1a22 75%, #0d1117 100%);
+        }
+        .desktop::before {
+            content: '';
+            position: absolute;
+            top: -30%;
+            left: -10%;
+            width: 120%;
+            height: 140%;
+            background:
+                radial-gradient(ellipse at 30% 15%, rgba(120, 80, 200, 0.25) 0%, transparent 60%),
+                radial-gradient(ellipse at 70% 10%, rgba(30, 140, 180, 0.2) 0%, transparent 55%),
+                radial-gradient(ellipse at 45% 55%, rgba(40, 150, 100, 0.18) 0%, transparent 50%),
+                radial-gradient(ellipse at 75% 65%, rgba(130, 60, 160, 0.2) 0%, transparent 50%),
+                radial-gradient(circle at 50% 90%, rgba(20, 60, 100, 0.3) 0%, transparent 45%);
+            pointer-events: none;
+        }
+        .desktop::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(2px 2px at 15% 25%, rgba(255, 255, 255, 0.03) 0%, transparent 100%),
+                radial-gradient(1px 1px at 55% 18%, rgba(255, 255, 255, 0.04) 0%, transparent 100%),
+                radial-gradient(2px 2px at 78% 30%, rgba(255, 255, 255, 0.03) 0%, transparent 100%),
+                radial-gradient(1px 1px at 35% 70%, rgba(255, 255, 255, 0.03) 0%, transparent 100%),
+                radial-gradient(2px 2px at 62% 75%, rgba(255, 255, 255, 0.04) 0%, transparent 100%);
+            pointer-events: none;
+        }
+
+        /* ========== 桌面图标 ========== */
+        .desktop-icons {
+            position: fixed;
+            top: calc(var(--menu-height) + 30px);
+            right: 28px;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .desktop-icon {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 90px;
+            padding: 10px 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            position: relative;
+            text-align: center;
+        }
+        .desktop-icon:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+        .desktop-icon:active {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(0.95);
+        }
+        .desktop-icon .icon-img {
+            font-size: 50px;
+            line-height: 1;
+            margin-bottom: 5px;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+            pointer-events: none;
+        }
+        .desktop-icon .icon-label {
+            font-size: 12px;
+            color: #fff;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+            pointer-events: none;
+            word-break: break-word;
+            line-height: 1.3;
+            max-width: 85px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .desktop-icon.selected {
+            background: rgba(255, 255, 255, 0.2);
+            outline: 2px solid rgba(255, 255, 255, 0.5);
+            outline-offset: -2px;
+        }
+
+        /* ========== 菜单栏 ========== */
+        .menubar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: var(--menu-height);
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: blur(25px) saturate(180%);
+            -webkit-backdrop-filter: blur(25px) saturate(180%);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            font-size: 13px;
+            color: #1d1d1f;
+            border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
+            letter-spacing: -0.1px;
+        }
+        .menubar-left {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            height: 100%;
+        }
+        .menubar-right {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            height: 100%;
+            padding-right: 4px;
+        }
+        .menu-item {
+            padding: 2px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            white-space: nowrap;
+            font-weight: 500;
+            transition: background 0.12s;
+            position: relative;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+        }
+        .menu-item:hover {
+            background: rgba(0, 0, 0, 0.08);
+        }
+        .menu-item.apple-logo {
+            font-size: 17px;
+            padding: 2px 9px;
+            font-weight: 600;
+            line-height: 1;
+        }
+        .menu-time {
+            font-weight: 500;
+            font-size: 13px;
+            cursor: pointer;
+            padding: 2px 8px;
+            border-radius: 5px;
+            transition: background 0.12s;
+        }
+        .menu-time:hover {
+            background: rgba(0, 0, 0, 0.08);
+        }
+        .menu-icon {
+            font-size: 15px;
+            cursor: pointer;
+            padding: 2px 5px;
+            border-radius: 5px;
+            transition: background 0.12s;
+            display: flex;
+            align-items: center;
+        }
+        .menu-icon:hover {
+            background: rgba(0, 0, 0, 0.08);
+        }
+        .menu-icon.wifi {
+            font-size: 14px;
+        }
+        .menu-icon.battery {
+            font-size: 11px;
+            font-weight: 500;
+            gap: 2px;
+        }
+
+        /* Apple 下拉菜单 */
+        .apple-dropdown {
+            position: fixed;
+            top: var(--menu-height);
+            left: 4px;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(30px) saturate(180%);
+            -webkit-backdrop-filter: blur(30px) saturate(180%);
+            border-radius: 8px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2), 0 1px 0 rgba(0, 0, 0, 0.06);
+            padding: 6px 0;
+            z-index: 1001;
+            min-width: 220px;
+            display: none;
+            border: 0.5px solid rgba(0, 0, 0, 0.1);
+            font-size: 13px;
+        }
+        .apple-dropdown.show {
+            display: block;
+            animation: dropdownIn 0.15s ease-out;
+        }
+        @keyframes dropdownIn {
+            from {
+                opacity: 0;
+                transform: translateY(-6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .apple-dropdown .dropdown-item {
+            padding: 6px 22px;
+            cursor: pointer;
+            transition: background 0.1s;
+            color: #1d1d1f;
+            letter-spacing: -0.1px;
+        }
+        .apple-dropdown .dropdown-item:hover {
+            background: #3478f6;
+            color: #fff;
+            border-radius: 0;
+        }
+        .apple-dropdown .dropdown-separator {
+            height: 1px;
+            background: rgba(0, 0, 0, 0.1);
+            margin: 4px 0;
+        }
+        .apple-dropdown .dropdown-item.disabled {
+            color: #aaa;
+            pointer-events: none;
+        }
+
+        /* ========== Dock ========== */
+        .dock-container {
+            position: fixed;
+            bottom: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 999;
+            display: flex;
+            align-items: flex-end;
+        }
+        .dock {
+            display: flex;
+            align-items: flex-end;
+            gap: 2px;
+            padding: 10px 14px 8px 14px;
+            background: rgba(255, 255, 255, 0.38);
+            backdrop-filter: blur(30px) saturate(200%);
+            -webkit-backdrop-filter: blur(30px) saturate(200%);
+            border-radius: 20px;
+            border: 0.5px solid rgba(255, 255, 255, 0.45);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18), 0 1px 2px rgba(0, 0, 0, 0.1);
+            transition: padding 0.15s ease;
+        }
+        .dock-item {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+            position: relative;
+            flex-shrink: 0;
+            font-size: 30px;
+            background: transparent;
+            transform-origin: bottom center;
+        }
+        .dock-item:hover {
+            transform: scale(1.35);
+            z-index: 2;
+            background: rgba(255, 255, 255, 0.15);
+        }
+        .dock-item:active {
+            transform: scale(1.2);
+            transition: all 0.08s ease;
+        }
+        .dock-item.running::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.55);
+        }
+        .dock-item .dock-tooltip {
+            position: absolute;
+            top: -38px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            letter-spacing: 0.2px;
+        }
+        .dock-item:hover .dock-tooltip {
+            opacity: 1;
+        }
+        .dock-separator {
+            width: 1px;
+            height: 36px;
+            background: rgba(0, 0, 0, 0.2);
+            margin: 0 6px;
+            align-self: center;
+            flex-shrink: 0;
+            border-radius: 1px;
+        }
+        .dock-trash {
+            font-size: 28px;
+        }
+
+        /* Dock 放大效果 - 相邻元素 */
+        .dock-item.hover-near {
+            transform: scale(1.15);
+        }
+        .dock-item.hover-nearer {
+            transform: scale(1.22);
+        }
+
+        /* ========== 窗口系统 ========== */
+        .windows-layer {
+            position: fixed;
+            top: var(--menu-height);
+            left: 0;
+            width: 100%;
+            height: calc(100% - var(--menu-height) - var(--dock-height) - 20px);
+            z-index: 10;
+            pointer-events: none;
+        }
+        .window {
+            position: absolute;
+            background: #f6f6f6;
+            border-radius: var(--window-radius);
+            box-shadow: 0 10px 50px rgba(0, 0, 0, 0.3), 0 2px 10px rgba(0, 0, 0, 0.15), 0 0 1px rgba(0, 0, 0, 0.2);
+            pointer-events: all;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-width: 320px;
+            min-height: 200px;
+            animation: windowOpen 0.25s cubic-bezier(0.22, 0.61, 0.36, 1);
+        }
+        @keyframes windowOpen {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+        .window.closing {
+            animation: windowClose 0.2s ease-in forwards;
+        }
+        @keyframes windowClose {
+            to {
+                opacity: 0;
+                transform: scale(0.85) translateY(15px);
+            }
+        }
+        .window.minimizing {
+            animation: windowMinimize 0.35s cubic-bezier(0.55, 0.06, 0.68, 0.19) forwards;
+        }
+        @keyframes windowMinimize {
+            to {
+                opacity: 0;
+                transform: scale(0.3) translateY(400px);
+            }
+        }
+        .window-titlebar {
+            height: var(--titlebar-height);
+            background: #e8e8e8;
+            display: flex;
+            align-items: center;
+            padding: 0 14px;
+            cursor: grab;
+            flex-shrink: 0;
+            position: relative;
+            border-radius: var(--window-radius) var(--window-radius) 0 0;
+            border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
+        }
+        .window-titlebar:active {
+            cursor: grabbing;
+        }
+        .window-titlebar .window-buttons {
+            display: flex;
+            gap: 8px;
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 2;
+        }
+        .window-btn {
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.12s ease;
+            position: relative;
+            border: 0.5px solid rgba(0, 0, 0, 0.12);
+        }
+        .window-btn.close {
+            background: #ff5f57;
+            border-color: rgba(0, 0, 0, 0.15);
+        }
+        .window-btn.minimize {
+            background: #febc2e;
+            border-color: rgba(0, 0, 0, 0.12);
+        }
+        .window-btn.maximize {
+            background: #28c840;
+            border-color: rgba(0, 0, 0, 0.1);
+        }
+        .window-btn:hover {
+            filter: brightness(0.9);
+        }
+        .window-btn:active {
+            filter: brightness(0.7);
+            transform: scale(0.9);
+        }
+        .window-btn.close:hover {
+            background: #ff3b30;
+        }
+        .window-btn.minimize:hover {
+            background: #ff9500;
+        }
+        .window-btn.maximize:hover {
+            background: #34c759;
+        }
+        .window-titlebar .window-title {
+            flex: 1;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: #3a3a3a;
+            letter-spacing: -0.2px;
+            pointer-events: none;
+        }
+        .window-content {
+            flex: 1;
+            overflow: auto;
+            background: #fff;
+            position: relative;
+        }
+        .window-content.no-padding {
+            padding: 0;
+        }
+
+        /* Finder 窗口样式 */
+        .finder-layout {
+            display: flex;
+            height: 100%;
+            min-height: 300px;
+        }
+        .finder-sidebar {
+            width: 180px;
+            background: #f0f0f2;
+            padding: 12px 0;
+            border-right: 0.5px solid rgba(0, 0, 0, 0.08);
+            flex-shrink: 0;
+            overflow-y: auto;
+        }
+        .finder-sidebar .sidebar-section {
+            margin-bottom: 16px;
+        }
+        .finder-sidebar .sidebar-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #888;
+            padding: 4px 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .finder-sidebar .sidebar-item {
+            padding: 6px 16px;
+            font-size: 13px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 1px 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #333;
+            transition: background 0.1s;
+        }
+        .finder-sidebar .sidebar-item:hover {
+            background: rgba(0, 0, 0, 0.06);
+        }
+        .finder-sidebar .sidebar-item.active {
+            background: #3478f6;
+            color: #fff;
+        }
+        .finder-main {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            background: #fff;
+        }
+        .finder-main .finder-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+            gap: 12px;
+        }
+        .finder-file {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px 6px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.1s;
+            text-align: center;
+        }
+        .finder-file:hover {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        .finder-file .file-icon {
+            font-size: 40px;
+            margin-bottom: 5px;
+        }
+        .finder-file .file-name {
+            font-size: 11px;
+            color: #333;
+            word-break: break-word;
+            line-height: 1.3;
+            max-width: 80px;
+        }
+        .finder-toolbar {
+            height: 40px;
+            background: #fafafa;
+            border-bottom: 0.5px solid rgba(0, 0, 0, 0.06);
+            display: flex;
+            align-items: center;
+            padding: 0 14px;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        .finder-toolbar .tb-btn {
+            font-size: 16px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 5px;
+            transition: background 0.1s;
+            color: #555;
+        }
+        .finder-toolbar .tb-btn:hover {
+            background: rgba(0, 0, 0, 0.06);
+        }
+        .finder-toolbar .tb-btn.disabled {
+            opacity: 0.3;
+            pointer-events: none;
+        }
+        .finder-toolbar .tb-search {
+            flex: 1;
+            max-width: 300px;
+            height: 26px;
+            border-radius: 6px;
+            border: 0.5px solid rgba(0, 0, 0, 0.15);
+            padding: 0 10px;
+            font-size: 12px;
+            background: #fff;
+            outline: none;
+            font-family: inherit;
+        }
+        .finder-toolbar .tb-search:focus {
+            border-color: #3478f6;
+            box-shadow: 0 0 0 2px rgba(52, 120, 246, 0.15);
+        }
+
+        /* 设置窗口 */
+        .settings-content {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .settings-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+        .settings-row .settings-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+        }
+        .settings-toggle {
+            width: 44px;
+            height: 24px;
+            border-radius: 12px;
+            background: #ccc;
+            cursor: pointer;
+            position: relative;
+            transition: background 0.2s;
+        }
+        .settings-toggle.on {
+            background: #34c759;
+        }
+        .settings-toggle::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s;
+        }
+        .settings-toggle.on::after {
+            transform: translateX(20px);
+        }
+
+        /* 关于本机 */
+        .about-content {
+            padding: 30px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+        .about-content .about-icon {
+            font-size: 64px;
+            margin-bottom: 8px;
+        }
+        .about-content h2 {
+            font-weight: 600;
+            color: #1d1d1f;
+            font-size: 22px;
+        }
+        .about-content .about-version {
+            color: #888;
+            font-size: 14px;
+        }
+        .about-content .about-details {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #666;
+            line-height: 1.6;
+        }
+        .about-content button {
+            margin-top: 10px;
+            padding: 8px 20px;
+            border-radius: 6px;
+            border: none;
+            background: #3478f6;
+            color: #fff;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: background 0.15s;
+        }
+        .about-content button:hover {
+            background: #2868d8;
+        }
+
+        /* 终端 */
+        .terminal-content {
+            background: #1e1e1e;
+            color: #00ff6a;
+            font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', 'Courier New', monospace;
+            padding: 16px;
+            height: 100%;
+            font-size: 13px;
+            line-height: 1.6;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            border-radius: 0 0 var(--window-radius) var(--window-radius);
+        }
+        .terminal-content .prompt {
+            color: #00ff6a;
+        }
+        .terminal-content .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 15px;
+            background: #00ff6a;
+            animation: blink 1s step-end infinite;
+            vertical-align: text-bottom;
+            margin-left: 2px;
+        }
+        @keyframes blink {
+            50% {
+                opacity: 0;
+            }
+        }
+
+        /* 右键菜单 */
+        .context-menu {
+            position: fixed;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(25px) saturate(180%);
+            -webkit-backdrop-filter: blur(25px) saturate(180%);
+            border-radius: 8px;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+            padding: 6px 0;
+            z-index: 2000;
+            min-width: 180px;
+            display: none;
+            border: 0.5px solid rgba(0, 0, 0, 0.1);
+            font-size: 13px;
+        }
+        .context-menu.show {
+            display: block;
+            animation: dropdownIn 0.1s ease-out;
+        }
+        .context-menu .ctx-item {
+            padding: 7px 20px;
+            cursor: pointer;
+            color: #1d1d1f;
+            transition: background 0.08s;
+        }
+        .context-menu .ctx-item:hover {
+            background: #3478f6;
+            color: #fff;
+        }
+        .context-menu .ctx-separator {
+            height: 1px;
+            background: rgba(0, 0, 0, 0.08);
+            margin: 4px 0;
+        }
+
+        /* Spotlight */
+        .spotlight-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 3000;
+            display: none;
+            align-items: flex-start;
+            justify-content: center;
+            padding-top: 18vh;
+        }
+        .spotlight-overlay.show {
+            display: flex;
+            animation: fadeIn 0.15s ease-out;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        .spotlight-box {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(30px) saturate(200%);
+            -webkit-backdrop-filter: blur(30px) saturate(200%);
+            border-radius: 14px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+            width: 560px;
+            max-width: 90vw;
+            overflow: hidden;
+            border: 0.5px solid rgba(0, 0, 0, 0.1);
+        }
+        .spotlight-input {
+            width: 100%;
+            height: 50px;
+            border: none;
+            background: transparent;
+            padding: 0 20px;
+            font-size: 18px;
+            font-family: inherit;
+            outline: none;
+            color: #1d1d1f;
+        }
+        .spotlight-input::placeholder {
+            color: #aaa;
+        }
+        .spotlight-results {
+            max-height: 300px;
+            overflow-y: auto;
+            border-top: 0.5px solid rgba(0, 0, 0, 0.08);
+        }
+        .spotlight-results .sp-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            transition: background 0.08s;
+        }
+        .spotlight-results .sp-item:hover {
+            background: rgba(0, 0, 0, 0.06);
+        }
+        .spotlight-results .sp-item .sp-icon {
+            font-size: 22px;
+        }
+
+        /* 通知提示 */
+        .notification {
+            position: fixed;
+            top: calc(var(--menu-height) + 16px);
+            right: 20px;
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(25px) saturate(180%);
+            -webkit-backdrop-filter: blur(25px) saturate(180%);
+            border-radius: 12px;
+            padding: 16px 20px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            z-index: 2500;
+            font-size: 13px;
+            max-width: 340px;
+            animation: slideInRight 0.35s cubic-bezier(0.22, 0.61, 0.36, 1);
+            border: 0.5px solid rgba(0, 0, 0, 0.08);
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(80px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        .notification.fading {
+            animation: slideOutRight 0.3s ease-in forwards;
+        }
+        @keyframes slideOutRight {
+            to {
+                opacity: 0;
+                transform: translateX(80px);
+            }
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .dock-item {
+                width: 38px;
+                height: 38px;
+                font-size: 22px;
+                border-radius: 10px;
+            }
+            .dock {
+                padding: 7px 10px 5px 10px;
+                border-radius: 16px;
+                gap: 0px;
+            }
+            .dock-separator {
+                height: 26px;
+                margin: 0 3px;
+            }
+            .window {
+                min-width: 260px;
+                min-height: 160px;
+                border-radius: 10px;
+            }
+            .window-titlebar {
+                height: 32px;
+                border-radius: 10px 10px 0 0;
+            }
+            .finder-sidebar {
+                width: 130px;
+            }
+            .desktop-icons {
+                right: 10px;
+                gap: 4px;
+            }
+            .desktop-icon {
+                width: 70px;
+                padding: 6px 4px;
+            }
+            .desktop-icon .icon-img {
+                font-size: 36px;
+            }
+            .desktop-icon .icon-label {
+                font-size: 10px;
+            }
+            .menubar {
+                font-size: 11px;
+                padding: 0 6px;
+            }
+            .menu-item {
+                padding: 2px 6px;
+                font-size: 11px;
+            }
+            .spotlight-box {
+                width: 92vw;
+            }
+        }
+        @media (max-width: 480px) {
+            .dock-item {
+                width: 30px;
+                height: 30px;
+                font-size: 17px;
+                border-radius: 8px;
+            }
+            .dock {
+                padding: 5px 7px 4px 7px;
+                border-radius: 12px;
+                gap: 0;
+            }
+            .dock-separator {
+                height: 20px;
+                margin: 0 2px;
+            }
+            .dock-item.running::after {
+                bottom: -3px;
+                width: 3px;
+                height: 3px;
+            }
+            .window {
+                min-width: 200px;
+                min-height: 120px;
+                border-radius: 8px;
+            }
+            .window-titlebar {
+                height: 28px;
+                border-radius: 8px 8px 0 0;
+                padding: 0 8px;
+            }
+            .window-btn {
+                width: 10px;
+                height: 10px;
+            }
+            .window-titlebar .window-buttons {
+                gap: 5px;
+                left: 8px;
+            }
+            .window-titlebar .window-title {
+                font-size: 11px;
+            }
+            .finder-sidebar {
+                width: 90px;
+                font-size: 10px;
+            }
+            .finder-sidebar .sidebar-item {
+                padding: 4px 8px;
+                font-size: 10px;
+                margin: 1px 3px;
+            }
+            .desktop-icons {
+                right: 4px;
+                top: calc(var(--menu-height) + 10px);
+                gap: 0px;
+            }
+            .desktop-icon {
+                width: 55px;
+                padding: 4px 2px;
+            }
+            .desktop-icon .icon-img {
+                font-size: 28px;
+            }
+            .desktop-icon .icon-label {
+                font-size: 9px;
+                max-width: 50px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ========== 桌面壁纸 ========== -->
+    <div class="desktop" id="desktop"></div>
+
+    <!-- ========== 桌面图标 ========== -->
+    <div class="desktop-icons" id="desktopIcons">
+        <div class="desktop-icon" data-action="open-finder-hd" ondblclick="openFinderHD()">
+            <span class="icon-img">💾</span>
+            <span class="icon-label">Macintosh HD</span>
+        </div>
+        <div class="desktop-icon" data-action="open-finder-docs" ondblclick="openFinderDocs()">
+            <span class="icon-img">📁</span>
+            <span class="icon-label">文档</span>
+        </div>
+        <div class="desktop-icon" data-action="open-finder-downloads" ondblclick="openFinderDownloads()">
+            <span class="icon-img">📥</span>
+            <span class="icon-label">下载</span>
+        </div>
+        <div class="desktop-icon" data-action="open-finder-pics" ondblclick="openFinderPics()">
+            <span class="icon-img">🖼️</span>
+            <span class="icon-label">图片</span>
+        </div>
+        <div class="desktop-icon" data-action="open-about" ondblclick="openAboutWindow()">
+            <span class="icon-img">🖥️</span>
+            <span class="icon-label">关于本机</span>
+        </div>
+    </div>
+
+    <!-- ========== 菜单栏 ========== -->
+    <div class="menubar" id="menubar">
+        <div class="menubar-left">
+            <span class="menu-item apple-logo" id="appleLogo" title="Apple菜单"></span>
+            <span class="menu-item" data-menu="finder">Finder</span>
+            <span class="menu-item" data-menu="file">文件</span>
+            <span class="menu-item" data-menu="edit">编辑</span>
+            <span class="menu-item" data-menu="view">显示</span>
+            <span class="menu-item" data-menu="go">前往</span>
+            <span class="menu-item" data-menu="window">窗口</span>
+            <span class="menu-item" data-menu="help">帮助</span>
+        </div>
+        <div class="menubar-right">
+            <span class="menu-icon wifi" title="WiFi">📶</span>
+            <span class="menu-icon battery" title="电池">🔋 85%</span>
+            <span class="menu-icon" id="spotlightTrigger" title="聚焦搜索" style="font-size:15px;">🔍</span>
+            <span class="menu-time" id="menuTime" title="日期与时间"></span>
+        </div>
+    </div>
+
+    <!-- Apple 下拉菜单 -->
+    <div class="apple-dropdown" id="appleDropdown">
+        <div class="dropdown-item" onclick="openAboutWindow()">关于本机</div>
+        <div class="dropdown-separator"></div>
+        <div class="dropdown-item" onclick="openSettingsWindow()">系统设置...</div>
+        <div class="dropdown-separator"></div>
+        <div class="dropdown-item disabled">最近使用</div>
+        <div class="dropdown-separator"></div>
+        <div class="dropdown-item" onclick="showNotification('强制退出应用程序','按下 Command-Option-Esc 强制退出')">强制退出...</div>
+        <div class="dropdown-separator"></div>
+        <div class="dropdown-item" onclick="showNotification('睡眠','Mac 即将进入睡眠模式')">睡眠</div>
+        <div class="dropdown-item" onclick="showNotification('重新启动…','您确定要重新启动吗？')">重新启动...</div>
+        <div class="dropdown-item" onclick="showNotification('关机…','您确定要关机吗？')">关机...</div>
+    </div>
+
+    <!-- ========== 窗口层 ========== -->
+    <div class="windows-layer" id="windowsLayer"></div>
+
+    <!-- ========== Dock ========== -->
+    <div class="dock-container" id="dockContainer">
+        <div class="dock" id="dock">
+            <div class="dock-item running" data-app="finder" title="Finder" onclick="handleDockClick('finder')">
+                <span>😊</span>
+                <span class="dock-tooltip">Finder</span>
+            </div>
+            <div class="dock-item" data-app="safari" title="Safari" onclick="handleDockClick('safari')">
+                <span>🧭</span>
+                <span class="dock-tooltip">Safari</span>
+            </div>
+            <div class="dock-item" data-app="mail" title="邮件" onclick="handleDockClick('mail')">
+                <span>📧</span>
+                <span class="dock-tooltip">邮件</span>
+            </div>
+            <div class="dock-item" data-app="photos" title="照片" onclick="handleDockClick('photos')">
+                <span>🖼️</span>
+                <span class="dock-tooltip">照片</span>
+            </div>
+            <div class="dock-item" data-app="music" title="音乐" onclick="handleDockClick('music')">
+                <span>🎵</span>
+                <span class="dock-tooltip">音乐</span>
+            </div>
+            <div class="dock-item" data-app="terminal" title="终端" onclick="handleDockClick('terminal')">
+                <span>💻</span>
+                <span class="dock-tooltip">终端</span>
+            </div>
+            <div class="dock-item" data-app="settings" title="系统设置" onclick="handleDockClick('settings')">
+                <span>⚙️</span>
+                <span class="dock-tooltip">系统设置</span>
+            </div>
+            <span class="dock-separator"></span>
+            <div class="dock-item dock-trash" data-app="trash" title="废纸篓" onclick="handleDockClick('trash')">
+                <span>🗑️</span>
+                <span class="dock-tooltip">废纸篓</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 右键菜单 ========== -->
+    <div class="context-menu" id="contextMenu">
+        <div class="ctx-item" onclick="openFinderHD()">新建 Finder 窗口</div>
+        <div class="ctx-item" onclick="openSettingsWindow()">系统设置</div>
+        <div class="ctx-separator"></div>
+        <div class="ctx-item" onclick="showNotification('整理桌面','桌面图标已整理')">整理</div>
+        <div class="ctx-item" onclick="showNotification('显示选项','更改桌面显示选项')">查看显示选项</div>
+        <div class="ctx-separator"></div>
+        <div class="ctx-item" onclick="showNotification('更换壁纸…','壁纸设置面板')">更换壁纸...</div>
+    </div>
+
+    <!-- ========== Spotlight ========== -->
+    <div class="spotlight-overlay" id="spotlightOverlay">
+        <div class="spotlight-box">
+            <input type="text" class="spotlight-input" id="spotlightInput" placeholder="聚焦搜索" autocomplete="off">
+            <div class="spotlight-results" id="spotlightResults">
+                <div class="sp-item" data-action="open-finder-hd"><span class="sp-icon">💾</span> Macintosh HD</div>
+                <div class="sp-item" data-action="open-about"><span class="sp-icon">🖥️</span> 关于本机</div>
+                <div class="sp-item" data-action="open-settings"><span class="sp-icon">⚙️</span> 系统设置</div>
+                <div class="sp-item" data-action="open-terminal"><span class="sp-icon">💻</span> 终端</div>
+                <div class="sp-item" data-action="open-finder-docs"><span class="sp-icon">📁</span> 文档</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 通知容器 ========== -->
+    <div id="notificationContainer"></div>
+
+    <script>
+        (function() {
+            // ============ 全局状态 ============
+            let zIndexCounter = 100;
+            const windows = {}; // 存储所有窗口引用
+            const windowStates = {}; // 存储窗口状态 { appName: { minimized, windowId } }
+            let activeWindowId = null;
+            let isDragging = false;
+            let dragTarget = null;
+            let dragOffsetX = 0;
+            let dragOffsetY = 0;
+            let dragStartX = 0;
+            let dragStartY = 0;
+
+            // ============ DOM 引用 ============
+            const desktop = document.getElementById('desktop');
+            const windowsLayer = document.getElementById('windowsLayer');
+            const appleLogo = document.getElementById('appleLogo');
+            const appleDropdown = document.getElementById('appleDropdown');
+            const contextMenu = document.getElementById('contextMenu');
+            const menuTime = document.getElementById('menuTime');
+            const spotlightOverlay = document.getElementById('spotlightOverlay');
+            const spotlightInput = document.getElementById('spotlightInput');
+            const dock = document.getElementById('dock');
+            const dockContainer = document.getElementById('dockContainer');
+            const notificationContainer = document.getElementById('notificationContainer');
+
+            // ============ 时间更新 ============
+            function updateTime() {
+                const now = new Date();
+                const days = ['日', '一', '二', '三', '四', '五', '六'];
+                const month = now.getMonth() + 1;
+                const day = now.getDate();
+                const dayOfWeek = days[now.getDay()];
+                const hours = now.getHours().toString().padStart(2, '0');
+                const minutes = now.getMinutes().toString().padStart(2, '0');
+                menuTime.textContent = `${month}月${day}日 周${dayOfWeek} ${hours}:${minutes}`;
+            }
+            updateTime();
+            setInterval(updateTime, 10000);
+
+            // ============ Apple 下拉菜单 ============
+            appleLogo.addEventListener('click', (e) => {
+                e.stopPropagation();
+                appleDropdown.classList.toggle('show');
+                contextMenu.classList.remove('show');
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!appleDropdown.contains(e.target) && e.target !== appleLogo) {
+                    appleDropdown.classList.remove('show');
+                }
+                if (!contextMenu.contains(e.target)) {
+                    contextMenu.classList.remove('show');
+                }
+            });
+
+            // ============ 右键菜单 ============
+            desktop.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                contextMenu.style.left = e.clientX + 'px';
+                contextMenu.style.top = e.clientY + 'px';
+                contextMenu.classList.add('show');
+                appleDropdown.classList.remove('show');
+            });
+
+            windowsLayer.addEventListener('contextmenu', (e) => {
+                // 允许在窗口层上也右键
+                if (e.target === windowsLayer) {
+                    e.preventDefault();
+                    contextMenu.style.left = e.clientX + 'px';
+                    contextMenu.style.top = e.clientY + 'px';
+                    contextMenu.classList.add('show');
+                }
+            });
+
+            // ============ 窗口创建函数 ============
+            function createWindow(appName, title, width, height, contentHTML, options = {}) {
+                const winId = 'win-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
+
+                // 计算默认位置（层叠偏移）
+                const existingCount = Object.keys(windows).length;
+                const offsetX = 40 + existingCount * 28;
+                const offsetY = 35 + existingCount * 28;
+                const maxX = window.innerWidth - width - 40;
+                const maxY = window.innerHeight - height - 120;
+                const posX = Math.min(offsetX, maxX);
+                const posY = Math.min(offsetY, maxY);
+
+                const windowEl = document.createElement('div');
+                windowEl.className = 'window';
+                windowEl.id = winId;
+                windowEl.style.left = (options.x || posX) + 'px';
+                windowEl.style.top = (options.y || posY) + 'px';
+                windowEl.style.width = width + 'px';
+                windowEl.style.height = height + 'px';
+                windowEl.style.zIndex = ++zIndexCounter;
+                windowEl.dataset.app = appName;
+
+                const titlebarContent = options.titlebarContent || '';
+                const showButtons = options.showButtons !== false;
+
+                windowEl.innerHTML = `
+                    <div class="window-titlebar" data-window-id="${winId}">
+                        ${showButtons ? `
+                        <div class="window-buttons">
+                            <span class="window-btn close" data-action="close" title="关闭"></span>
+                            <span class="window-btn minimize" data-action="minimize" title="最小化"></span>
+                            <span class="window-btn maximize" data-action="maximize" title="全屏"></span>
+                        </div>` : ''}
+                        <span class="window-title">${title}</span>
+                        ${titlebarContent}
+                    </div>
+                    <div class="window-content ${options.noPadding ? 'no-padding' : ''}">
+                        ${contentHTML}
+                    </div>
+                `;
+
+                windowsLayer.appendChild(windowEl);
+                windows[winId] = { el: windowEl, appName, title, width, height };
+                windowStates[appName] = { minimized: false, windowId: winId };
+
+                // 更新Dock指示点
+                updateDockIndicator(appName, true);
+
+                // 绑定事件
+                bindWindowEvents(windowEl);
+
+                // 置于顶层
+                bringToFront(windowEl);
+
+                activeWindowId = winId;
+
+                return winId;
+            }
+
+            function bindWindowEvents(windowEl) {
+                const titlebar = windowEl.querySelector('.window-titlebar');
+                const winId = windowEl.id;
+
+                // 标题栏拖动
+                titlebar.addEventListener('mousedown', (e) => {
+                    // 排除按钮点击
+                    if (e.target.closest('.window-btn')) return;
+                    if (e.button !== 0) return;
+
+                    isDragging = true;
+                    dragTarget = windowEl;
+                    const rect = windowEl.getBoundingClientRect();
+                    dragOffsetX = e.clientX - rect.left;
+                    dragOffsetY = e.clientY - rect.top;
+                    dragStartX = e.clientX;
+                    dragStartY = e.clientY;
+                    windowEl.style.transition = 'none';
+                    bringToFront(windowEl);
+                    activeWindowId = winId;
+                    document.body.style.cursor = 'grabbing';
+                });
+
+                // 点击窗口置顶
+                windowEl.addEventListener('mousedown', (e) => {
+                    bringToFront(windowEl);
+                    activeWindowId = winId;
+                });
+
+                // 按钮事件
+                windowEl.querySelectorAll('.window-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const action = btn.dataset.action;
+                        if (action === 'close') {
+                            closeWindow(winId);
+                        } else if (action === 'minimize') {
+                            minimizeWindow(winId);
+                        } else if (action === 'maximize') {
+                            maximizeWindow(winId);
+                        }
+                    });
+                });
+
+                // 按钮悬停显示符号
+                const closeBtn = windowEl.querySelector('.window-btn.close');
+                const minimizeBtn = windowEl.querySelector('.window-btn.minimize');
+                const maximizeBtn = windowEl.querySelector('.window-btn.maximize');
+
+                if (closeBtn) {
+                    closeBtn.addEventListener('mouseenter', () => { closeBtn.innerHTML = '✕';
+                        closeBtn.style.fontSize = '7px';
+                        closeBtn.style.display = 'flex';
+                        closeBtn.style.alignItems = 'center';
+                        closeBtn.style.justifyContent = 'center';
+                        closeBtn.style.color = 'rgba(0,0,0,0.5)';
+                        closeBtn.style.fontWeight = 'bold'; });
+                    closeBtn.addEventListener('mouseleave', () => { closeBtn.innerHTML = '';
+                        closeBtn.style.fontSize = ''; });
+                }
+                if (minimizeBtn) {
+                    minimizeBtn.addEventListener('mouseenter', () => { minimizeBtn.innerHTML = '−';
+                        minimizeBtn.style.fontSize = '9px';
+                        minimizeBtn.style.display = 'flex';
+                        minimizeBtn.style.alignItems = 'center';
+                        minimizeBtn.style.justifyContent = 'center';
+                        minimizeBtn.style.color = 'rgba(0,0,0,0.5)';
+                        minimizeBtn.style.fontWeight = 'bold'; });
+                    minimizeBtn.addEventListener('mouseleave', () => { minimizeBtn.innerHTML = '';
+                        minimizeBtn.style.fontSize = ''; });
+                }
+                if (maximizeBtn) {
+                    maximizeBtn.addEventListener('mouseenter', () => { maximizeBtn.innerHTML = '↗';
+                        maximizeBtn.style.fontSize = '8px';
+                        maximizeBtn.style.display = 'flex';
+                        maximizeBtn.style.alignItems = 'center';
+                        maximizeBtn.style.justifyContent = 'center';
+                        maximizeBtn.style.color = 'rgba(0,0,0,0.5)';
+                        maximizeBtn.style.fontWeight = 'bold'; });
+                    maximizeBtn.addEventListener('mouseleave', () => { maximizeBtn.innerHTML = '';
+                        maximizeBtn.style.fontSize = ''; });
+                }
+            }
+
+            function bringToFront(windowEl) {
+                windowEl.style.zIndex = ++zIndexCounter;
+                // 移除其他窗口的活跃状态
+                document.querySelectorAll('.window').forEach(w => w.style.boxShadow =
+                    '0 10px 50px rgba(0,0,0,0.3), 0 2px 10px rgba(0,0,0,0.15), 0 0 1px rgba(0,0,0,0.2)');
+                windowEl.style.boxShadow =
+                    '0 14px 60px rgba(0,0,0,0.38), 0 3px 14px rgba(0,0,0,0.2), 0 0 1px rgba(0,0,0,0.25)';
+            }
+
+            function closeWindow(winId) {
+                const windowEl = document.getElementById(winId);
+                if (!windowEl) return;
+                const appName = windowEl.dataset.app;
+
+                windowEl.classList.add('closing');
+                windowEl.addEventListener('animationend', function handler() {
+                    windowEl.removeEventListener('animationend', handler);
+                    windowEl.remove();
+                    delete windows[winId];
+                    if (windowStates[appName] && windowStates[appName].windowId === winId) {
+                        windowStates[appName] = { minimized: false, windowId: null };
+                        updateDockIndicator(appName, false);
+                    }
+                    if (activeWindowId === winId) {
+                        activeWindowId = null;
+                    }
+                }, { once: true });
+            }
+
+            function minimizeWindow(winId) {
+                const windowEl = document.getElementById(winId);
+                if (!windowEl) return;
+                const appName = windowEl.dataset.app;
+
+                windowEl.classList.add('minimizing');
+                windowEl.addEventListener('animationend', function handler() {
+                    windowEl.removeEventListener('animationend', handler);
+                    windowEl.style.display = 'none';
+                    windowEl.classList.remove('minimizing');
+                    windowStates[appName] = { minimized: true, windowId: winId };
+                    if (activeWindowId === winId) {
+                        activeWindowId = null;
+                    }
+                }, { once: true });
+            }
+
+            function restoreWindow(winId) {
+                const windowEl = document.getElementById(winId);
+                if (!windowEl) return;
+                windowEl.style.display = 'flex';
+                windowEl.style.animation = 'windowOpen 0.3s cubic-bezier(0.22, 0.61, 0.36, 1)';
+                windowEl.addEventListener('animationend', function handler() {
+                    windowEl.removeEventListener('animationend', handler);
+                    windowEl.style.animation = '';
+                }, { once: true });
+                bringToFront(windowEl);
+                activeWindowId = winId;
+                const appName = windowEl.dataset.app;
+                windowStates[appName] = { minimized: false, windowId: winId };
+            }
+
+            function maximizeWindow(winId) {
+                const windowEl = document.getElementById(winId);
+                if (!windowEl) return;
+                const currentLeft = parseInt(windowEl.style.left);
+                const currentTop = parseInt(windowEl.style.top);
+                const currentWidth = parseInt(windowEl.style.width);
+                const currentHeight = parseInt(windowEl.style.height);
+
+                const maxWidth = window.innerWidth;
+                const maxHeight = window.innerHeight - 28 - 78;
+                const maxLeft = 0;
+                const maxTop = 0;
+
+                // 检查是否已经最大化
+                if (Math.abs(currentLeft - maxLeft) < 5 && Math.abs(currentTop - maxTop) < 5 &&
+                    Math.abs(currentWidth - maxWidth) < 10 && Math.abs(currentHeight - maxHeight) < 10) {
+                    // 还原
+                    windowEl.style.left = '60px';
+                    windowEl.style.top = '45px';
+                    windowEl.style.width = '680px';
+                    windowEl.style.height = '440px';
+                    windowEl.style.borderRadius = 'var(--window-radius)';
+                    windowEl.querySelector('.window-titlebar').style.borderRadius =
+                        'var(--window-radius) var(--window-radius) 0 0';
+                } else {
+                    // 存储之前的大小
+                    windowEl.dataset.prevLeft = currentLeft;
+                    windowEl.dataset.prevTop = currentTop;
+                    windowEl.dataset.prevWidth = currentWidth;
+                    windowEl.dataset.prevHeight = currentHeight;
+                    windowEl.style.transition = 'all 0.3s cubic-bezier(0.22, 0.61, 0.36, 1)';
+                    windowEl.style.left = maxLeft + 'px';
+                    windowEl.style.top = maxTop + 'px';
+                    windowEl.style.width = maxWidth + 'px';
+                    windowEl.style.height = maxHeight + 'px';
+                    windowEl.style.borderRadius = '0px';
+                    windowEl.querySelector('.window-titlebar').style.borderRadius = '0px';
+                    setTimeout(() => {
+                        windowEl.style.transition = '';
+                    }, 350);
+                }
+            }
+
+            function updateDockIndicator(appName, isRunning) {
+                const dockItem = dock.querySelector(`[data-app="${appName}"]`);
+                if (dockItem) {
+                    if (isRunning) {
+                        dockItem.classList.add('running');
+                    } else {
+                        dockItem.classList.remove('running');
+                    }
+                }
+            }
+
+            // ============ 全局鼠标事件 ============
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging && dragTarget) {
+                    const newLeft = e.clientX - dragOffsetX;
+                    const newTop = e.clientY - dragOffsetY;
+                    const maxLeft = window.innerWidth - parseInt(dragTarget.style.width) + 30;
+                    const maxTop = window.innerHeight - 100;
+
+                    dragTarget.style.left = Math.max(-30, Math.min(newLeft, maxLeft)) + 'px';
+                    dragTarget.style.top = Math.max(0, Math.min(newTop, maxTop)) + 'px';
+                }
+
+                // Dock 放大效果
+                updateDockMagnification(e);
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    dragTarget = null;
+                    document.body.style.cursor = '';
+                    // 清除可能残留的transition none
+                    if (dragTarget) dragTarget.style.transition = '';
+                }
+            });
+
+            // ============ Dock 放大效果 ============
+            function updateDockMagnification(e) {
+                const dockItems = dock.querySelectorAll('.dock-item');
+                const dockRect = dock.getBoundingClientRect();
+                const mouseX = e.clientX;
+                const mouseY = e.clientY;
+
+                // 清除之前的类
+                dockItems.forEach(item => {
+                    item.classList.remove('hover-near', 'hover-nearer');
+                });
+
+                // 检查鼠标是否在Dock附近
+                if (mouseY > dockRect.top - 60 && mouseY < dockRect.bottom + 20 &&
+                    mouseX > dockRect.left - 30 && mouseX < dockRect.right + 30) {
+
+                    let closestItem = null;
+                    let closestDist = Infinity;
+                    const itemData = [];
+
+                    dockItems.forEach(item => {
+                        const itemRect = item.getBoundingClientRect();
+                        const itemCenterX = itemRect.left + itemRect.width / 2;
+                        const dist = Math.abs(mouseX - itemCenterX);
+                        itemData.push({ item, dist, itemRect });
+                        if (dist < closestDist) {
+                            closestDist = dist;
+                            closestItem = item;
+                        }
+                    });
+
+                    // 给最近的项添加效果
+                    itemData.forEach(data => {
+                        if (data.item === closestItem && data.dist < 60) {
+                            // 最近的项，在CSS中已经有:hover处理
+                        } else if (data.dist < 90 && data.item !== closestItem) {
+                            data.item.classList.add('hover-nearer');
+                        } else if (data.dist < 140 && data.item !== closestItem) {
+                            data.item.classList.add('hover-near');
+                        }
+                    });
+                }
+            }
+
+            // ============ Dock 点击处理 ============
+            function handleDockClick(appName) {
+                const state = windowStates[appName];
+
+                if (state && state.windowId && !state.minimized) {
+                    // 窗口存在且未最小化，置顶
+                    const windowEl = document.getElementById(state.windowId);
+                    if (windowEl) {
+                        bringToFront(windowEl);
+                        activeWindowId = state.windowId;
+                        return;
+                    }
+                }
+
+                if (state && state.minimized && state.windowId) {
+                    // 恢复最小化的窗口
+                    restoreWindow(state.windowId);
+                    return;
+                }
+
+                // 打开新窗口
+                switch (appName) {
+                    case 'finder':
+                        openFinderHD();
+                        break;
+                    case 'terminal':
+                        openTerminalWindow();
+                        break;
+                    case 'settings':
+                        openSettingsWindow();
+                        break;
+                    case 'safari':
+                        showNotification('Safari', 'Safari 浏览器正在启动...（模拟）');
+                        break;
+                    case 'mail':
+                        showNotification('邮件', '邮件应用正在启动...（模拟）');
+                        break;
+                    case 'photos':
+                        showNotification('照片', '照片应用正在启动...（模拟）');
+                        break;
+                    case 'music':
+                        showNotification('音乐', '音乐应用正在启动...（模拟）');
+                        break;
+                    case 'trash':
+                        showNotification('废纸篓', '废纸篓为空');
+                        break;
+                }
+            }
+            // 暴露到全局
+            window.handleDockClick = handleDockClick;
+
+            // ============ Finder 窗口 ============
+            function openFinderHD() {
+                const content = `
+                    <div class="finder-toolbar">
+                        <span class="tb-btn disabled">◀</span>
+                        <span class="tb-btn disabled">▶</span>
+                        <span class="tb-btn">📁</span>
+                        <span class="tb-btn">📋</span>
+                        <span class="tb-btn">⚙️</span>
+                        <input class="tb-search" placeholder="搜索" type="text">
+                    </div>
+                    <div class="finder-layout">
+                        <div class="finder-sidebar">
+                            <div class="sidebar-section">
+                                <div class="sidebar-label">个人收藏</div>
+                                <div class="sidebar-item active"><span>📁</span> 应用程序</div>
+                                <div class="sidebar-item"><span>📁</span> 桌面</div>
+                                <div class="sidebar-item"><span>📁</span> 下载</div>
+                                <div class="sidebar-item"><span>📁</span> 文档</div>
+                                <div class="sidebar-item"><span>🖼️</span> 图片</div>
+                                <div class="sidebar-item"><span>🎵</span> 音乐</div>
+                                <div class="sidebar-item"><span>🎬</span> 影片</div>
+                            </div>
+                            <div class="sidebar-section">
+                                <div class="sidebar-label">设备</div>
+                                <div class="sidebar-item"><span>💾</span> Macintosh HD</div>
+                                <div class="sidebar-item"><span>💿</span> 外置磁盘</div>
+                            </div>
+                        </div>
+                        <div class="finder-main">
+                            <div class="finder-grid">
+                                <div class="finder-file"><span class="file-icon">📁</span><span class="file-name">应用程序</span></div>
+                                <div class="finder-file"><span class="file-icon">📁</span><span class="file-name">桌面</span></div>
+                                <div class="finder-file"><span class="file-icon">📁</span><span class="file-name">下载</span></div>
+                                <div class="finder-file"><span class="file-icon">📁</span><span class="file-name">文档</span></div>
+                                <div class="finder-file"><span class="file-icon">🖼️</span><span class="file-name">图片</span></div>
+                                <div class="finder-file"><span class="file-icon">🎵</span><span class="file-name">音乐</span></div>
+                                <div class="finder-file"><span class="file-icon">📄</span><span class="file-name">README.md</span></div>
+                                <div class="finder-file"><span class="file-icon">📊</span><span class="file-name">项目报告.xlsx</span></div>
+                                <div class="finder-file"><span class="file-icon">📝</span><span class="file-name">笔记.txt</span></div>
+                                <div class="finder-file"><span class="file-icon">🖼️</span><span class="file-name">照片库</span></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                createWindow('finder', 'Finder — Macintosh HD', 680, 440, content);
+            }
+
+            function openFinderDocs() {
+                const content = `
+                    <div class="finder-toolbar">
+                        <span class="tb-btn disabled">◀</span><span class="tb-btn disabled">▶</span>
+                        <span class="tb-btn">📁</span><span class="tb-btn">📋</span>
+                        <input class="tb-search" placeholder="搜索" type="text">
+                    </div>
+                    <div class="finder-layout">
+                        <div class="finder-sidebar">
+                            <div class="sidebar-section">
+                                <div class="sidebar-label">个人收藏</div>
+                                <div class="sidebar-item"><span>📁</span> 文档</div>
+                                <div class="sidebar-item active"><span>📁</span> 桌面</div>
+                                <div class="sidebar-item"><span>📁</span> 下载</div>
+                            </div>
+                        </div>
+                        <div class="finder-main">
+                            <div class="finder-grid">
+                                <div class="finder-file"><span class="file-icon">📄</span><span class="file-name">项目计划.docx</span></div>
+                                <div class="finder-file"><span class="file-icon">📄</span><span class="file-name">会议纪要.pdf</span></div>
+                                <div class="finder-file"><span class="file-icon">📊</span><span class="file-name">数据报表.xlsx</span></div>
+                                <div class="finder-file"><span class="file-icon">📝</span><span class="file-name">TODO.txt</span></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                createWindow('finder', 'Finder — 文档', 600, 380, content, { x: 100, y: 60 });
+            }
+
+            function openFinderDownloads() {
+                const content = `
+                    <div class="finder-toolbar">
+                        <span class="tb-btn disabled">◀</span><span class="tb-btn disabled">▶</span>
+                        <span class="tb-btn">📁</span>
+                        <input class="tb-search" placeholder="搜索" type="text">
+                    </div>
+                    <div class="finder-layout">
+                        <div class="finder-sidebar">
+                            <div class="sidebar-section">
+                                <div class="sidebar-label">个人收藏</div>
+                                <div class="sidebar-item active"><span>📁</span> 下载</div>
+                            </div>
+                        </div>
+                        <div class="finder-main">
+                            <div class="finder-grid">
+                                <div class="finder-file"><span class="file-icon">📦</span><span class="file-name">app-demo.zip</span></div>
+                                <div class="finder-file"><span class="file-icon">🖼️</span><span class="file-name">截图2024.png</span></div>
+                                <div class="finder-file"><span class="file-icon">📄</span><span class="file-name">resume.pdf</span></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                createWindow('finder', 'Finder — 下载', 580, 360, content, { x: 140, y: 80 });
+            }
+
+            function openFinderPics() {
+                const content = `
+                    <div class="finder-toolbar">
+                        <span class="tb-btn disabled">◀</span><span class="tb-btn disabled">▶</span>
+                        <span class="tb-btn">🖼️</span>
+                        <input class="tb-search" placeholder="搜索" type="text">
+                    </div>
+                    <div class="finder-layout">
+                        <div class="finder-sidebar">
+                            <div class="sidebar-section">
+                                <div class="sidebar-label">个人收藏</div>
+                                <div class="sidebar-item active"><span>🖼️</span> 图片</div>
+                            </div>
+                        </div>
+                        <div class="finder-main">
+                            <div class="finder-grid">
+                                <div class="finder-file"><span class="file-icon">🏞️</span><span class="file-name">风景照.jpg</span></div>
+                                <div class="finder-file"><span class="file-icon">👨‍👩‍👧</span><span class="file-name">全家福.jpg</span></div>
+                                <div class="finder-file"><span class="file-icon">🐱</span><span class="file-name">猫咪.png</span></div>
+                                <div class="finder-file"><span class="file-icon">🌅</span><span class="file-name">日落.jpeg</span></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                createWindow('finder', 'Finder — 图片', 550, 350, content, { x: 170, y: 95 });
+            }
+
+            // ============ 设置窗口 ============
+            function openSettingsWindow() {
+                const content = `
+                    <div class="settings-content">
+                        <h3 style="margin-bottom:8px;color:#1d1d1f;">系统设置</h3>
+                        <div class="settings-row">
+                            <span class="settings-label">🌙 深色模式</span>
+                            <div class="settings-toggle" onclick="this.classList.toggle('on')"></div>
+                        </div>
+                        <div class="settings-row">
+                            <span class="settings-label">🔊 声音</span>
+                            <div class="settings-toggle on" onclick="this.classList.toggle('on')"></div>
+                        </div>
+                        <div class="settings-row">
+                            <span class="settings-label">📶 Wi-Fi</span>
+                            <div class="settings-toggle on" onclick="this.classList.toggle('on')"></div>
+                        </div>
+                        <div class="settings-row">
+                            <span class="settings-label">🔵 蓝牙</span>
+                            <div class="settings-toggle" onclick="this.classList.toggle('on')"></div>
+                        </div>
+                        <div class="settings-row">
+                            <span class="settings-label">🔔 通知</span>
+                            <div class="settings-toggle on" onclick="this.classList.toggle('on')"></div>
+                        </div>
+                        <div class="settings-row" style="cursor:pointer;" onclick="openAboutWindow()">
+                            <span class="settings-label">🖥️ 关于本机</span>
+                            <span style="color:#888;">→</span>
+                        </div>
+                    </div>
+                `;
+                createWindow('settings', '系统设置', 480, 420, content, { x: 200, y: 70 });
+            }
+
+            // ============ 关于本机 ============
+            function openAboutWindow() {
+                const content = `
+                    <div class="about-content">
+                        <span class="about-icon">🖥️</span>
+                        <h2>macOS Sequoia</h2>
+                        <span class="about-version">版本 15.0 (模拟器)</span>
+                        <div class="about-details">
+                            <p>Mac (模拟) • Apple M3 芯片</p>
+                            <p>内存 16 GB • 存储 512 GB</p>
+                            <p>序列号 C02XXXXXXX</p>
+                        </div>
+                        <button onclick="showNotification('系统报告','正在生成系统报告...')">系统报告...</button>
+                        <button onclick="showNotification('软件更新','您的Mac是最新版本。')" style="background:#e0e0e0;color:#333;margin-left:6px;">软件更新...</button>
+                    </div>
+                `;
+                createWindow('about', '关于本机', 420, 420, content, { x: 250, y: 90 });
+            }
+
+            // ============ 终端窗口 ============
+            function openTerminalWindow() {
+                const content = `
+                    <div class="terminal-content">
+                        <span style="color:#aaa;">Last login: ${new Date().toLocaleString()}</span>
+                        <span class="prompt">user@MacBook-Pro</span> <span style="color:#fff;">~</span> <span class="prompt">%</span> <span style="color:#fff;">echo "Hello, macOS!"</span>
+                        Hello, macOS!
+                        <span class="prompt">user@MacBook-Pro</span> <span style="color:#fff;">~</span> <span class="prompt">%</span> <span style="color:#fff;">sw_vers</span>
+                        ProductName:    macOS
+                        ProductVersion: 15.0
+                        BuildVersion:   24A335
+                        <span class="prompt">user@MacBook-Pro</span> <span style="color:#fff;">~</span> <span class="prompt">%</span> <span style="color:#fff;">uptime</span>
+                        14:32  up 3 days,  7:15, 2 users, load averages: 1.24 1.18 1.09
+                        <span class="prompt">user@MacBook-Pro</span> <span style="color:#fff;">~</span> <span class="prompt">%</span> <span class="cursor"></span>
+                    </div>
+                `;
+                createWindow('terminal', '终端 — zsh — 80×24', 580, 380, content, { x: 160, y: 100, noPadding: true,
+                    showButtons: true });
+            }
+
+            // ============ 通知 ============
+            function showNotification(title, message) {
+                const notif = document.createElement('div');
+                notif.className = 'notification';
+                notif.innerHTML = `
+                    <span style="font-size:24px;">🔔</span>
+                    <div>
+                        <div style="font-weight:600;margin-bottom:3px;">${title}</div>
+                        <div style="color:#666;font-size:12px;">${message}</div>
+                    </div>
+                `;
+                notificationContainer.appendChild(notif);
+
+                // 自动移除
+                setTimeout(() => {
+                    notif.classList.add('fading');
+                    notif.addEventListener('animationend', () => {
+                        notif.remove();
+                    }, { once: true });
+                }, 3000);
+
+                // 点击关闭
+                notif.addEventListener('click', () => {
+                    notif.classList.add('fading');
+                    notif.addEventListener('animationend', () => {
+                        notif.remove();
+                    }, { once: true });
+                });
+            }
+
+            // ============ Spotlight ============
+            function openSpotlight() {
+                spotlightOverlay.classList.add('show');
+                spotlightInput.value = '';
+                spotlightInput.focus();
+                document.getElementById('spotlightResults').style.display = 'block';
+            }
+
+            function closeSpotlight() {
+                spotlightOverlay.classList.remove('show');
+            }
+
+            document.getElementById('spotlightTrigger').addEventListener('click', (e) => {
+                e.stopPropagation();
+                openSpotlight();
+            });
+
+            spotlightOverlay.addEventListener('click', (e) => {
+                if (e.target === spotlightOverlay) {
+                    closeSpotlight();
+                }
+            });
+
+            spotlightInput.addEventListener('input', () => {
+                const query = spotlightInput.value.toLowerCase();
+                const results = document.getElementById('spotlightResults');
+                const items = results.querySelectorAll('.sp-item');
+                let hasVisible = false;
+                items.forEach(item => {
+                    const text = item.textContent.toLowerCase();
+                    if (query === '' || text.includes(query)) {
+                        item.style.display = 'flex';
+                        hasVisible = true;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+                results.style.display = hasVisible ? 'block' : 'none';
+            });
+
+            document.getElementById('spotlightResults').addEventListener('click', (e) => {
+                const item = e.target.closest('.sp-item');
+                if (!item) return;
+                const action = item.dataset.action;
+                closeSpotlight();
+                switch (action) {
+                    case 'open-finder-hd':
+                        openFinderHD();
+                        break;
+                    case 'open-about':
+                        openAboutWindow();
+                        break;
+                    case 'open-settings':
+                        openSettingsWindow();
+                        break;
+                    case 'open-terminal':
+                        openTerminalWindow();
+                        break;
+                    case 'open-finder-docs':
+                        openFinderDocs();
+                        break;
+                }
+            });
+
+            // 键盘快捷键
+            document.addEventListener('keydown', (e) => {
+                // Ctrl+Space 或 Cmd+Space 打开Spotlight
+                if ((e.ctrlKey || e.metaKey) && e.key === ' ') {
+                    e.preventDefault();
+                    if (spotlightOverlay.classList.contains('show')) {
+                        closeSpotlight();
+                    } else {
+                        openSpotlight();
+                    }
+                }
+                // Escape 关闭
+                if (e.key === 'Escape') {
+                    if (spotlightOverlay.classList.contains('show')) {
+                        closeSpotlight();
+                    }
+                    if (appleDropdown.classList.contains('show')) {
+                        appleDropdown.classList.remove('show');
+                    }
+                    if (contextMenu.classList.contains('show')) {
+                        contextMenu.classList.remove('show');
+                    }
+                }
+            });
+
+            // ============ 暴露函数到全局 ============
+            window.openFinderHD = openFinderHD;
+            window.openFinderDocs = openFinderDocs;
+            window.openFinderDownloads = openFinderDownloads;
+            window.openFinderPics = openFinderPics;
+            window.openSettingsWindow = openSettingsWindow;
+            window.openAboutWindow = openAboutWindow;
+            window.openTerminalWindow = openTerminalWindow;
+            window.showNotification = showNotification;
+
+            // ============ 初始启动 ============
+            // 默认打开一个Finder窗口
+            setTimeout(() => {
+                openFinderHD();
+            }, 400);
+
+            // 初始化时更新Dock指示器
+            updateDockIndicator('finder', true);
+
+            console.log('🍎 macOS 模拟器已就绪');
+            console.log('  - 双击桌面图标打开窗口');
+            console.log('  - 点击 Dock 图标启动应用');
+            console.log('  - 拖动窗口标题栏移动窗口');
+            console.log('  - 右键桌面打开菜单');
+            console.log('  - 点击  打开Apple菜单');
+            console.log('  - 按 Ctrl+Space 打开聚焦搜索');
+            console.log('  - 红黄绿按钮控制窗口');
+            console.log('  - 桌面右键查看选项');
+        })();
+    </script>
+</body>
+</html>

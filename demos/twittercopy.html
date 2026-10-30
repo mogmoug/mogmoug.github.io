@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>主页 / Twitter</title>
+<style>
+  :root{
+    --blue:#1da1f2;
+    --blue-dark:#1a91da;
+    --text:#14171a;
+    --gray:#657786;
+    --light-gray:#aab8c2;
+    --border:#e1e8ed;
+    --hover:#f5f8fa;
+    --tint:#e8f5fe;
+    --retweet:#17bf63;
+    --like:#e0245e;
+  }
+
+  *{ box-sizing:border-box; }
+
+  html,body{ margin:0; padding:0; }
+
+  body{
+    background:#fff;
+    color:var(--text);
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB",
+                "Microsoft YaHei", sans-serif;
+    font-size:15px;
+    line-height:20px;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+  }
+
+  a{ text-decoration:none; color:inherit; }
+  button{ font-family:inherit; }
+
+  ::-webkit-scrollbar{ width:0px; }
+
+  /* ---------- 布局 ---------- */
+  .app{
+    display:flex;
+    max-width:1250px;
+    margin:0 auto;
+    align-items:flex-start;
+  }
+
+  /* ---------- 左侧导航 ---------- */
+  .sidebar-left{
+    width:275px;
+    flex-shrink:0;
+    padding:0 12px;
+    position:sticky;
+    top:0;
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+    overflow-y:auto;
+  }
+
+  .logo{
+    width:52px; height:52px;
+    display:flex; align-items:center; justify-content:center;
+    border-radius:50%;
+    margin:2px 0 4px;
+    cursor:pointer;
+    transition:background-color .2s;
+  }
+  .logo:hover{ background:var(--tint); }
+  .logo svg{ fill:var(--blue); }
+
+  nav{ display:flex; flex-direction:column; align-items:flex-start; }
+
+  .nav-item{
+    display:flex;
+    align-items:center;
+    gap:20px;
+    padding:11px 13px;
+    margin-bottom:2px;
+    border-radius:9999px;
+    font-size:20px;
+    font-weight:700;
+    color:var(--text);
+    cursor:pointer;
+    transition:background-color .2s, color .2s;
+    user-select:none;
+  }
+  .nav-item svg{ width:26px; height:26px; fill:var(--text); transition:fill .2s; }
+  .nav-item:hover{ background:var(--tint); color:var(--blue); }
+  .nav-item:hover svg{ fill:var(--blue); }
+  .nav-item.active{ font-weight:800; }
+
+  .tweet-btn{
+    width:100%;
+    margin-top:14px;
+    padding:15px 0;
+    background:var(--blue);
+    color:#fff;
+    border:none;
+    border-radius:9999px;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+    transition:background-color .2s;
+    box-shadow:0 0 0 rgba(0,0,0,0);
+  }
+  .tweet-btn:hover{ background:var(--blue-dark); }
+
+  /* ---------- 中间主列 ---------- */
+  .main{
+    width:600px;
+    flex-shrink:0;
+    border-left:1px solid var(--border);
+    border-right:1px solid var(--border);
+    min-height:100vh;
+  }
+
+  .main-header{
+    position:sticky;
+    top:0;
+    z-index:20;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    height:53px;
+    padding:0 16px;
+    background:rgba(255,255,255,.85);
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border);
+    cursor:pointer;
+  }
+  .main-header h2{ font-size:19px; font-weight:800; margin:0; line-height:1; }
+
+  .icon-btn{
+    width:38px; height:38px;
+    display:flex; align-items:center; justify-content:center;
+    border:none; background:transparent; border-radius:50%;
+    cursor:pointer;
+    transition:background-color .2s;
+  }
+  .icon-btn:hover{ background:var(--tint); }
+  .icon-btn svg{ width:22px; height:22px; fill:var(--blue); }
+
+  /* ---------- 发推框 ---------- */
+  .composer{
+    display:flex;
+    padding:14px 16px 8px;
+    border-bottom:1px solid var(--border);
+  }
+  .composer-body{ flex:1; margin-left:12px; }
+
+  .composer-placeholder{
+    font-size:19px;
+    color:var(--gray);
+    padding:10px 0 34px;
+    line-height:24px;
+  }
+
+  .composer-toolbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    border-top:1px solid #f0f3f5;
+    padding-top:10px;
+  }
+  .composer-icons{ display:flex; align-items:center; gap:2px; margin-left:-8px; }
+  .composer-icons .c-icon{
+    width:34px; height:34px;
+    display:flex; align-items:center; justify-content:center;
+    border-radius:50%; cursor:pointer;
+    transition:background-color .2s;
+  }
+  .composer-icons .c-icon:hover{ background:var(--tint); }
+  .composer-icons svg{ width:19px; height:19px; fill:var(--blue); }
+
+  .post-btn{
+    padding:8px 18px;
+    border:none;
+    border-radius:9999px;
+    background:var(--blue);
+    color:#fff;
+    font-size:15px;
+    font-weight:700;
+    cursor:default;
+    opacity:.5;
+  }
+
+  /* ---------- 头像 ---------- */
+  .avatar{
+    width:48px; height:48px;
+    border-radius:50%;
+    flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    color:#fff;
+    font-weight:700;
+    font-size:19px;
+    user-select:none;
+    letter-spacing:0;
+    overflow:hidden;
+  }
+  .av-1{ background:linear-gradient(140deg,#f6a623,#e05c2b); }
+  .av-2{ background:linear-gradient(140deg,#8e7bff,#4a3aff); }
+  .av-3{ background:linear-gradient(140deg,#36d1dc,#5b86e5); }
+  .av-4{ background:linear-gradient(140deg,#f857a6,#ff5858); }
+  .av-5{ background:linear-gradient(140deg,#11998e,#38ef7d); }
+  .av-6{ background:linear-gradient(140deg,#ff9966,#ff5e62); }
+  .av-7{ background:linear-gradient(140deg,#4b6cb7,#182848); }
+  .av-8{ background:linear-gradient(140deg,#e0c341,#b58b00); }
+
+  /* ---------- 推文 ---------- */
+  .tweet{
+    display:flex;
+    padding:12px 16px;
+    border-bottom:1px solid var(--border);
+    cursor:pointer;
+    transition:background-color .12s;
+  }
+  .tweet:hover{ background:var(--hover); }
+
+  .tweet-body{ flex:1; min-width:0; margin-left:12px; }
+
+  .tweet-head{
+    display:flex;
+    align-items:center;
+    font-size:15px;
+    line-height:20px;
+    min-width:0;
+  }
+  .tweet-name{
+    font-weight:700;
+    color:var(--text);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    max-width:200px;
+  }
+  .tweet-name:hover{ text-decoration:underline; }
+
+  .badge{ width:17px; height:17px; margin-left:4px; flex-shrink:0; }
+
+  .tweet-handle,
+  .tweet-time{ color:var(--gray); white-space:nowrap; }
+  .tweet-handle{ margin-left:5px; overflow:hidden; text-overflow:ellipsis; }
+  .tweet-time:hover{ text-decoration:underline; }
+  .tweet-sep{ color:var(--gray); margin:0 4px; }
+
+  .tweet-more{
+    margin-left:auto;
+    width:30px; height:30px;
+    display:flex; align-items:center; justify-content:center;
+    border:none; background:transparent; border-radius:50%;
+    cursor:pointer;
+    flex-shrink:0;
+    transition:background-color .2s;
+  }
+  .tweet-more:hover{ background:#e8f5fe; }
+  .tweet-more svg{ width:16px; height:16px; fill:var(--gray); }
+  .tweet-more:hover svg{ fill:var(--blue); }
+
+  .tweet-text{
+    font-size:15px;
+    line-height:20px;
+    margin-top:2px;
+    white-space:pre-wrap;
+    word-wrap:break-word;
+    overflow-wrap:break-word;
+  }
+
+  .tweet-media{
+    margin-top:12px;
+    height:250px;
+    border:1px solid var(--border);
+    border-radius:16px;
+    overflow:hidden;
+    position:relative;
+  }
+  .tweet-media::after{
+    content:"";
+    position:absolute; inset:0;
+    background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.35), transparent 60%);
+  }
+  .media-1{ background:linear-gradient(150deg,#f9d423,#ff4e50); }
+  .media-2{ background:linear-gradient(150deg,#2193b0,#6dd5ed); }
+
+  /* ---------- 操作栏 ---------- */
+  .tweet-actions{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    max-width:425px;
+    margin:12px 0 0 -6px;
+  }
+  .action{
+    display:flex;
+    align-items:center;
+    color:var(--gray);
+    font-size:13px;
+    padding:2px 6px;
+    cursor:pointer;
+    transition:color .15s;
+    user-select:none;
+  }
+  .action svg{ width:18px; height:18px; fill:var(--gray); transition:fill .15s; }
+  .action .count{ margin-left:8px; min-width:14px; }
+
+  .action.reply:hover,
+  .action.share:hover{ color:var(--blue); }
+  .action.reply:hover svg,
+  .action.share:hover svg{ fill:var(--blue); }
+
+  .action.retweet:hover{ color:var(--retweet); }
+  .action.retweet:hover svg{ fill:var(--retweet); }
+
+  .action.like:hover{ color:var(--like); }
+  .action.like:hover svg{ fill:var(--like); }
+
+  .action.like.liked{ color:var(--like); }
+  .action.like.liked svg{ fill:var(--like); }
+
+  /* ---------- 右侧栏 ---------- */
+  .sidebar-right{
+    width:350px;
+    flex-shrink:0;
+    padding-left:30px;
+    position:sticky;
+    top:0;
+    height:100vh;
+    overflow-y:auto;
+    padding-bottom:40px;
+  }
+
+  .search-wrap{
+    position:sticky;
+    top:0;
+    background:#fff;
+    padding:8px 0 10px;
+    z-index:10;
+  }
+  .search-box{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    background:#e6ecf0;
+    border:1px solid transparent;
+    border-radius:9999px;
+    padding:10px 16px;
+    transition:background-color .2s, border-color .2s;
+  }
+  .search-box:focus-within{
+    background:#fff;
+    border-color:var(--blue);
+  }
+  .search-box svg{ width:18px; height:18px; fill:var(--gray); flex-shrink:0; }
+  .search-box input{
+    border:none;
+    outline:none;
+    background:transparent;
+    flex:1;
+    font-size:15px;
+    font-family:inherit;
+    color:var(--text);
+    min-width:0;
+  }
+  .search-box input::placeholder{ color:var(--gray); }
+
+  .card{
+    background:#f5f8fa;
+    border-radius:16px;
+    margin-bottom:16px;
+    overflow:hidden;
+  }
+  .card-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:12px 16px 8px;
+  }
+  .card-header h3{
+    font-size:19px;
+    font-weight:800;
+    margin:0;
+    line-height:24px;
+  }
+
+  .trend{
+    padding:10px 16px;
+    cursor:pointer;
+    transition:background-color .2s;
+  }
+  .trend:hover{ background:#e8f5fe; }
+  .trend-cat{ font-size:13px; color:var(--gray); line-height:16px; }
+  .trend-name{ font-size:15px; font-weight:700; margin-top:2px; line-height:20px; }
+  .trend-count{ font-size:13px; color:var(--gray); margin-top:2px; line-height:16px; }
+
+  .card-footer{
+    padding:14px 16px;
+    color:var(--blue);
+    font-size:15px;
+    cursor:pointer;
+    transition:background-color .2s;
+    border-bottom-left-radius:16px;
+    border-bottom-right-radius:16px;
+  }
+  .card-footer:hover{ background:#e8f5fe; }
+
+  .follow-row{
+    display:flex;
+    align-items:center;
+    padding:10px 16px;
+    cursor:pointer;
+    transition:background-color .2s;
+  }
+  .follow-row:hover{ background:#e8f5fe; }
+  .follow-row .avatar{ width:48px; height:48px; font-size:17px; }
+  .follow-info{ flex:1; min-width:0; margin-left:10px; }
+  .follow-name{
+    font-size:15px; font-weight:700; line-height:20px;
+    display:flex; align-items:center;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .follow-handle{ font-size:15px; color:var(--gray); line-height:20px; }
+
+  .follow-btn{
+    border:1px solid var(--blue);
+    background:transparent;
+    color:var(--blue);
+    font-size:15px;
+    font-weight:700;
+    border-radius:9999px;
+    padding:0 16px;
+    height:32px;
+    cursor:pointer;
+    transition:background-color .2s;
+    flex-shrink:0;
+  }
+  .follow-btn:hover{ background:#e8f5fe; }
+
+  .side-footer{
+    font-size:13px;
+    color:var(--gray);
+    line-height:18px;
+    padding:0 16px;
+  }
+  .side-footer a{ margin-right:10px; }
+  .side-footer a:hover{ text-decoration:underline; }
+
+  @media (max-width:1100px){
+    .sidebar-right{ display:none; }
+    .app{ max-width:880px; }
+  }
+  @media (max-width:800px){
+    .sidebar-left{ width:80px; padding:0 6px; align-items:center; }
+    .nav-item span{ display:none; }
+    .nav-item{ padding:12px; }
+    .tweet-btn{ width:52px; height:52px; padding:0; font-size:0; }
+    .tweet-btn::after{ content:"＋"; font-size:24px; }
+    .app{ max-width:680px; }
+    .main{ width:100%; border-right:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ==================== 左侧导航 ==================== -->
+  <header class="sidebar-left">
+    <div class="logo" title="Twitter">
+      <svg viewBox="0 0 24 24" width="30" height="30">
+        <path d="M23.643 4.937c-.835.37-1.732.62-2.675.733.962-.576 1.7-1.49 2.048-2.578-.9.534-1.897.922-2.958 1.13-.85-.904-2.06-1.47-3.4-1.47-2.572 0-4.658 2.086-4.658 4.66 0 .364.042.718.12 1.06-3.873-.195-7.304-2.05-9.602-4.868-.4.69-.63 1.49-.63 2.342 0 1.616.823 3.043 2.072 3.878-.764-.025-1.482-.234-2.11-.583v.06c0 2.257 1.605 4.14 3.737 4.568-.392.106-.803.162-1.227.162-.3 0-.593-.028-.877-.082.593 1.85 2.313 3.198 4.352 3.234-1.595 1.25-3.604 1.995-5.786 1.995-.376 0-.747-.022-1.112-.065 2.062 1.323 4.51 2.093 7.14 2.093 8.57 0 13.255-7.098 13.255-13.254 0-.2-.005-.402-.014-.602.91-.658 1.7-1.477 2.323-2.41z"/>
+      </svg>
+    </div>
+
+    <nav>
+      <div class="nav-item active">
+        <svg viewBox="0 0 24 24"><path d="M12 1.696L.622 8.807l1.06 1.696L3 9.679V19.5C3 20.881 4.119 22 5.5 22h13c1.381 0 2.5-1.119 2.5-2.5V9.679l1.318.824 1.06-1.696L12 1.696zM12 16.5c-1.933 0-3.5-1.567-3.5-3.5s1.567-3.5 3.5-3.5 3.5 1.567 3.5 3.5-1.567 3.5-3.5 3.5z"/></svg>
+        <span>主页</span>
+      </div>
+
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24"><path d="M21.53 20.47l-4.693-4.694C18.207 14.31 19.25 12.28 19.25 10c0-5.1-4.15-9.25-9.25-9.25S.75 4.9.75 10s4.15 9.25 9.25 9.25c2.28 0 4.31-1.043 5.776-2.413l4.694 4.693c.146.147.338.22.53.22s.384-.073.53-.22c.293-.293.293-.767 0-1.06zM3.25 10c0-3.722 3.028-6.75 6.75-6.75s6.75 3.028 6.75 6.75-3.028 6.75-6.75 6.75S3.25 13.722 3.25 10z"/></svg>
+        <span>探索</span>
+      </div>
+
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24"><path d="M21.5 15.5l-1.5-2V9c0-4.4-3.6-8-8-8S4 4.6 4 9v4.5l-1.5 2v1h19v-1zM12 22c1.3 0 2.4-.8 2.8-2h-5.6c.4 1.2 1.5 2 2.8 2z"/></svg>
+        <span>通知</span>
+      </div>
+
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24"><path d="M19.5 4h-15C3.12 4 2 5.12 2 6.5v11C2 18.88 3.12 20 4.5 20h15c1.38 0 2.5-1.12 2.5-2.5v-11C22 5.12 20.88 4 19.5 4zm-.2 2l-7.3 5.5L4.7 6h14.6zM4 17.5v-9.4l8 6 8-6v9.4c0 .28-.22.5-.5.5h-15c-.28 0-.5-.22-.5-.5z"/></svg>
+        <span>私信</span>
+      </div>
+
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24"><path d="M4 3h16c.55 0 1 .45 1 1v18l-9-6-9 6V4c0-.55.45-1 1-1z"/></svg>
+        <span>书签</span>
+      </div>
+
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24"><path d="M3 4h4v4H3V4zm6 1h12v2H9V5zM3 10h4v4H3v-4zm6 1h12v2H9v-2zM3 16h4v4H3v-4zm6 1h12v2H9v-2z"/></svg>
+        <span>列表</span>
+      </div>
+
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24"><path d="M12 11.5c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2.5c-3.87 0-9 1.94-9 5.8V22h18v-2.2c0-3.86-5.13-5.8-9-5.8z"/></svg>
+        <span>个人资料</span>
+      </div>
+
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24"><path d="M12 22.75C6.07 22.75 1.25 17.93 1.25 12S6.07 1.25 12 1.25 22.75 6.07 22.75 12 17.93 22.75 12 22.75zm0-19.5c-4.83 0-8.75 3.92-8.75 8.75s3.92 8.75 8.75 8.75 8.75-3.92 8.75-8.75S16.83 3.25 12 3.25zm-4 8.75c.69 0 1.25.56 1.25 1.25s-.56 1.25-1.25 1.25S6.75 13.94 6.75 13.25 7.31 12 8 12zm4 0c.69 0 1.25.56 1.25 1.25s-.56 1.25-1.25 1.25-1.25-.56-1.25-1.25S11.31 12 12 12zm4 0c.69 0 1.25.56 1.25 1.25s-.56 1.25-1.25 1.25-1.25-.56-1.25-1.25S15.31 12 16 12z"/></svg>
+        <span>更多</span>
+      </div>
+    </nav>
+
+    <button class="tweet-btn">发帖</button>
+  </header>
+
+  <!-- ==================== 主列 ==================== -->
+  <main class="main">
+
+    <div class="main-header">
+      <h2>主页</h2>
+      <button class="icon-btn" title="查看最新推文">
+        <svg viewBox="0 0 24 24"><path d="M22.772 10.506l-5.618-2.192-2.16-6.5c-.102-.307-.39-.514-.712-.514s-.61.207-.712.513l-2.16 6.5-5.62 2.192c-.287.112-.477.39-.477.7s.19.588.476.7l5.62 2.192 2.16 6.5c.102.306.39.513.712.513s.61-.207.712-.513l2.16-6.5 5.618-2.192c.287-.112.477-.39.477-.7s-.19-.588-.476-.7zm-6.51 1.936l-4.6 1.794c-.19.075-.34.225-.415.415l-1.77 5.32-1.77-5.32c-.075-.19-.225-.34-.415-.415l-4.6-1.794 4.6-1.794c.19-.075.34-.225.415-.415l1.77-5.32 1.77 5.32c.075.19.225.34.415.415l4.6 1.794z"/></svg>
+      </button>
+    </div>
+
+    <!-- 发推框 -->
+    <div class="composer">
+      <div class="avatar av-1">王</div>
+      <div class="composer-body">
+        <div class="composer-placeholder">有什么新鲜事？</div>
+        <div class="composer-toolbar">
+          <div class="composer-icons">
+            <div class="c-icon" title="图片">
+              <svg viewBox="0 0 24 24"><path d="M19.75 2H4.25C3.01 2 2 3.01 2 4.25v15.5C2 20.99 3.01 22 4.25 22h15.5c1.24 0 2.25-1.01 2.25-2.25V4.25C22 3.01 20.99 2 19.75 2zM4.25 3.5h15.5c.413 0 .75.337.75.75v9.676l-3.858-3.858c-.14-.14-.369-.14-.51 0l-5.4 5.4-2.11-2.11c-.14-.14-.369-.14-.51 0L3.5 16.99V4.25c0-.413.337-.75.75-.75zm15.5 17h-15.5c-.413 0-.75-.337-.75-.75v-1.882l5.09-5.09 2.11 2.11c.14.14.37.14.51 0l5.4-5.4 3.89 3.89v6.372c0 .413-.337.75-.75.75zM8 9c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2z"/></svg>
+            </div>
+            <div class="c-icon" title="GIF">
+              <svg viewBox="0 0 24 24"><path d="M19 4H5C3.34 4 2 5.34 2 7v10c0 1.66 1.34 3 3 3h14c1.66 0 3-1.34 3-3V7c0-1.66-1.34-3-3-3zm1.5 13c0 .83-.67 1.5-1.5 1.5H5c-.83 0-1.5-.67-1.5-1.5V7c0-.83.67-1.5 1.5-1.5h14c.83 0 1.5.67 1.5 1.5v10zM8.5 9.5c-.83 0-1.5.67-1.5 1.5v2c0 .83.67 1.5 1.5 1.5H10c.28 0 .5-.22.5-.5v-2c0-.28-.22-.5-.5-.5H8.5v1h1v1H8.5c-.28 0-.5-.22-.5-.5v-2c0-.28.22-.5.5-.5h1.5v-1H8.5zm3 0v5h1v-5h-1zm3.5 0v5h1v-2h1.5v-1H16v-1h2v-1h-3z"/></svg>
+            </div>
+            <div class="c-icon" title="投票">
+              <svg viewBox="0 0 24 24"><path d="M6 5V3h12v2h1.5c.83 0 1.5.67 1.5 1.5v12c0 .83-.67 1.5-1.5 1.5h-15C3.67 20 3 19.33 3 18.5v-12C3 5.67 3.67 5 4.5 5H6zm0 2H4.5v11.5h15V7H18v2.5c0 .28-.22.5-.5.5h-11c-.28 0-.5-.22-.5-.5V7zm1.5-2v3.5h9V5h-9z"/></svg>
+            </div>
+            <div class="c-icon" title="表情">
+              <svg viewBox="0 0 24 24"><path d="M12 22.75C6.07 22.75 1.25 17.93 1.25 12S6.07 1.25 12 1.25 22.75 6.07 22.75 12 17.93 22.75 12 22.75zm0-20C6.9 2.75 2.75 6.9 2.75 12S6.9 21.25 12 21.25s9.25-4.15 9.25-9.25S17.1 2.75 12 2.75zM8.5 9.5c.83 0 1.5.67 1.5 1.5h1.5c0-1.66-1.34-3-3-3s-3 1.34-3 3H7c0-.83.67-1.5 1.5-1.5zm7 0c.83 0 1.5.67 1.5 1.5h1.5c0-1.66-1.34-3-3-3s-3 1.34-3 3h1.5c0-.83.67-1.5 1.5-1.5zM12 19c2.6 0 4.83-1.62 5.7-3.9l-1.42-.5C15.65 16.26 13.98 17.5 12 17.5s-3.65-1.24-4.28-2.9l-1.42.5C7.17 17.38 9.4 19 12 19z"/></svg>
+            </div>
+            <div class="c-icon" title="日程">
+              <svg viewBox="0 0 24 24"><path d="M6 3V2h2v1h8V2h2v1h1.5C20.88 3 22 4.12 22 5.5v15c0 1.38-1.12 2.5-2.5 2.5h-15C3.12 23 2 21.88 2 20.5v-15C2 4.12 3.12 3 4.5 3H6zM4.5 4.5c-.28 0-.5.22-.5.5v3.5h16V5c0-.28-.22-.5-.5-.5h-15zM20 20v-9.5H4V20c0 .28.22.5.5.5h15c.28 0 .5-.22.5-.5z"/></svg>
+            </div>
+          </div>
+          <button class="post-btn" disabled>发帖</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 推文 1 ============ -->
+    <article class="tweet">
+      <div class="avatar av-1">王</div>
+      <div class="tweet-body">
+        <div class="tweet-head">
+          <span class="tweet-name">科技评论员老王</span>
+          <svg class="badge" viewBox="0 0 24 24"><path fill="#1da1f2" d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.415-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .495.083.965.238 1.4-1.272.65-2.147 2.018-2.147 3.6 0 1.495.782 2.798 1.942 3.486-.02.17-.032.34-.032.514 0 2.21 1.708 4 3.818 4 .47 0 .92-.086 1.335-.25.62 1.334 1.926 2.25 3.437 2.25 1.512 0 2.818-.916 3.437-2.25.415.163.865.248 1.336.248 2.11 0 3.818-1.79 3.818-4 0-.174-.012-.344-.033-.513 1.158-.687 1.943-1.99 1.943-3.484zm-6.616-3.334l-4.334 6.5c-.145.217-.382.334-.625.334-.143 0-.288-.04-.416-.126l-.115-.094-2.415-2.415c-.293-.293-.293-.768 0-1.06s.768-.294 1.06 0l1.77 1.767 3.825-5.74c.23-.345.696-.436 1.04-.207.346.23.44.696.21 1.04z"/></svg>
+          <span class="tweet-handle">@laowang_tech</span>
+          <span class="tweet-sep">·</span>
+          <span class="tweet-time">3小时</span>
+          <button class="tweet-more">
+            <svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+          </button>
+        </div>
+        <div class="tweet-text">用了三天新系统，说几个不太行的地方：动画确实丝滑了，但后台杀得比上一版还狠。早上八点打开的备忘录，中午再点开还得重新加载一遍。</div>
+        <div class="tweet-actions">
+          <div class="action reply">
+            <svg viewBox="0 0 24 24"><path d="M14.046 2.242l-4.148-.01h-.002c-4.374 0-7.8 3.427-7.8 7.802 0 4.098 3.186 7.206 7.465 7.37v3.828c0 .108.044.286.12.403.142.225.384.347.632.347.127 0 .26-.03.383-.09.222-.106 5.75-2.63 5.75-7.83 0-.303-.02-.6-.06-.89 1.79-1.03 2.95-2.9 2.95-5.05 0-3.22-2.62-5.85-5.84-5.85zm-4.15 16.99v-2.9c-.02-.5-.4-.9-.9-.9-3.1 0-5.6-2.3-5.6-5.3 0-3.2 2.6-5.8 5.8-5.8l4.15.01c2.6 0 4.84 2.2 4.84 4.85 0 1.6-.9 3.1-2.3 3.9-.3.2-.5.5-.4.9.05.3.1.6.1.9 0 3.3-2.6 5.6-4.6 6.6z"/></svg>
+            <span class="count">34</span>
+          </div>
+          <div class="action retweet">
+            <svg viewBox="0 0 24 24"><path d="M23.77 15.67c-.292-.293-.767-.293-1.06 0l-2.22 2.22V7.65c0-2.068-1.683-3.75-3.75-3.75h-5.85c-.414 0-.75.336-.75.75s.336.75.75.75h5.85c1.24 0 2.25 1.01 2.25 2.25v10.24l-2.22-2.22c-.293-.293-.768-.293-1.06 0s-.294.768 0 1.06l3.5 3.5c.145.147.337.22.53.22s.383-.072.53-.22l3.5-3.5c.294-.292.294-.767 0-1.06zm-10.66 3.28H7.26c-1.24 0-2.25-1.01-2.25-2.25V6.46l2.22 2.22c.148.147.34.22.532.22s.384-.073.53-.22c.293-.293.293-.768 0-1.06l-3.5-3.5c-.293-.294-.768-.294-1.06 0l-3.5 3.5c-.294.292-.294.767 0 1.06s.767.293 1.06 0l2.22-2.22V16.7c0 2.068 1.683 3.75 3.75 3.75h5.85c.414 0 .75-.336.75-.75s-.337-.75-.75-.75z"/></svg>
+            <span class="count">189</span>
+          </div>
+          <div class="action like" data-count="1204">
+            <svg viewBox="0 0 24 24"><path d="M12 21.638h-.014C9.403 21.59 1.95 14.856 1.95 8.478c0-3.064 2.525-5.754 5.403-5.754 2.29 0 3.79 1.174 4.77 2.78.98-1.606 2.48-2.78 4.77-2.78 2.878 0 5.403 2.69 5.403 5.754 0 6.378-7.453 13.112-10.036 13.16H12z"/></svg>
+            <span class="count">1,204</span>
+          </div>
+          <div class="action share">
+            <svg viewBox="0 0 24 24"><path d="M17.53 7.47l-5-5c-.293-.293-.768-.293-1.06 0l-5 5c-.294.293-.294.768 0 1.06s.767.294 1.06 0l3.72-3.72V15c0 .414.336.75.75.75s.75-.336.75-.75V4.81l3.72 3.72c.146.147.338.22.53.22s.384-.072.53-.22c.293-.293.293-.767 0-1.06zM21.75 12.75c-.414 0-.75.336-.75.75v6.5c0 .414-.336.75-.75.75H4.25c-.414 0-.75-.336-.75-.75V13.5c0-.414-.336-.75-.75-.75s-.75.336-.75.75v6.5c0 1.24 1.01 2.25 2.25 2.25h15.5c1.24 0 2.25-1.01 2.25-2.25V13.5c0-.414-.336-.75-.75-.75z"/></svg>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- ============ 推文 2 ============ -->
+    <article class="tweet">
+      <div class="avatar av-2">猫</div>
+      <div class="tweet-body">
+        <div class="tweet-head">
+          <span class="tweet-name">猫猫观察日记</span>
+          <span class="tweet-handle">@cat_daily</span>
+          <span class="tweet-sep">·</span>
+          <span class="tweet-time">5小时</span>
+          <button class="tweet-more">
+            <svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+          </button>
+        </div>
+        <div class="tweet-text">同事家的猫又把键盘当床了，它是不是觉得我打字是在给它按摩</div>
+        <div class="tweet-media media-1"></div>
+        <div class="tweet-actions">
+          <div class="action reply">
+            <svg viewBox="0 0 24 24"><path d="M14.046 2.242l-4.148-.01h-.002c-4.374 0-7.8 3.427-7.8 7.802 0 4.098 3.186 7.206 7.465 7.37v3.828c0 .108.044.286.12.403.142.225.384.347.632.347.127 0 .26-.03.383-.09.222-.106 5.75-2.63 5.75-7.83 0-.303-.02-.6-.06-.89 1.79-1.03 2.95-2.9 2.95-5.05 0-3.22-2.62-5.85-5.84-5.85zm-4.15 16.99v-2.9c-.02-.5-.4-.9-.9-.9-3.1 0-5.6-2.3-5.6-5.3 0-3.2 2.6-5.8 5.8-5.8l4.15.01c2.6 0 4.84 2.2 4.84 4.85 0 1.6-.9 3.1-2.3 3.9-.3.2-.5.5-.4.9.05.3.1.6.1.9 0 3.3-2.6 5.6-4.6 6.6z"/></svg>
+            <span class="count">12</span>
+          </div>
+          <div class="action retweet">
+            <svg viewBox="0 0 24 24"><path d="M23.77 15.67c-.292-.293-.767-.293-1.06 0l-2.22 2.22V7.65c0-2.068-1.683-3.75-3.75-3.75h-5.85c-.414 0-.75.336-.75.75s.336.75.75.75h5.85c1.24 0 2.25 1.01 2.25 2.25v10.24l-2.22-2.22c-.293-.293-.768-.293-1.06 0s-.294.768 0 1.06l3.5 3.5c.145.147.337.22.53.22s.383-.072.53-.22l3.5-3.5c.294-.292.294-.767 0-1.06zm-10.66 3.28H7.26c-1.24 0-2.25-1.01-2.25-2.25V6.46l2.22 2.22c.148.147.34.22.532.22s.384-.073.53-.22c.293-.293.293-.768 0-1.06l-3.5-3.5c-.293-.294-.768-.294-1.06 0l-3.5 3.5c-.294.292-.294.767 0 1.06s.767.293 1.06 0l2.22-2.22V16.7c0 2.068 1.683 3.75 3.75 3.75h5.85c.414 0 .75-.336.75-.75s-.337-.75-.75-.75z"/></svg>
+            <span class="count">87</span>
+          </div>
+          <div class="action like" data-count="642">
+            <svg viewBox="0 0 24 24"><path d="M12 21.638h-.014C9.403 21.59 1.95 14.856 1.95 8.478c0-3.064 2.525-5.754 5.403-5.754 2.29 0 3.79 1.174 4.77 2.78.98-1.606 2.48-2.78 4.77-2.78 2.878 0 5.403 2.69 5.403 5.754 0 6.378-7.453 13.112-10.036 13.16H12z"/></svg>
+            <span class="count">642</span>
+          </div>
+          <div class="action share">
+            <svg viewBox="0 0 24 24"><path d="M17.53 7.47l-5-5c-.293-.293-.768-.293-1.06 0l-5 5c-.294.293-.294.768 0 1.06s.767.294 1.06 0l3.72-3.72V15c0 .414.336.75.75.75s.75-.336.75-.75V4.81l3.72 3.72c.146.147.338.22.53.22s.384-.072.53-.22c.293-.293.293-.767 0-1.06zM21.75 12.75c-.414 0-.75.336-.75.75v6.5c0 .414-.336.75-.75.75H4.25c-.414 0-.75-.336-.75-.75V13.5c0-.414-.336-.75-.75-.75s-.75.336-.75.75v6.5c0 1.24 1.01 2.25 2.25 2.25h15.5c1.24 0 2.25-1.01 2.25-2.25V13.5c0-.414-.336-.75-.75-.75z"/></svg>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- ============ 推文 3 ============ -->
+    <article class="tweet">
+      <div class="avatar av-3">数</div>
+      <div class="tweet-body">
+        <div class="tweet-head">
+          <span class="tweet-name">数码前线</span>
+          <svg class="badge" viewBox="0 0 24 24"><path fill="#1da1f2" d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.415-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .495.083.965.238 1.4-1.272.65-2.147 2.018-2.147 3.6 0 1.495.782 2.798 1.942 3.486-.02.17-.032.34-.032.514 0 2.21 1.708 4 3.818 4 .47 0 .92-.086 1.335-.25.62 1.334 1.926 2.25 3.437 2.25 1.512 0 2.818-.916 3.437-2.25.415.163.865.248 1.336.248 2.11 0 3.818-1.79 3.818-4 0-.174-.012-.344-.033-.513 1.158-.687 1.943-1.99 1.943-3.484zm-6.616-3.334l-4.334 6.5c-.145.217-.382.334-.625.334-.143 0-.288-.04-.416-.126l-.115-.094-2.415-2.415c-.293-.293-.293-.768 0-1.06s.768-.294 1.06 0l1.77 1.767 3.825-5.74c.23-.345.696-.436 1.04-.207.346.23.44.696.21 1.04z"/></svg>
+          <span class="tweet-handle">@digitalfront</span>
+          <span class="tweet-sep">·</span>
+          <span class="tweet-time">7小时</span>
+          <button class="tweet-more">
+            <svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+          </button>
+        </div>
+        <div class="tweet-text">翻出来一台 2013 年的 MacBook Pro，换了块电池居然还能开机。
+
+当年那个键盘，现在敲起来还是舒服。</div>
+        <div class="tweet-actions">
+          <div class="action reply">
+            <svg viewBox="0 0 24 24"><path d="M14.046 2.242l-4.148-.01h-.002c-4.374 0-7.8 3.427-7.8 7.802 0 4.098 3.186 7.206 7.465 7.37v3.828c0 .108.044.286.12.403.142.225.384.347.632.347.127 0 .26-.03.383-.09.222-.106 5.75-2.63 5.75-7.83 0-.303-.02-.6-.06-.89 1.79-1.03 2.95-2.9 2.95-5.05 0-3.22-2.62-5.85-5.84-5.85zm-4.15 16.99v-2.9c-.02-.5-.4-.9-.9-.9-3.1 0-5.6-2.3-5.6-5.3 0-3.2 2.6-5.8 5.8-5.8l4.15.01c2.6 0 4.84 2.2 4.84 4.85 0 1.6-.9 3.1-2.3 3.9-.3.2-.5.5-.4.9.05.3.1.6.1.9 0 3.3-2.6 5.6-4.6 6.6z"/></svg>
+            <span class="count">96</span>
+          </div>
+          <div class="action retweet">
+            <svg viewBox="0 0 24 24"><path d="M23.77 15.67c-.292-.293-.767-.293-1.06 0l-2.22 2.22V7.65c0-2.068-1.683-3.75-3.75-3.75h-5.85c-.414 0-.75.336-.75.75s.336.75.75.75h5.85c1.24 0 2.25 1.01 2.25 2.25v10.24l-2.22-2.22c-.293-.293-.768-.293-1.06 0s-.294.768 0 1.06l3.5 3.5c.145.147.337.22.53.22s.383-.072.53-.22l3.5-3.5c.294-.292.294-.767 0-1.06zm-10.66 3.28H7.26c-1.24 0-2.25-1.01-2.25-2.25V6.46l2.22 2.22c.148.147.34.22.532.22s.384-.073.53-.22c.293-.293.293-.768 0-1.06l-3.5-3.5c-.293-.294-.768-.294-1.06 0l-3.5 3.5c-.294.292-.294.767 0 1.06s.767.293 1.06 0l2.22-2.22V16.7c0 2.068 1.683 3.75 3.75 3.75h5.85c.414 0 .75-.336.75-.75s-.337-.75-.75-.75z"/></svg>
+            <span class="count">1,204</span>
+          </div>
+          <div class="action like" data-count="3891">
+            <svg viewBox="0 0 24 24"><path d="M12 21.638h-.014C9.403 21.59 1.95 14.856 1.95 8.478c0-3.064 2.525-5.754 5.403-5.754 2.29 0 3.79 1.174 4.77 2.78.98-1.606 2.48-2.78 4.77-2.78 2.878 0 5.403 2.69 5.403 5.754 0 6.378-7.453 13.112-10.036 13.16H12z"/></svg>
+            <span class="count">3,891</span>
+          </div>
+          <div class="action share">
+            <svg viewBox="0 0 24 24"><path d="M17.53 7.47l-5-5c-.293-.293-.768-.293-1.06 0l-5 5c-.294.293-.294.768 0 1.06s.767.294 1.06 0l3.72-3.72V15c0 .414.336.75.75.75s.75-.336.75-.75V4.81l3.72 3.72c.146.147.338.22.53.22s.384-.072.53-.22c.293-.293.293-.767 0-1.06zM21.75 12.75c-.414 0-.75.336-.75.75v6.5c0 .414-.336.75-.75.75H4.25c-.414 0-.75-.336-.75-.75V13.5c0-.414-.336-.75-.75-.75s-.75.336-.75.75v6.5c0 1.24 1.01 2.25 2.25 2.25h15.5c1.24 0 2.25-1.01 2.25-2.25V13.5c0-.414-.336-.75-.75-.75z"/></svg>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- ============ 推文 4 ============ -->
+    <article class="tweet">
+      <div class="avatar av-4">食</div>
+      <div class="tweet-body">
+        <div class="tweet-head">
+          <span class="tweet-name">深夜食堂</span>
+          <span class="tweet-handle">@midnight_food</span>
+          <span class="tweet-sep">·</span>
+          <span class="tweet-time">9小时</span>
+          <button class="tweet-more">
+            <svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+          </button>
+        </div>
+        <div class="tweet-text">凌晨一点的面馆，老板说今天的汤底熬了六个小时。
+
+我说那来两碗。他说行，反正也没什么客人了。</div>
+        <div class="tweet-media media-2"></div>
+        <div class="tweet-actions">
+          <div class="action reply">
+            <svg viewBox="0 0 24 24"><path d="M14.046 2.242l-4.148-.01h-.002c-4.374 0-7.8 3.427-7.8 7.802 0 4.098 3.186 7.206 7.465 7.37v3.828c0 .108.044.286.12.403.142.225.384.347.632.347.127 0 .26-.03.383-.09.222-.106 5.75-2.63 5.75-7.83 0-.303-.02-.6-.06-.89 1.79-1.03 2.95-2.9 2.95-5.05 0-3.22-2.62-5.85-5.84-5.85zm-4.15 16.99v-2.9c-.02-.5-.4-.9-.9-.9-3.1 0-5.6-2.3-5.6-5.3 0-3.2 2.6-5.8 5.8-5.8l4.15.01c2.6 0 4.84 2.2 4.84 4.85 0 1.6-.9 3.1-2.3 3.9-.3.2-.5.5-.4.9.05.3.1.6.1.9 0 3.3-2.6 5.6-4.6 6.6z"/></svg>
+            <span class="count">45</span>
+          </div>
+          <div class="action retweet">
+            <svg viewBox="0 0 24 24"><path d="M23.77 15.67c-.292-.293-.767-.293-1.06 0l-2.22 2.22V7.65c0-2.068-1.683-3.75-3.75-3.75h-5.85c-.414 0-.75.336-.75.75s.336.75.75.75h5.85c1.24 0 2.25 1.01 2.25 2.25v10.24l-2.22-2.22c-.293-.293-.768-.293-1.06 0s-.294.768 0 1.06l3.5 3.5c.145.147.337.22.53.22s.383-.072.53-.22l3.5-3.5c.294-.292.294-.767 0-1.06zm-10.66 3.28H7.26c-1.24 0-2.25-1.01-2.25-2.25V6.46l2.22 2.22c.148.147.34.22.532.22s.384-.073.53-.22c.293-.293.293-.768 0-1.06l-3.5-3.5c-.293-.294-.768-.294-1.06 0l-3.5 3.5c-.294.292-.294.767 0 1.06s.767.293 1.06 0l2.22-2.22V16.7c0 2.068 1.683 3.75 3.75 3.75h5.85c.414 0 .75-.336.75-.75s-.337-.75-.75-.75z"/></svg>
+            <span class="count">320</span>
+          </div>
+          <div class="action like" data-count="2108">
+            <svg viewBox="0 0 24 24"><path d="M12 21.638h-.014C9.403 21.59 1.95 14.856 1.95 8.478c0-3.064 2.525-5.754 5.403-5.754 2.29 0 3.79 1.174 4.77 2.78.98-1.606 2.48-2.78 4.77-2.78 2.878 0 5.403 2.69 5.403 5.754 0 6.378-7.453 13.112-10.036 13.16H12z"/></svg>
+            <span class="count">2,108</span>
+          </div>
+          <div class="action share">
+            <svg viewBox="0 0 24 24"><path d="M17.53 7.47l-5-5c-.293-.293-.768-.293-1.06 0l-5 5c-.294.293-.294.768 0 1.06s.767.294 1.06 0l3.72-3.72V15c0 .414.336.75.75.75s.75-.336.75-.75V4.81l3.72 3.72c.146.147.338.22.53.22s.384-.072.53-.22c.293-.293.293-.767 0-1.06zM21.75 12.75c-.414 0-.75.336-.75.75v6.5c0 .414-.336.75-.75.75H4.25c-.414 0-.75-.336-.75-.75V13.5c0-.414-.336-.75-.75-.75s-.75.336-.75.75v6.5c0 1.24 1.01 2.25 2.25 2.25h15.5c1.24 0 2.25-1.01 2.25-2.25V13.5c0-.414-.336-.75-.75-.75z"/></svg>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- ============ 推文 5 ============ -->
+    <article class="tweet">
+      <div class="avatar av-5">M</div>
+      <div class="tweet-body">
+        <div class="tweet-head">
+          <span class="tweet-name">阿May</span>
+          <span class="tweet-handle">@amay_here</span>
+          <span class="tweet-sep">·</span>
+          <span class="tweet-time">11小时</span>
+          <button class="tweet-more">
+            <svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+          </button>
+        </div>
+        <div class="tweet-text">今天在地铁上看到有人用纸质书在读《百年孤独》，突然有点感动。</div>
+        <div class="tweet-actions">
+          <div class="action reply">
+            <svg viewBox="0 0 24 24"><path d="M14.046 2.242l-4.148-.01h-.002c-4.374 0-7.8 3.427-7.8 7.802 0 4.098 3.186 7.206 7.465 7.37v3.828c0 .108.044.286.12.403.142.225.384.347.632.347.127 0 .26-.03.383-.09.222-.106 5.75-2.63 5.75-7.83 0-.303-.02-.6-.06-.89 1.79-1.03 2.95-2.9 2.95-5.05 0-3.22-2.62-5.85-5.84-5.85zm-4.15 16.99v-2.9c-.02-.5-.4-.9-.9-.9-3.1 0-5.6-2.3-5.6-5.3 0-3.2 2.6-5.8 5.8-5.8l4.15.01c2.6 0 4.84 2.2 4.84 4.85 0 1.6-.9 3.1-2.3 3.9-.3.2-.5.5-.4.9.05.3.1.6.1.9 0 3.3-2.6 5.6-4.6 6.6z"/></svg>
+            <span class="count">8</span>
+          </div>
+          <div class="action retweet">
+            <svg viewBox="0 0 24 24"><path d="M23.77 15.67c-.292-.293-.767-.293-1.06 0l-2.22 2.22V7.65c0-2.068-1.683-3.75-3.75-3.75h-5.85c-.414 0-.75.336-.75.75s.336.75.75.75h5.85c1.24 0 2.25 1.01 2.25 2.25v10.24l-2.22-2.22c-.293-.293-.768-.293-1.06 0s-.294.768 0 1.06l3.5 3.5c.145.147.337.22.53.22s.383-.072.53-.22l3.5-3.5c.294-.292.294-.767 0-1.06zm-10.66 3.28H7.26c-1.24 0-2.25-1.01-2.25-2.25V6.46l2.22 2.22c.148.147.34.22.532.22s.384-.073.53-.22c.293-.293.293-.768 0-1.06l-3.5-3.5c-.293-.294-.768-.294-1.06 0l-3.5 3.5c-.294.292-.294.767 0 1.06s.767.293 1.06 0l2.22-2.22V16.7c0 2.068 1.683 3.75 3.75 3.75h5.85c.414 0 .75-.336.75-.75s-.337-.75-.75-.75z"/></svg>
+            <span class="count">62</span>
+          </div>
+          <div class="action like" data-count="415">
+            <svg viewBox="0 0 24 24"><path d="M12 21.638h-.014C9.403 21.59 1.95 14.856 1.95 8.478c0-3.064 2.525-5.754 5.403-5.754 2.29 0 3.79 1.174 4.77 2.78.98-1.606 2.48-2.78 4.77-2.78 2.878 0 5.403 2.69 5.403 5.754 0 6.378-7.453 13.112-10.036 13.16H12z"/></svg>
+            <span class="count">415</span>
+          </div>
+          <div class="action share">
+            <svg viewBox="0 0 24 24"><path d="M17.53 7.47l-5-5c-.293-.293-.768-.293-1.06 0l-5 5c-.294.293-.294.768 0 1.06s.767.294 1.06 0l3.72-3.72V15c0 .414.336.75.75.75s.75-.336.75-.75V4.81l3.72 3.72c.146.147.338.22.53.22s.384-.072.53-.22c.293-.293.293-.767 0-1.06zM21.75 12.75c-.414 0-.75.336-.75.75v6.5c0 .414-.336.75-.75.75H4.25c-.414 0-.75-.336-.75-.75V13.5c0-.414-.336-.75-.75-.75s-.75.336-.75.75v6.5c0 1.24 1.01 2.25 2.25 2.25h15.5c1.24 0 2.25-1.01 2.25-2.25V13.5c0-.414-.336-.75-.75-.75z"/></svg>
+          </div>
+        </div>
+      </div>
+    </article>
+
+  </main>
+
+  <!-- ==================== 右侧栏 ==================== -->
+  <aside class="sidebar-right">
+
+    <div class="search-wrap">
+      <div class="search-box">
+        <svg viewBox="0 0 24 24"><path d="M21.53 20.47l-4.693-4.694C18.207 14.31 19.25 12.28 19.25 10c0-5.1-4.15-9.25-9.25-9.25S.75 4.9.75 10s4.15 9.25 9.25 9.25c2.28 0 4.31-1.043 5.776-2.413l4.694 4.693c.146.147.338.22.53.22s.384-.073.53-.22c.293-.293.293-.767 0-1.06zM3.25 10c0-3.722 3.028-6.75 6.75-6.75s6.75 3.028 6.75 6.75-3.028 6.75-6.75 6.75S3.25 13.722 3.25 10z"/></svg>
+        <input type="text" placeholder="搜索 Twitter">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3>正在发生</h3>
+      </div>
+
+      <div class="trend">
+        <div class="trend-cat">中国趋势 · 科技</div>
+        <div class="trend-name">新系统更新翻车</div>
+        <div class="trend-count">12.4万 推文</div>
+      </div>
+
+      <div class="trend">
+        <div class="trend-cat">数码 · 趋势</div>
+        <div class="trend-name">2013 年的 MacBook</div>
+        <div class="trend-count">3,281 推文</div>
+      </div>
+
+      <div class="trend">
+        <div class="trend-cat">生活 · 趋势</div>
+        <div class="trend-name">凌晨的面馆</div>
+        <div class="trend-count">8,902 推文</div>
+      </div>
+
+      <div class="trend">
+        <div class="trend-cat">摄影 · 趋势</div>
+        <div class="trend-name">#秋天第一张照片#</div>
+        <div class="trend-count">1.2万 推文</div>
+      </div>
+
+      <div class="trend">
+        <div class="trend-cat">趋势</div>
+        <div class="trend-name">纸质书</div>
+        <div class="trend-count">5,117 推文</div>
+      </div>
+
+      <div class="card-footer">显示更多</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3>推荐关注</h3>
+      </div>
+
+      <div class="follow-row">
+        <div class="avatar av-6">摄</div>
+        <div class="follow-info">
+          <div class="follow-name">摄影笔记</div>
+          <div class="follow-handle">@photo_notes</div>
+        </div>
+        <button class="follow-btn">关注</button>
+      </div>
+
+      <div class="follow-row">
+        <div class="avatar av-7">城</div>
+        <div class="follow-info">
+          <div class="follow-name">城市观察</div>
+          <div class="follow-handle">@city_watch</div>
+        </div>
+        <button class="follow-btn">关注</button>
+      </div>
+
+      <div class="follow-row">
+        <div class="avatar av-8">夜</div>
+        <div class="follow-info">
+          <div class="follow-name">电台夜话</div>
+          <div class="follow-handle">@radio_night</div>
+        </div>
+        <button class="follow-btn">关注</button>
+      </div>
+
+      <div class="card-footer">显示更多</div>
+    </div>
+
+    <div class="side-footer">
+      <a href="#">条款</a><a href="#">隐私政策</a><a href="#">Cookie 政策</a>
+      <a href="#">广告信息</a><a href="#">更多</a>
+      <div style="margin-top:6px;">© 2021 Twitter</div>
+    </div>
+
+  </aside>
+
+</div>
+
+<script>
+  // 点赞交互
+  document.querySelectorAll('.action.like').forEach(function (el) {
+    var countEl = el.querySelector('.count');
+    var n = parseInt(el.dataset.count, 10);
+
+    el.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var liked = el.classList.toggle('liked');
+      n = liked ? n + 1 : n - 1;
+      countEl.textContent = n.toLocaleString('en-US');
+    });
+  });
+
+  // 阻止点击推文内部按钮时冒泡到整条推文
+  document.querySelectorAll('.action, .tweet-more, .tweet-name, .tweet-time')
+    .forEach(function (el) {
+      el.addEventListener('click', function (e) { e.stopPropagation(); });
+    });
+
+  // 关注按钮
+  document.querySelectorAll('.follow-btn').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (btn.textContent === '关注') {
+        btn.textContent = '正在关注';
+        btn.style.background = '#1da1f2';
+        btn.style.color = '#fff';
+      } else {
+        btn.textContent = '关注';
+        btn.style.background = 'transparent';
+        btn.style.color = '#1da1f2';
+      }
+    });
+  });
+</script>
+
+</body>
+</html>

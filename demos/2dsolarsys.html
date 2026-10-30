@@ -1,0 +1,1482 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D 太阳系 - 真实比例展示</title>
+    <style>
+        :root {
+            --bg: #0a0a12;
+            --panel-bg: rgba(10, 12, 22, 0.92);
+            --text: #e0e0e0;
+            --text-secondary: #a0a0b8;
+            --accent: #ffb347;
+            --accent2: #4da6ff;
+            --button-bg: rgba(30, 35, 55, 0.85);
+            --button-hover: rgba(50, 58, 85, 0.9);
+            --border: rgba(255, 255, 255, 0.12);
+            --glow: rgba(255, 180, 70, 0.3);
+            --danger: #ff6b6b;
+            --success: #5cdb5c;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg);
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            cursor: grab;
+            touch-action: manipulation;
+        }
+        body:active {
+            cursor: grabbing;
+        }
+        body.pointing {
+            cursor: default;
+        }
+
+        #canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* 星空背景层 */
+        #starfield {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* UI 覆盖层 */
+        #ui-layer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+        }
+        #ui-layer>* {
+            pointer-events: auto;
+        }
+
+        /* 顶部栏 */
+        #top-bar {
+            position: absolute;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 40px;
+            padding: 8px 18px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 95vw;
+        }
+        #top-bar .title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--accent);
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+            text-shadow: 0 0 20px var(--glow);
+        }
+        #top-bar .divider {
+            width: 1px;
+            height: 20px;
+            background: var(--border);
+            border-radius: 1px;
+            flex-shrink: 0;
+        }
+
+        /* 速度按钮组 */
+        .speed-group {
+            display: flex;
+            gap: 3px;
+            background: rgba(20, 24, 40, 0.6);
+            border-radius: 24px;
+            padding: 3px;
+            flex-shrink: 0;
+        }
+        .speed-btn {
+            padding: 7px 13px;
+            border-radius: 22px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 500;
+            transition: all 0.25s;
+            white-space: nowrap;
+            letter-spacing: 0.02em;
+            font-family: inherit;
+        }
+        .speed-btn:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.08);
+        }
+        .speed-btn.active {
+            background: var(--accent);
+            color: #1a1a2e;
+            font-weight: 700;
+            box-shadow: 0 4px 16px var(--glow);
+        }
+
+        /* 暂停按钮 */
+        #pause-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 1.5px solid var(--border);
+            background: var(--button-bg);
+            color: #fff;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.25s;
+            flex-shrink: 0;
+        }
+        #pause-btn:hover {
+            background: var(--button-hover);
+            border-color: #fff;
+        }
+        #pause-btn.paused {
+            background: var(--accent);
+            color: #1a1a2e;
+            border-color: var(--accent);
+        }
+
+        /* 底部天体定位按钮 */
+        #planet-nav {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 36px;
+            padding: 6px 10px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 95vw;
+            overflow-x: auto;
+        }
+        .planet-nav-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            flex-shrink: 0;
+            background: rgba(25, 28, 45, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #ccc;
+            letter-spacing: 0.03em;
+            font-family: inherit;
+        }
+        .planet-nav-btn:hover {
+            border-color: #fff;
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            z-index: 5;
+            color: #fff;
+        }
+        .planet-nav-btn:active {
+            transform: scale(0.9);
+            transition: transform 0.1s;
+        }
+        .planet-nav-btn .dot {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        .planet-nav-btn .label-tiny {
+            position: absolute;
+            bottom: -18px;
+            font-size: 0.6rem;
+            color: #aaa;
+            white-space: nowrap;
+            pointer-events: none;
+            font-weight: 400;
+        }
+
+        /* 信息面板 */
+        #info-panel {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 20px 22px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+            min-width: 240px;
+            max-width: 300px;
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1.2);
+            opacity: 0;
+            transform: translateY(-50%) translateX(20px);
+            pointer-events: none;
+        }
+        #info-panel.visible {
+            opacity: 1;
+            transform: translateY(-50%) translateX(0);
+            pointer-events: auto;
+        }
+        #info-panel h3 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+            letter-spacing: 0.04em;
+        }
+        #info-panel .type-badge {
+            display: inline-block;
+            font-size: 0.7rem;
+            padding: 3px 10px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        #info-panel .param-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.82rem;
+        }
+        #info-panel .param-label {
+            color: var(--text-secondary);
+            font-size: 0.72rem;
+            letter-spacing: 0.03em;
+        }
+        #info-panel .param-value {
+            color: #fff;
+            font-weight: 500;
+            font-size: 0.8rem;
+            text-align: right;
+        }
+        #info-panel .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 14px;
+            background: none;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 4px 8px;
+            border-radius: 50%;
+            transition: all 0.2s;
+            line-height: 1;
+        }
+        #info-panel .close-btn:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* 提示 */
+        #hint {
+            position: absolute;
+            bottom: 110px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.5);
+            letter-spacing: 0.04em;
+            pointer-events: none;
+            transition: opacity 0.8s;
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            #top-bar {
+                padding: 6px 10px;
+                gap: 6px;
+                border-radius: 30px;
+                top: 8px;
+            }
+            #top-bar .title {
+                font-size: 0.9rem;
+            }
+            .speed-btn {
+                padding: 5px 9px;
+                font-size: 0.7rem;
+            }
+            .planet-nav-btn {
+                width: 34px;
+                height: 34px;
+            }
+            .planet-nav-btn .dot {
+                width: 12px;
+                height: 12px;
+            }
+            .planet-nav-btn .label-tiny {
+                font-size: 0.5rem;
+                bottom: -15px;
+            }
+            #info-panel {
+                right: 4px;
+                min-width: 200px;
+                max-width: 250px;
+                padding: 14px 16px;
+                border-radius: 14px;
+            }
+            #info-panel h3 {
+                font-size: 1rem;
+            }
+            #info-panel .param-row {
+                font-size: 0.7rem;
+                padding: 4px 0;
+            }
+            #hint {
+                bottom: 90px;
+                font-size: 0.65rem;
+            }
+            #planet-nav {
+                bottom: 10px;
+                gap: 4px;
+                padding: 4px 6px;
+                border-radius: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 星空背景 -->
+    <canvas id="starfield"></canvas>
+
+    <!-- 主画布 -->
+    <canvas id="canvas"></canvas>
+
+    <!-- UI 层 -->
+    <div id="ui-layer">
+        <!-- 顶部栏 -->
+        <div id="top-bar">
+            <span class="title">☀ 太阳系</span>
+            <span class="divider"></span>
+            <div class="speed-group" id="speed-group">
+                <button class="speed-btn" data-speed="0">⏸ 暂停</button>
+                <button class="speed-btn active" data-speed="1">1×</button>
+                <button class="speed-btn" data-speed="5">5×</button>
+                <button class="speed-btn" data-speed="30">30×</button>
+                <button class="speed-btn" data-speed="200">200×</button>
+                <button class="speed-btn" data-speed="1500">1500×</button>
+            </div>
+            <span class="divider"></span>
+            <button id="reset-view-btn" title="重置视角">🏠 重置</button>
+        </div>
+
+        <!-- 底部天体导航 -->
+        <div id="planet-nav">
+            <button class="planet-nav-btn" data-target="sun" style="color:#ffb347;">
+                <span class="dot" style="background:#ffb347;box-shadow:0 0 12px #ffb347;"></span>
+                <span class="label-tiny">太阳</span>
+            </button>
+            <button class="planet-nav-btn" data-target="mercury" style="color:#c0c0c0;">
+                <span class="dot" style="background:#b0b0b0;"></span>
+                <span class="label-tiny">水星</span>
+            </button>
+            <button class="planet-nav-btn" data-target="venus" style="color:#e8cda0;">
+                <span class="dot" style="background:#e8cda0;"></span>
+                <span class="label-tiny">金星</span>
+            </button>
+            <button class="planet-nav-btn" data-target="earth" style="color:#5b9ed4;">
+                <span class="dot" style="background:#5b9ed4;"></span>
+                <span class="label-tiny">地球</span>
+            </button>
+            <button class="planet-nav-btn" data-target="mars" style="color:#d45a3a;">
+                <span class="dot" style="background:#d45a3a;"></span>
+                <span class="label-tiny">火星</span>
+            </button>
+            <button class="planet-nav-btn" data-target="jupiter" style="color:#d4b896;">
+                <span class="dot" style="background:#d4b896;width:20px;height:20px;"></span>
+                <span class="label-tiny">木星</span>
+            </button>
+            <button class="planet-nav-btn" data-target="saturn" style="color:#e8d5a3;">
+                <span class="dot" style="background:#e8d5a3;width:18px;height:18px;"></span>
+                <span class="label-tiny">土星</span>
+            </button>
+            <button class="planet-nav-btn" data-target="uranus" style="color:#8cc8c8;">
+                <span class="dot" style="background:#8cc8c8;"></span>
+                <span class="label-tiny">天王星</span>
+            </button>
+            <button class="planet-nav-btn" data-target="neptune" style="color:#4b7fdb;">
+                <span class="dot" style="background:#4b7fdb;"></span>
+                <span class="label-tiny">海王星</span>
+            </button>
+            <button class="planet-nav-btn" data-target="pluto" style="color:#c4b5a0;">
+                <span class="dot" style="background:#c4b5a0;width:8px;height:8px;"></span>
+                <span class="label-tiny">冥王星</span>
+            </button>
+        </div>
+
+        <!-- 信息面板 -->
+        <div id="info-panel">
+            <button class="close-btn" id="close-panel">✕</button>
+            <h3 id="panel-name">太阳</h3>
+            <span class="type-badge" id="panel-type">恒星</span>
+            <div class="param-row"><span class="param-label">直径</span><span class="param-value" id="panel-diameter">—</span></div>
+            <div class="param-row"><span class="param-label">质量</span><span class="param-value" id="panel-mass">—</span></div>
+            <div class="param-row"><span class="param-label">轨道半长轴</span><span class="param-value" id="panel-orbit">—</span></div>
+            <div class="param-row"><span class="param-label">公转周期</span><span class="param-value" id="panel-period">—</span></div>
+            <div class="param-row"><span class="param-label">表面温度</span><span class="param-value" id="panel-temp">—</span></div>
+            <div class="param-row"><span class="param-label">卫星数量</span><span class="param-value" id="panel-moons">—</span></div>
+        </div>
+
+        <!-- 操作提示 -->
+        <div id="hint">🖱 滚轮缩放 &nbsp;|&nbsp; 拖拽平移 &nbsp;|&nbsp; 点击天体查看详情</div>
+    </div>
+
+    <script>
+        (function() {
+            // ============ DOM 元素 ============
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            const starfieldCanvas = document.getElementById('starfield');
+            const starCtx = starfieldCanvas.getContext('2d');
+            const infoPanel = document.getElementById('info-panel');
+            const hintEl = document.getElementById('hint');
+            const speedGroup = document.getElementById('speed-group');
+            const planetNav = document.getElementById('planet-nav');
+            const resetViewBtn = document.getElementById('reset-view-btn');
+            const closePanelBtn = document.getElementById('close-panel');
+
+            // ============ 真实物理数据 ============
+            // 距离单位：百万km，直径单位：km，质量单位：10^24 kg，周期单位：地球日
+            const celestialData = {
+                sun: {
+                    name: '太阳',
+                    type: '恒星 (G型主序星)',
+                    diameter: 1392700,
+                    mass: 1.989e6,
+                    orbitDistance: 0,
+                    orbitalPeriod: 0,
+                    temperature: '5,500°C (表面)',
+                    moons: 0,
+                    color: '#ffb347',
+                    glowColor: '#ff8c00',
+                    isStar: true,
+                },
+                mercury: {
+                    name: '水星',
+                    type: '岩石行星',
+                    diameter: 4879,
+                    mass: 0.330,
+                    orbitDistance: 57.9,
+                    orbitalPeriod: 88,
+                    temperature: '-180~430°C',
+                    moons: 0,
+                    color: '#b0b0b0',
+                    glowColor: null,
+                    isStar: false,
+                },
+                venus: {
+                    name: '金星',
+                    type: '岩石行星',
+                    diameter: 12104,
+                    mass: 4.87,
+                    orbitDistance: 108.2,
+                    orbitalPeriod: 225,
+                    temperature: '462°C (平均)',
+                    moons: 0,
+                    color: '#e8cda0',
+                    glowColor: null,
+                    isStar: false,
+                },
+                earth: {
+                    name: '地球',
+                    type: '岩石行星',
+                    diameter: 12742,
+                    mass: 5.97,
+                    orbitDistance: 149.6,
+                    orbitalPeriod: 365.25,
+                    temperature: '-89~57°C',
+                    moons: 1,
+                    color: '#5b9ed4',
+                    glowColor: null,
+                    isStar: false,
+                },
+                mars: {
+                    name: '火星',
+                    type: '岩石行星',
+                    diameter: 6779,
+                    mass: 0.642,
+                    orbitDistance: 227.9,
+                    orbitalPeriod: 687,
+                    temperature: '-140~20°C',
+                    moons: 2,
+                    color: '#d45a3a',
+                    glowColor: null,
+                    isStar: false,
+                },
+                jupiter: {
+                    name: '木星',
+                    type: '气态巨行星',
+                    diameter: 139820,
+                    mass: 1898,
+                    orbitDistance: 778.6,
+                    orbitalPeriod: 4333,
+                    temperature: '-108°C (云顶)',
+                    moons: 95,
+                    color: '#d4b896',
+                    glowColor: null,
+                    isStar: false,
+                    hasStripes: true,
+                },
+                saturn: {
+                    name: '土星',
+                    type: '气态巨行星',
+                    diameter: 116460,
+                    mass: 568,
+                    orbitDistance: 1434,
+                    orbitalPeriod: 10759,
+                    temperature: '-139°C (云顶)',
+                    moons: 146,
+                    color: '#e8d5a3',
+                    glowColor: null,
+                    isStar: false,
+                    hasRings: true,
+                },
+                uranus: {
+                    name: '天王星',
+                    type: '冰巨行星',
+                    diameter: 50724,
+                    mass: 86.8,
+                    orbitDistance: 2871,
+                    orbitalPeriod: 30687,
+                    temperature: '-197°C',
+                    moons: 27,
+                    color: '#8cc8c8',
+                    glowColor: null,
+                    isStar: false,
+                },
+                neptune: {
+                    name: '海王星',
+                    type: '冰巨行星',
+                    diameter: 49244,
+                    mass: 102,
+                    orbitDistance: 4495,
+                    orbitalPeriod: 60190,
+                    temperature: '-201°C',
+                    moons: 16,
+                    color: '#4b7fdb',
+                    glowColor: null,
+                    isStar: false,
+                },
+                pluto: {
+                    name: '冥王星',
+                    type: '矮行星',
+                    diameter: 2377,
+                    mass: 0.013,
+                    orbitDistance: 5906,
+                    orbitalPeriod: 90560,
+                    temperature: '-230°C',
+                    moons: 5,
+                    color: '#c4b5a0',
+                    glowColor: null,
+                    isStar: false,
+                },
+                moon: {
+                    name: '月球',
+                    type: '卫星 (地球)',
+                    diameter: 3474,
+                    mass: 0.073,
+                    orbitDistance: 0.3844,
+                    orbitalPeriod: 27.32,
+                    temperature: '-233~123°C',
+                    moons: 0,
+                    color: '#d0d0d0',
+                    glowColor: null,
+                    isStar: false,
+                    isMoon: true,
+                    parentBody: 'earth',
+                },
+            };
+
+            // 所有主要天体（用于定位按钮和检测）
+            const allBodies = [
+                'sun', 'mercury', 'venus', 'earth', 'mars',
+                'jupiter', 'saturn', 'uranus', 'neptune', 'pluto',
+            ];
+            const allBodiesWithMoon = [...allBodies, 'moon'];
+
+            // ============ 缩放函数 ============
+            // 轨道距离压缩：使用 sqrt
+            function compressOrbitDistance(realDistMillionKm) {
+                if (realDistMillionKm <= 0) return 0;
+                return Math.sqrt(realDistMillionKm) * 4.5;
+            }
+
+            // 天体半径压缩：使用 ^0.25
+            function compressRadius(realRadiusKm) {
+                if (realRadiusKm <= 0) return 2;
+                return Math.pow(realRadiusKm, 0.25) * 0.85;
+            }
+
+            // 预计算显示数据
+            const displayData = {};
+            for (const [key, data] of Object.entries(celestialData)) {
+                const realRadius = data.diameter / 2;
+                const displayOrbit = compressOrbitDistance(data.orbitDistance);
+                const displayRadius = compressRadius(realRadius);
+                displayData[key] = {
+                    orbitRadius: displayOrbit,
+                    bodyRadius: Math.max(displayRadius, key === 'moon' ? 3.5 : 2.5),
+                    realRadius: realRadius,
+                    realOrbitDist: data.orbitDistance,
+                };
+            }
+            // 月球特殊处理：在地球周围给一个合理的显示轨道
+            displayData['moon'].orbitRadius = 16;
+            displayData['moon'].bodyRadius = Math.max(displayData['moon'].bodyRadius, 3.5);
+
+            // ============ 状态管理 ============
+            let simulationTime = 0; // 模拟时间（地球日）
+            let speedMultiplier = 1; // 时间倍速
+            let isPaused = false;
+            let cameraX = 0;
+            let cameraY = 0;
+            let zoom = 1;
+            let targetCameraX = 0;
+            let targetCameraY = 0;
+            let targetZoom = 1;
+            let isAnimatingCamera = false;
+            let selectedBodyKey = 'sun';
+            let hoveredBodyKey = null;
+            let lastTime = performance.now();
+            let isDragging = false;
+            let dragStartX = 0;
+            let dragStartY = 0;
+            let dragStartCamX = 0;
+            let dragStartCamY = 0;
+            let pointerMoved = false;
+            let pointerDownPos = { x: 0, y: 0 };
+
+            // 初始角度（使行星分散）
+            const initialAngles = {
+                sun: 0,
+                mercury: Math.random() * Math.PI * 2,
+                venus: Math.random() * Math.PI * 2,
+                earth: Math.random() * Math.PI * 2,
+                mars: Math.random() * Math.PI * 2,
+                jupiter: Math.random() * Math.PI * 2,
+                saturn: Math.random() * Math.PI * 2,
+                uranus: Math.random() * Math.PI * 2,
+                neptune: Math.random() * Math.PI * 2,
+                pluto: Math.random() * Math.PI * 2,
+                moon: Math.random() * Math.PI * 2,
+            };
+
+            // ============ 画布尺寸 ============
+            function resizeCanvases() {
+                const dpr = Math.min(window.devicePixelRatio || 1, 2);
+                const w = window.innerWidth;
+                const h = window.innerHeight;
+                canvas.width = w * dpr;
+                canvas.height = h * dpr;
+                canvas.style.width = w + 'px';
+                canvas.style.height = h + 'px';
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.scale(dpr, dpr);
+
+                starfieldCanvas.width = w * dpr;
+                starfieldCanvas.height = h * dpr;
+                starfieldCanvas.style.width = w + 'px';
+                starfieldCanvas.style.height = h + 'px';
+                starCtx.setTransform(1, 0, 0, 1, 0, 0);
+                starCtx.scale(dpr, dpr);
+
+                drawStarfield();
+            }
+
+            // ============ 星空背景 ============
+            let stars = [];
+
+            function generateStars() {
+                stars = [];
+                const count = 800;
+                for (let i = 0; i < count; i++) {
+                    stars.push({
+                        x: Math.random() * window.innerWidth,
+                        y: Math.random() * window.innerHeight,
+                        r: Math.random() * 1.8 + 0.3,
+                        twinkleSpeed: Math.random() * 0.02 + 0.005,
+                        twinkleOffset: Math.random() * Math.PI * 2,
+                        brightness: Math.random() * 0.5 + 0.5,
+                    });
+                }
+            }
+
+            function drawStarfield() {
+                const w = window.innerWidth;
+                const h = window.innerHeight;
+                starCtx.clearRect(0, 0, w, h);
+                starCtx.fillStyle = '#0a0a16';
+                starCtx.fillRect(0, 0, w, h);
+
+                const now = performance.now() / 1000;
+                for (const star of stars) {
+                    const twinkle = Math.sin(now * star.twinkleSpeed + star.twinkleOffset) * 0.35 + 0.65;
+                    const alpha = star.brightness * twinkle * 0.9;
+                    starCtx.fillStyle = `rgba(255,255,255,${alpha})`;
+                    starCtx.beginPath();
+                    starCtx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
+                    starCtx.fill();
+                }
+
+                // 一些彩色星点
+                const coloredStars = [
+                    { x: w * 0.15, y: h * 0.2, r: 1.6, color: '255,200,180' },
+                    { x: w * 0.78, y: h * 0.35, r: 1.4, color: '180,200,255' },
+                    { x: w * 0.55, y: h * 0.7, r: 1.8, color: '255,220,180' },
+                    { x: w * 0.3, y: h * 0.6, r: 1.2, color: '200,220,255' },
+                    { x: w * 0.85, y: h * 0.15, r: 1.5, color: '255,240,200' },
+                ];
+                for (const cs of coloredStars) {
+                    starCtx.fillStyle = `rgba(${cs.color},0.7)`;
+                    starCtx.beginPath();
+                    starCtx.arc(cs.x, cs.y, cs.r, 0, Math.PI * 2);
+                    starCtx.fill();
+                }
+            }
+
+            // ============ 坐标转换 ============
+            function worldToScreen(wx, wy) {
+                const cx = canvas.width / (2 * (window.devicePixelRatio || 1));
+                const cy = canvas.height / (2 * (window.devicePixelRatio || 1));
+                return {
+                    x: (wx - cameraX) * zoom + cx,
+                    y: (wy - cameraY) * zoom + cy,
+                };
+            }
+
+            function screenToWorld(sx, sy) {
+                const cx = canvas.width / (2 * (window.devicePixelRatio || 1));
+                const cy = canvas.height / (2 * (window.devicePixelRatio || 1));
+                return {
+                    x: (sx - cx) / zoom + cameraX,
+                    y: (sy - cy) / zoom + cameraY,
+                };
+            }
+
+            function getCanvasCenter() {
+                return {
+                    x: canvas.width / (2 * (window.devicePixelRatio || 1)),
+                    y: canvas.height / (2 * (window.devicePixelRatio || 1)),
+                };
+            }
+
+            // ============ 获取天体世界坐标 ============
+            function getBodyWorldPos(key, time) {
+                if (key === 'sun') {
+                    return { x: 0, y: 0 };
+                }
+                if (key === 'moon') {
+                    const earthPos = getBodyWorldPos('earth', time);
+                    const moonAngle = initialAngles['moon'] + (2 * Math.PI / celestialData['moon'].orbitalPeriod) * time;
+                    const moonDist = displayData['moon'].orbitRadius;
+                    return {
+                        x: earthPos.x + moonDist * Math.cos(moonAngle),
+                        y: earthPos.y - moonDist * Math.sin(moonAngle),
+                    };
+                }
+                const data = celestialData[key];
+                const disp = displayData[key];
+                if (!data || data.orbitDistance <= 0) return { x: 0, y: 0 };
+                const angle = initialAngles[key] + (2 * Math.PI / data.orbitalPeriod) * time;
+                const dist = disp.orbitRadius;
+                return {
+                    x: dist * Math.cos(angle),
+                    y: -dist * Math.sin(angle),
+                };
+            }
+
+            // ============ 绘制函数 ============
+            function drawOrbit(orbitRadius) {
+                if (orbitRadius <= 0) return;
+                const sunScreen = worldToScreen(0, 0);
+                ctx.beginPath();
+                ctx.arc(sunScreen.x, sunScreen.y, orbitRadius * zoom, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+                ctx.lineWidth = Math.max(0.5, 0.8 * zoom);
+                ctx.setLineDash([4, 8]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            function drawBody(key, time) {
+                const data = celestialData[key];
+                const disp = displayData[key];
+                const pos = getBodyWorldPos(key, time);
+                const screen = worldToScreen(pos.x, pos.y);
+                const radius = disp.bodyRadius * zoom;
+                const minRadius = key === 'moon' ? 2.5 : 3;
+
+                // 裁剪检测
+                if (screen.x < -radius * 3 || screen.x > window.innerWidth + radius * 3 ||
+                    screen.y < -radius * 3 || screen.y > window.innerHeight + radius * 3) {
+                    return; // 不在屏幕内，跳过
+                }
+
+                const drawR = Math.max(radius, minRadius);
+
+                // 光晕（仅太阳）
+                if (data.isStar && data.glowColor) {
+                    const glowGrad = ctx.createRadialGradient(screen.x, screen.y, drawR * 0.3, screen.x, screen.y, drawR *
+                        3.5);
+                    glowGrad.addColorStop(0, 'rgba(255,180,70,0.7)');
+                    glowGrad.addColorStop(0.3, 'rgba(255,140,30,0.35)');
+                    glowGrad.addColorStop(0.6, 'rgba(255,100,20,0.08)');
+                    glowGrad.addColorStop(1, 'rgba(255,60,10,0)');
+                    ctx.fillStyle = glowGrad;
+                    ctx.beginPath();
+                    ctx.arc(screen.x, screen.y, drawR * 3.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 第二层更大的光晕
+                    const glowGrad2 = ctx.createRadialGradient(screen.x, screen.y, drawR * 0.5, screen.x, screen.y, drawR *
+                        7);
+                    glowGrad2.addColorStop(0, 'rgba(255,200,100,0.25)');
+                    glowGrad2.addColorStop(0.5, 'rgba(255,150,50,0.05)');
+                    glowGrad2.addColorStop(1, 'rgba(255,80,20,0)');
+                    ctx.fillStyle = glowGrad2;
+                    ctx.beginPath();
+                    ctx.arc(screen.x, screen.y, drawR * 7, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // 主体渐变
+                const bodyGrad = ctx.createRadialGradient(screen.x - drawR * 0.2, screen.y - drawR * 0.25, drawR * 0.08,
+                    screen.x, screen.y, drawR);
+                const baseColor = data.color;
+                bodyGrad.addColorStop(0, lightenColor(baseColor, 0.45));
+                bodyGrad.addColorStop(0.55, baseColor);
+                bodyGrad.addColorStop(1, darkenColor(baseColor, 0.5));
+
+                ctx.fillStyle = bodyGrad;
+                ctx.beginPath();
+                ctx.arc(screen.x, screen.y, drawR, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 边缘
+                ctx.strokeStyle = darkenColor(baseColor, 0.3);
+                ctx.lineWidth = Math.max(0.5, drawR * 0.08);
+                ctx.stroke();
+
+                // 木星条纹
+                if (data.hasStripes && drawR > 4) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(screen.x, screen.y, drawR, 0, Math.PI * 2);
+                    ctx.clip();
+                    const stripeCount = Math.floor(drawR / 2.5);
+                    for (let i = 0; i < stripeCount; i++) {
+                        const yOff = (i - stripeCount / 2) * (drawR * 2 / stripeCount);
+                        const alpha = 0.1 + Math.abs(Math.sin(i * 1.7)) * 0.2;
+                        ctx.fillStyle = `rgba(180,120,60,${alpha})`;
+                        ctx.fillRect(screen.x - drawR, screen.y + yOff - drawR / stripeCount, drawR * 2, drawR * 2 /
+                            stripeCount);
+                    }
+                    ctx.restore();
+                }
+
+                // 土星环
+                if (data.hasRings && drawR > 3) {
+                    const ringInner = drawR * 1.35;
+                    const ringOuter = drawR * 2.2;
+                    const ringGrad = ctx.createRadialGradient(screen.x, screen.y, ringInner, screen.x, screen.y, ringOuter);
+                    ringGrad.addColorStop(0, 'rgba(210,190,150,0)');
+                    ringGrad.addColorStop(0.3, 'rgba(210,190,150,0.55)');
+                    ringGrad.addColorStop(0.55, 'rgba(200,175,130,0.7)');
+                    ringGrad.addColorStop(0.7, 'rgba(180,155,110,0.5)');
+                    ringGrad.addColorStop(0.85, 'rgba(160,135,90,0.2)');
+                    ringGrad.addColorStop(1, 'rgba(140,120,80,0)');
+                    ctx.fillStyle = ringGrad;
+                    ctx.beginPath();
+                    ctx.arc(screen.x, screen.y, ringOuter, 0, Math.PI * 2);
+                    ctx.arc(screen.x, screen.y, ringInner, 0, Math.PI * 2, true);
+                    ctx.fill();
+
+                    // 环的细线
+                    ctx.strokeStyle = 'rgba(200,175,140,0.4)';
+                    ctx.lineWidth = Math.max(0.4, drawR * 0.04);
+                    ctx.beginPath();
+                    ctx.arc(screen.x, screen.y, ringInner, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(screen.x, screen.y, ringOuter, 0, Math.PI * 2);
+                    ctx.stroke();
+                    const ringMid = (ringInner + ringOuter) / 2;
+                    ctx.strokeStyle = 'rgba(190,165,135,0.3)';
+                    ctx.beginPath();
+                    ctx.arc(screen.x, screen.y, ringMid, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                // 选中高亮
+                if (key === selectedBodyKey && key !== 'sun') {
+                    const highlightR = drawR + 6 * zoom;
+                    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+                    ctx.lineWidth = Math.max(1.5, 2.5 * zoom);
+                    ctx.setLineDash([3, 3]);
+                    ctx.beginPath();
+                    ctx.arc(screen.x, screen.y, highlightR, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    // 脉冲光环
+                    const pulse = Math.sin(performance.now() / 800) * 0.4 + 0.6;
+                    const pulseR = highlightR + 4 * zoom;
+                    ctx.strokeStyle = `rgba(255,255,255,${pulse * 0.5})`;
+                    ctx.lineWidth = Math.max(0.8, 1.5 * zoom);
+                    ctx.beginPath();
+                    ctx.arc(screen.x, screen.y, pulseR, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                // 太阳选中高亮
+                if (key === 'sun' && key === selectedBodyKey) {
+                    const pulse = Math.sin(performance.now() / 600) * 0.5 + 0.5;
+                    ctx.strokeStyle = `rgba(255,200,100,${pulse * 0.8})`;
+                    ctx.lineWidth = Math.max(2, 4 * zoom);
+                    ctx.beginPath();
+                    ctx.arc(screen.x, screen.y, drawR + 8 * zoom, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                // 名称标签
+                if (zoom > 0.4 || key === selectedBodyKey || key === hoveredBodyKey) {
+                    const labelDist = drawR + 10 * zoom + (data.hasRings ? drawR * 1.3 : 0);
+                    const fontSize = Math.max(9, Math.min(14, 12 * zoom));
+                    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+                    ctx.font = `${fontSize}px "Segoe UI","PingFang SC","Microsoft YaHei",sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(data.name, screen.x, screen.y - labelDist);
+                }
+
+                return { screen, radius: drawR, key };
+            }
+
+            function lightenColor(hex, amount) {
+                const r = parseInt(hex.slice(1, 3), 16);
+                const g = parseInt(hex.slice(3, 5), 16);
+                const b = parseInt(hex.slice(5, 7), 16);
+                const lr = Math.min(255, Math.round(r + (255 - r) * amount));
+                const lg = Math.min(255, Math.round(g + (255 - g) * amount));
+                const lb = Math.min(255, Math.round(b + (255 - b) * amount));
+                return `rgb(${lr},${lg},${lb})`;
+            }
+
+            function darkenColor(hex, amount) {
+                const r = parseInt(hex.slice(1, 3), 16);
+                const g = parseInt(hex.slice(3, 5), 16);
+                const b = parseInt(hex.slice(5, 7), 16);
+                const dr = Math.max(0, Math.round(r * (1 - amount)));
+                const dg = Math.max(0, Math.round(g * (1 - amount)));
+                const db = Math.max(0, Math.round(b * (1 - amount)));
+                return `rgb(${dr},${dg},${db})`;
+            }
+
+            // ============ 主渲染循环 ============
+            function render(time) {
+                const dpr = window.devicePixelRatio || 1;
+                const w = window.innerWidth;
+                const h = window.innerHeight;
+
+                // 清除
+                ctx.clearRect(0, 0, w, h);
+
+                // 相机平滑动画
+                if (isAnimatingCamera) {
+                    const lerpFactor = 0.12;
+                    cameraX += (targetCameraX - cameraX) * lerpFactor;
+                    cameraY += (targetCameraY - cameraY) * lerpFactor;
+                    zoom += (targetZoom - zoom) * lerpFactor;
+                    if (Math.abs(targetCameraX - cameraX) < 0.05 &&
+                        Math.abs(targetCameraY - cameraY) < 0.05 &&
+                        Math.abs(targetZoom - zoom) < 0.002) {
+                        cameraX = targetCameraX;
+                        cameraY = targetCameraY;
+                        zoom = targetZoom;
+                        isAnimatingCamera = false;
+                    }
+                }
+
+                // 更新模拟时间
+                const now = performance.now();
+                const rawDt = (now - lastTime) / 1000;
+                lastTime = now;
+                const dt = Math.min(rawDt, 0.2); // 防止大帧跳跃
+                if (!isPaused) {
+                    simulationTime += dt * speedMultiplier;
+                }
+
+                // 绘制所有轨道
+                const orbitBodies = ['mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto'];
+                for (const key of orbitBodies) {
+                    drawOrbit(displayData[key].orbitRadius);
+                }
+
+                // 收集所有天体屏幕位置（用于后续可能的交互）
+                const bodyScreenData = [];
+
+                // 绘制顺序：从外到内（远的先画）
+                const drawOrder = ['pluto', 'neptune', 'uranus', 'saturn', 'jupiter', 'mars', 'earth', 'moon', 'venus',
+                    'mercury', 'sun'
+                ];
+
+                for (const key of drawOrder) {
+                    const result = drawBody(key, simulationTime);
+                    if (result) {
+                        bodyScreenData.push(result);
+                    }
+                }
+
+                // 存储屏幕数据用于点击检测
+                canvas._bodyScreenData = bodyScreenData;
+
+                // 如果鼠标悬停在天体上，改变光标
+                if (hoveredBodyKey && !isDragging) {
+                    document.body.style.cursor = 'pointer';
+                } else if (!isDragging && !isAnimatingCamera) {
+                    document.body.style.cursor = 'grab';
+                }
+
+                requestAnimationFrame(render);
+            }
+
+            // ============ 更新信息面板 ============
+            function updateInfoPanel(key) {
+                const data = celestialData[key];
+                if (!data) return;
+                document.getElementById('panel-name').textContent = data.name;
+                document.getElementById('panel-type').textContent = data.type;
+                document.getElementById('panel-diameter').textContent = data.diameter.toLocaleString() + ' km';
+                if (data.mass >= 1000) {
+                    document.getElementById('panel-mass').textContent = (data.mass / 1e6).toFixed(3) + ' ×10³⁰ kg';
+                } else if (data.mass >= 1) {
+                    document.getElementById('panel-mass').textContent = data.mass.toFixed(2) + ' ×10²⁴ kg';
+                } else {
+                    document.getElementById('panel-mass').textContent = (data.mass * 1000).toFixed(2) + ' ×10²¹ kg';
+                }
+                if (data.orbitDistance > 0) {
+                    document.getElementById('panel-orbit').textContent = data.orbitDistance.toLocaleString() +
+                        ' 百万km';
+                } else {
+                    document.getElementById('panel-orbit').textContent = '— (中心天体)';
+                }
+                if (data.orbitalPeriod > 0) {
+                    if (data.orbitalPeriod >= 365) {
+                        document.getElementById('panel-period').textContent = (data.orbitalPeriod / 365.25).toFixed(
+                            2) + ' 地球年';
+                    } else {
+                        document.getElementById('panel-period').textContent = data.orbitalPeriod.toFixed(1) + ' 地球日';
+                    }
+                } else {
+                    document.getElementById('panel-period').textContent = '—';
+                }
+                document.getElementById('panel-temp').textContent = data.temperature;
+                document.getElementById('panel-moons').textContent = data.moons;
+                infoPanel.classList.add('visible');
+                selectedBodyKey = key;
+            }
+
+            function closeInfoPanel() {
+                infoPanel.classList.remove('visible');
+                selectedBodyKey = null;
+            }
+
+            // ============ 一键定位 ============
+            function navigateToBody(key) {
+                const pos = getBodyWorldPos(key, simulationTime);
+                const disp = displayData[key];
+                const bodyR = disp.bodyRadius;
+
+                // 目标缩放：使天体在屏幕上占合理大小
+                let targetZ;
+                if (key === 'sun') {
+                    targetZ = Math.min(8, window.innerHeight / (bodyR * 5));
+                } else if (key === 'moon') {
+                    targetZ = Math.min(25, window.innerHeight / (bodyR * 8));
+                } else if (['mercury', 'venus', 'earth', 'mars'].includes(key)) {
+                    targetZ = Math.min(18, window.innerHeight / (bodyR * 7));
+                } else if (['jupiter', 'saturn'].includes(key)) {
+                    targetZ = Math.min(8, window.innerHeight / (bodyR * 5));
+                } else {
+                    targetZ = Math.min(12, window.innerHeight / (bodyR * 6));
+                }
+                targetZ = Math.max(0.4, Math.min(targetZ, 50));
+
+                targetCameraX = pos.x;
+                targetCameraY = pos.y;
+                targetZoom = targetZ;
+                isAnimatingCamera = true;
+                updateInfoPanel(key);
+                // 隐藏提示
+                hintEl.style.opacity = '0';
+                setTimeout(() => { hintEl.style.opacity = '1'; }, 3000);
+            }
+
+            function resetView() {
+                targetCameraX = 0;
+                targetCameraY = 0;
+                const maxOrbit = displayData['pluto'].orbitRadius;
+                targetZoom = Math.min(1, (window.innerHeight * 0.7) / (maxOrbit * 2.2));
+                targetZoom = Math.max(0.3, Math.min(targetZoom, 2));
+                isAnimatingCamera = true;
+                closeInfoPanel();
+                selectedBodyKey = 'sun';
+                updateInfoPanel('sun');
+            }
+
+            // ============ 事件处理 ============
+            function getEventPos(e) {
+                if (e.touches && e.touches.length > 0) {
+                    return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                }
+                if (e.changedTouches && e.changedTouches.length > 0) {
+                    return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+                }
+                return { x: e.clientX, y: e.clientY };
+            }
+
+            function findBodyAtScreen(sx, sy) {
+                if (!canvas._bodyScreenData) return null;
+                const dpr = window.devicePixelRatio || 1;
+                const adjustedX = sx;
+                const adjustedY = sy;
+                // 从上层开始检测（后画的在上层）
+                const reversed = [...canvas._bodyScreenData].reverse();
+                for (const bd of reversed) {
+                    const dist = Math.sqrt((bd.screen.x - adjustedX) ** 2 + (bd.screen.y - adjustedY) ** 2);
+                    const hitRadius = Math.max(bd.radius + 8, 15);
+                    if (dist < hitRadius) {
+                        return bd.key;
+                    }
+                }
+                return null;
+            }
+
+            canvas.addEventListener('pointerdown', (e) => {
+                const pos = getEventPos(e);
+                pointerDownPos = { x: pos.x, y: pos.y };
+                pointerMoved = false;
+                isDragging = true;
+                dragStartX = pos.x;
+                dragStartY = pos.y;
+                dragStartCamX = cameraX;
+                dragStartCamY = cameraY;
+                document.body.style.cursor = 'grabbing';
+            });
+
+            window.addEventListener('pointermove', (e) => {
+                const pos = getEventPos(e);
+                const dx = pos.x - pointerDownPos.x;
+                const dy = pos.y - pointerDownPos.y;
+                if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+                    pointerMoved = true;
+                }
+
+                if (isDragging) {
+                    const dpr = window.devicePixelRatio || 1;
+                    const moveX = (pos.x - dragStartX) / zoom;
+                    const moveY = (pos.y - dragStartY) / zoom;
+                    targetCameraX = dragStartCamX - moveX;
+                    targetCameraY = dragStartCamY - moveY;
+                    cameraX = targetCameraX;
+                    cameraY = targetCameraY;
+                    isAnimatingCamera = false;
+                }
+
+                // 检测悬停
+                if (!isDragging || !pointerMoved) {
+                    const hovered = findBodyAtScreen(pos.x, pos.y);
+                    if (hovered !== hoveredBodyKey) {
+                        hoveredBodyKey = hovered;
+                    }
+                } else {
+                    hoveredBodyKey = null;
+                }
+            });
+
+            window.addEventListener('pointerup', (e) => {
+                const pos = getEventPos(e);
+                if (!pointerMoved && isDragging) {
+                    // 这是一个点击
+                    const clicked = findBodyAtScreen(pos.x, pos.y);
+                    if (clicked) {
+                        navigateToBody(clicked);
+                    }
+                }
+                isDragging = false;
+                document.body.style.cursor = hoveredBodyKey ? 'pointer' : 'grab';
+            });
+
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const pos = { x: e.clientX, y: e.clientY };
+                const worldBefore = screenToWorld(pos.x, pos.y);
+
+                const zoomFactor = e.deltaY < 0 ? 1.12 : 0.89;
+                const newZoom = Math.max(0.15, Math.min(60, zoom * zoomFactor));
+                targetZoom = newZoom;
+                zoom = newZoom;
+                isAnimatingCamera = false;
+
+                const worldAfter = screenToWorld(pos.x, pos.y);
+                cameraX += worldBefore.x - worldAfter.x;
+                cameraY += worldBefore.y - worldAfter.y;
+                targetCameraX = cameraX;
+                targetCameraY = cameraY;
+
+                // 更新悬停
+                const hovered = findBodyAtScreen(pos.x, pos.y);
+                hoveredBodyKey = hovered || null;
+            }, { passive: false });
+
+            // 双击重置
+            canvas.addEventListener('dblclick', (e) => {
+                resetView();
+            });
+
+            // 触摸双指缩放
+            let lastPinchDist = 0;
+            canvas.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2) {
+                    lastPinchDist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                }
+            }, { passive: true });
+
+            canvas.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 2) {
+                    const dist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    if (lastPinchDist > 0 && Math.abs(dist - lastPinchDist) > 3) {
+                        const scale = dist / lastPinchDist;
+                        const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                        const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                        const worldBefore = screenToWorld(cx, cy);
+                        zoom = Math.max(0.15, Math.min(60, zoom * scale));
+                        targetZoom = zoom;
+                        isAnimatingCamera = false;
+                        const worldAfter = screenToWorld(cx, cy);
+                        cameraX += worldBefore.x - worldAfter.x;
+                        cameraY += worldBefore.y - worldAfter.y;
+                        targetCameraX = cameraX;
+                        targetCameraY = cameraY;
+                        lastPinchDist = dist;
+                    }
+                }
+            }, { passive: true });
+
+            canvas.addEventListener('touchend', () => {
+                lastPinchDist = 0;
+            });
+
+            // 速度按钮
+            speedGroup.addEventListener('click', (e) => {
+                const btn = e.target.closest('.speed-btn');
+                if (!btn) return;
+                const speed = parseInt(btn.dataset.speed);
+                if (speed === 0) {
+                    isPaused = true;
+                } else {
+                    isPaused = false;
+                    speedMultiplier = speed;
+                }
+                // 更新active状态
+                document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+                if (isPaused) {
+                    document.querySelector('.speed-btn[data-speed="0"]')?.classList.add('active');
+                } else {
+                    btn.classList.add('active');
+                }
+            });
+
+            // 天体导航按钮
+            planetNav.addEventListener('click', (e) => {
+                const btn = e.target.closest('.planet-nav-btn');
+                if (!btn) return;
+                const target = btn.dataset.target;
+                if (target && celestialData[target]) {
+                    navigateToBody(target);
+                }
+            });
+
+            // 重置视图按钮
+            resetViewBtn.addEventListener('click', resetView);
+
+            // 关闭信息面板
+            closePanelBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                closeInfoPanel();
+            });
+
+            // 键盘快捷键
+            window.addEventListener('keydown', (e) => {
+                switch (e.key.toLowerCase()) {
+                    case 'r':
+                        resetView();
+                        break;
+                    case ' ':
+                        e.preventDefault();
+                        isPaused = !isPaused;
+                        const pauseBtn = document.querySelector('.speed-btn[data-speed="0"]');
+                        if (isPaused) {
+                            document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove(
+                                'active'));
+                            if (pauseBtn) pauseBtn.classList.add('active');
+                        } else {
+                            document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove(
+                                'active'));
+                            const activeBtn = document.querySelector(`.speed-btn[data-speed="${speedMultiplier}"]`);
+                            if (activeBtn) activeBtn.classList.add('active');
+                            else {
+                                const defaultBtn = document.querySelector('.speed-btn[data-speed="1"]');
+                                if (defaultBtn) defaultBtn.classList.add('active');
+                                speedMultiplier = 1;
+                            }
+                        }
+                        break;
+                    case '1':
+                        speedMultiplier = 1;
+                        isPaused = false;
+                        updateSpeedUI();
+                        break;
+                    case '2':
+                        speedMultiplier = 5;
+                        isPaused = false;
+                        updateSpeedUI();
+                        break;
+                    case '3':
+                        speedMultiplier = 30;
+                        isPaused = false;
+                        updateSpeedUI();
+                        break;
+                    case '4':
+                        speedMultiplier = 200;
+                        isPaused = false;
+                        updateSpeedUI();
+                        break;
+                    case '5':
+                        speedMultiplier = 1500;
+                        isPaused = false;
+                        updateSpeedUI();
+                        break;
+                    case 'escape':
+                        closeInfoPanel();
+                        break;
+                    default:
+                        break;
+                }
+            });
+
+            function updateSpeedUI() {
+                document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+                const activeBtn = document.querySelector(`.speed-btn[data-speed="${speedMultiplier}"]`);
+                if (activeBtn) activeBtn.classList.add('active');
+            }
+
+            // ============ 窗口大小调整 ============
+            window.addEventListener('resize', () => {
+                resizeCanvases();
+                generateStars();
+                drawStarfield();
+            });
+
+            // ============ 初始化 ============
+            function init() {
+                resizeCanvases();
+                generateStars();
+                drawStarfield();
+
+                // 初始缩放以适应整个太阳系
+                const maxOrbit = displayData['pluto'].orbitRadius;
+                const initZoom = Math.min(1, (window.innerHeight * 0.7) / (maxOrbit * 2.2));
+                zoom = Math.max(0.3, Math.min(initZoom, 2));
+                targetZoom = zoom;
+                cameraX = 0;
+                cameraY = 0;
+                targetCameraX = 0;
+                targetCameraY = 0;
+
+                // 初始选中太阳
+                updateInfoPanel('sun');
+                selectedBodyKey = 'sun';
+
+                // 开始渲染
+                lastTime = performance.now();
+                requestAnimationFrame(render);
+
+                // 几秒后淡化提示
+                setTimeout(() => {
+                    hintEl.style.opacity = '0.4';
+                }, 8000);
+            }
+
+            init();
+
+            console.log('🌌 2D太阳系已就绪');
+            console.log('  🖱 滚轮缩放 | 拖拽平移 | 点击天体查看详情 | 双击重置');
+            console.log('  ⌨ 键盘快捷键: 1-5 速度档位 | 空格 暂停 | R 重置 | Esc 关闭面板');
+            console.log('  ☀ 包含天体: 太阳 + 8大行星 + 冥王星 + 月球');
+            console.log('  📐 轨道距离使用平方根压缩 | 天体大小使用四次方根压缩');
+            console.log('  📊 所有物理参数均为真实数据');
+        })();
+    </script>
+</body>
+</html>

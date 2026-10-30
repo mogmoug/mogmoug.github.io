@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DeepSeek · 深度求索</title>
+    <style>
+        /* ============================================================
+           Apple Design Tokens (基于 designmd.cc 的 Apple 设计规范)
+           ============================================================ */
+        :root {
+            /* 色彩系统 — Apple 官方调色板 */
+            --color-primary: #0071e3;          /* 主交互蓝 */
+            --color-primary-hover: #0077ed;
+            --color-text-accent: #2997ff;       /* 链接蓝 */
+            --color-text-accent-hover: #0066cc;
+            --color-text-primary: #1d1d1f;      /* 近黑色文字 */
+            --color-text-muted: #6e6e73;        /* 次要文字 */
+            --color-bg: #f5f5f7;                /* 浅灰背景 */
+            --color-bg-white: #ffffff;          /* 纯白背景 */
+            --color-surface: #fafafc;           /* 浮层表面 */
+            --color-dark-surface: #000000;      /* 深色沉浸区 */
+
+            /* 暗色主题 */
+            --color-dark-text: #f5f5f7;
+            --color-dark-text-muted: #86868b;
+            --color-dark-bg: #000000;
+            --color-dark-card: rgba(255, 255, 255, 0.06);
+
+            /* 圆角 */
+            --radius-sm: 8px;
+            --radius-md: 11px;
+            --radius-lg: 18px;
+            --radius-xl: 28px;
+            --radius-pill: 980px;
+
+            /* 动画曲线 — Apple 标志性的 cubic-bezier */
+            --ease-apple: cubic-bezier(0.4, 0, 0.6, 1);
+            --ease-spring: cubic-bezier(0.23, 1, 0.32, 1);
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+            /* 字体 */
+            --font-display: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+            --font-text: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+
+            /* 间距 */
+            --space-xs: 8px;
+            --space-sm: 16px;
+            --space-md: 24px;
+            --space-lg: 40px;
+            --space-xl: 64px;
+            --space-2xl: 100px;
+
+            /* 导航高度 */
+            --nav-height: 48px;
+        }
+
+        /* ============================================================
+           基础重置
+           ============================================================ */
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+
+        body {
+            font-family: var(--font-text);
+            background: var(--color-bg);
+            color: var(--color-text-primary);
+            overflow-x: hidden;
+            line-height: 1.47059;
+            font-size: 17px;
+            letter-spacing: -0.022em;
+        }
+
+        /* ============================================================
+           顶部导航 — Apple 风格的极简 sticky nav
+           ============================================================ */
+        .nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--nav-height);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 var(--space-md);
+            background: rgba(251, 251, 253, 0.82);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+            transition: background 0.35s var(--ease-apple),
+                        border-color 0.35s var(--ease-apple);
+        }
+
+        .nav.dark {
+            background: rgba(22, 22, 23, 0.8);
+            border-bottom-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .nav-inner {
+            display: flex;
+            align-items: center;
+            gap: var(--space-lg);
+            max-width: 980px;
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .nav-brand {
+            font-family: var(--font-display);
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--color-text-primary);
+            letter-spacing: -0.01em;
+            transition: color 0.35s var(--ease-apple);
+        }
+
+        .nav.dark .nav-brand {
+            color: var(--color-dark-text);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 4px;
+        }
+
+        .nav-links a {
+            font-size: 12px;
+            font-weight: 400;
+            color: var(--color-text-muted);
+            text-decoration: none;
+            padding: 6px 14px;
+            border-radius: var(--radius-pill);
+            transition: all 0.3s var(--ease-apple);
+            letter-spacing: -0.01em;
+            white-space: nowrap;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: var(--color-text-primary);
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .nav.dark .nav-links a {
+            color: var(--color-dark-text-muted);
+        }
+
+        .nav.dark .nav-links a:hover,
+        .nav.dark .nav-links a.active {
+            color: var(--color-dark-text);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* ============================================================
+           滚动进度条 — 细线，Apple 风格
+           ============================================================ */
+        .progress-bar {
+            position: fixed;
+            top: var(--nav-height);
+            left: 0;
+            height: 2px;
+            width: 0%;
+            background: var(--color-primary);
+            z-index: 10000;
+            transition: width 0.1s linear;
+            opacity: 0;
+            transition: opacity 0.3s var(--ease-apple), width 0.1s linear;
+        }
+
+        .progress-bar.visible {
+            opacity: 1;
+        }
+
+        /* ============================================================
+           主容器
+           ============================================================ */
+        .page {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ============================================================
+           Section 基础
+           ============================================================ */
+        .section {
+            position: relative;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: var(--space-2xl) var(--space-md);
+            overflow: hidden;
+        }
+
+        .section-inner {
+            max-width: 980px;
+            width: 100%;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* ============================================================
+           滚动驱动动画基础 — 使用 CSS animation-timeline: view()
+           支持 Safari 19+ / Chrome 115+
+           ============================================================ */
+        @supports (animation-timeline: view()) {
+            .reveal {
+                animation: reveal-up linear both;
+                animation-timeline: view();
+                animation-range: entry 0% entry 100%;
+            }
+
+            .reveal-fade {
+                animation: fade-in linear both;
+                animation-timeline: view();
+                animation-range: entry 0% entry 60%;
+            }
+
+            .reveal-scale {
+                animation: scale-in linear both;
+                animation-timeline: view();
+                animation-range: entry 0% entry 80%;
+            }
+
+            @keyframes reveal-up {
+                from {
+                    opacity: 0;
+                    transform: translateY(80px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            @keyframes fade-in {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+
+            @keyframes scale-in {
+                from {
+                    opacity: 0;
+                    transform: scale(0.92);
+                }
+                to {
+                    opacity: 1;
+                    transform: scale(1);
+                }
+            }
+        }
+
+        /* 回退方案：使用 IntersectionObserver (JS) 添加 .visible 类 */
+        .no-scroll-timeline .reveal {
+            opacity: 0;
+            transform: translateY(80px);
+            transition: opacity 1s var(--ease-out-expo), transform 1s var(--ease-out-expo);
+        }
+
+        .no-scroll-timeline .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .no-scroll-timeline .reveal-fade {
+            opacity: 0;
+            transition: opacity 0.8s var(--ease-out-expo);
+        }
+
+        .no-scroll-timeline .reveal-fade.visible {
+            opacity: 1;
+        }
+
+        .no-scroll-timeline .reveal-scale {
+            opacity: 0;
+            transform: scale(0.92);
+            transition: opacity 1s var(--ease-out-expo), transform 1s var(--ease-out-expo);
+        }
+
+        .no-scroll-timeline .reveal-scale.visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* 延迟工具类 */
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.45s; }
+        .delay-5 { animation-delay: 0.6s; }
+        .delay-6 { animation-delay: 0.75s; }
+
+        /* ============================================================
+           Hero Section — 深色沉浸区
+           ============================================================ */
+        .hero {
+            min-height: 100vh;
+            background: var(--color-dark-bg);
+            color: var(--color-dark-text);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding-top: calc(var(--nav-height) + 60px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 深色区域的光晕背景 */
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -30%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120%;
+            height: 80%;
+            background: radial-gradient(
+                ellipse at center,
+                rgba(0, 113, 227, 0.18) 0%,
+                rgba(41, 151, 255, 0.08) 35%,
+                transparent 70%
+            );
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: -20%;
+            right: -10%;
+            width: 60%;
+            height: 60%;
+            background: radial-gradient(
+                ellipse at center,
+                rgba(41, 151, 255, 0.06) 0%,
+                transparent 70%
+            );
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .hero-eyebrow {
+            font-size: 19px;
+            font-weight: 600;
+            color: var(--color-text-accent);
+            letter-spacing: 0.02em;
+            margin-bottom: var(--space-sm);
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-title {
+            font-family: var(--font-display);
+            font-size: clamp(56px, 12vw, 112px);
+            font-weight: 700;
+            letter-spacing: -0.04em;
+            line-height: 1.02;
+            background: linear-gradient(
+                180deg,
+                #ffffff 0%,
+                #a0c8ff 50%,
+                #2997ff 100%
+            );
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            position: relative;
+            z-index: 1;
+            margin-bottom: var(--space-sm);
+        }
+
+        .hero-subtitle {
+            font-family: var(--font-display);
+            font-size: clamp(21px, 3.5vw, 28px);
+            font-weight: 400;
+            color: var(--color-dark-text-muted);
+            max-width: 600px;
+            line-height: 1.35;
+            position: relative;
+            z-index: 1;
+            letter-spacing: -0.01em;
+        }
+
+        .hero-subtitle em {
+            font-style: normal;
+            color: var(--color-text-accent);
+            font-weight: 500;
+        }
+
+        /* Hero 统计数字 */
+        .hero-stats {
+            display: flex;
+            gap: clamp(40px, 10vw, 100px);
+            margin-top: var(--space-xl);
+            position: relative;
+            z-index: 1;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .hero-stat {
+            text-align: center;
+        }
+
+        .hero-stat-number {
+            font-family: var(--font-display);
+            font-size: clamp(40px, 6vw, 64px);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1;
+            background: linear-gradient(135deg, #2997ff, #6bc9ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .hero-stat-label {
+            font-size: 14px;
+            color: var(--color-dark-text-muted);
+            margin-top: 8px;
+            letter-spacing: 0.01em;
+            font-weight: 500;
+        }
+
+        /* 向下箭头 */
+        .scroll-hint {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1;
+            animation: bounce 2.4s var(--ease-apple) infinite;
+        }
+
+        .scroll-hint svg {
+            width: 24px;
+            height: 24px;
+            stroke: var(--color-text-accent);
+            opacity: 0.6;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateX(-50%) translateY(0); }
+            40% { transform: translateX(-50%) translateY(10px); }
+            60% { transform: translateX(-50%) translateY(5px); }
+        }
+
+        /* ============================================================
+           浅色 Section 通用样式
+           ============================================================ */
+        .section-light {
+            background: var(--color-bg);
+            color: var(--color-text-primary);
+        }
+
+        .section-white {
+            background: var(--color-bg-white);
+            color: var(--color-text-primary);
+        }
+
+        .section-title {
+            font-family: var(--font-display);
+            font-size: clamp(32px, 6vw, 56px);
+            font-weight: 600;
+            letter-spacing: -0.025em;
+            line-height: 1.07143;
+            text-align: center;
+            margin-bottom: var(--space-sm);
+        }
+
+        .section-desc {
+            font-size: clamp(17px, 2.5vw, 21px);
+            color: var(--color-text-muted);
+            text-align: center;
+            max-width: 640px;
+            margin: 0 auto var(--space-xl);
+            line-height: 1.5;
+            letter-spacing: -0.01em;
+        }
+
+        .section-desc strong {
+            color: var(--color-text-primary);
+            font-weight: 600;
+        }
+
+        /* ============================================================
+           卡片网格 — Apple 风格
+           ============================================================ */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+            width: 100%;
+        }
+
+        .card {
+            background: var(--color-bg-white);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg) var(--space-md);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            transition: transform 0.5s var(--ease-spring),
+                        box-shadow 0.5s var(--ease-spring),
+                        border-color 0.5s var(--ease-spring);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+            border-color: rgba(0, 113, 227, 0.15);
+        }
+
+        .card-icon {
+            font-size: 36px;
+            display: block;
+            margin-bottom: var(--space-sm);
+            line-height: 1;
+        }
+
+        .card h3 {
+            font-family: var(--font-display);
+            font-size: 21px;
+            font-weight: 600;
+            letter-spacing: -0.015em;
+            margin-bottom: 8px;
+            color: var(--color-text-primary);
+        }
+
+        .card p {
+            font-size: 15px;
+            color: var(--color-text-muted);
+            line-height: 1.5;
+            letter-spacing: -0.01em;
+        }
+
+        /* ============================================================
+           模型列表 — Apple 风格行
+           ============================================================ */
+        .model-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+        }
+
+        .model-row {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            padding: var(--space-md) var(--space-lg);
+            background: var(--color-bg-white);
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            transition: all 0.5s var(--ease-spring);
+        }
+
+        .model-row:hover {
+            transform: translateX(6px);
+            border-color: rgba(0, 113, 227, 0.15);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+        }
+
+        .model-badge {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            background: rgba(0, 113, 227, 0.06);
+            border-radius: var(--radius-md);
+            flex-shrink: 0;
+            border: 1px solid rgba(0, 113, 227, 0.1);
+        }
+
+        .model-info {
+            flex: 1;
+        }
+
+        .model-info h3 {
+            font-family: var(--font-display);
+            font-size: 17px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            margin-bottom: 2px;
+            color: var(--color-text-primary);
+        }
+
+        .model-info p {
+            font-size: 14px;
+            color: var(--color-text-muted);
+            line-height: 1.45;
+            margin: 0;
+            letter-spacing: -0.01em;
+        }
+
+        .model-tag {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 6px 16px;
+            border-radius: var(--radius-pill);
+            background: rgba(0, 113, 227, 0.08);
+            color: var(--color-primary);
+            border: 1px solid rgba(0, 113, 227, 0.12);
+            white-space: nowrap;
+            flex-shrink: 0;
+            letter-spacing: -0.01em;
+        }
+
+        /* ============================================================
+           愿景 Section — 深色结尾
+           ============================================================ */
+        .vision {
+            background: var(--color-dark-bg);
+            color: var(--color-dark-text);
+            text-align: center;
+            min-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .vision::before {
+            content: '';
+            position: absolute;
+            top: -40%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            height: 80%;
+            background: radial-gradient(
+                ellipse at center,
+                rgba(41, 151, 255, 0.12) 0%,
+                transparent 65%
+            );
+            pointer-events: none;
+        }
+
+        .vision-title {
+            font-family: var(--font-display);
+            font-size: clamp(40px, 9vw, 80px);
+            font-weight: 700;
+            letter-spacing: -0.04em;
+            line-height: 1.05;
+            background: linear-gradient(180deg, #ffffff, #6bc9ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: var(--space-md);
+            position: relative;
+            z-index: 1;
+        }
+
+        .vision-desc {
+            font-size: clamp(17px, 2.5vw, 21px);
+            color: var(--color-dark-text-muted);
+            max-width: 560px;
+            line-height: 1.5;
+            margin-bottom: var(--space-xl);
+            position: relative;
+            z-index: 1;
+            letter-spacing: -0.01em;
+        }
+
+        .cta-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 32px;
+            background: var(--color-primary);
+            color: #fff;
+            font-family: var(--font-text);
+            font-size: 17px;
+            font-weight: 500;
+            border: none;
+            border-radius: var(--radius-pill);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.4s var(--ease-spring);
+            position: relative;
+            z-index: 1;
+            letter-spacing: -0.01em;
+        }
+
+        .cta-button:hover {
+            background: var(--color-primary-hover);
+            transform: scale(1.03);
+        }
+
+        .cta-button:active {
+            transform: scale(0.98);
+        }
+
+        .cta-button svg {
+            width: 16px;
+            height: 16px;
+            transition: transform 0.4s var(--ease-spring);
+        }
+
+        .cta-button:hover svg {
+            transform: translateX(3px);
+        }
+
+        /* ============================================================
+           页脚
+           ============================================================ */
+        .footer {
+            background: var(--color-bg);
+            padding: var(--space-xl) var(--space-md);
+            text-align: center;
+            font-size: 12px;
+            color: var(--color-text-muted);
+            line-height: 1.6;
+            border-top: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .footer a {
+            color: var(--color-text-accent);
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            color: var(--color-text-accent-hover);
+            text-decoration: underline;
+        }
+
+        /* ============================================================
+           响应式
+           ============================================================ */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+
+            .nav-inner {
+                justify-content: center;
+            }
+
+            .section {
+                padding: var(--space-xl) var(--space-sm);
+            }
+
+            .card-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .model-row {
+                flex-direction: column;
+                text-align: center;
+                gap: var(--space-sm);
+                padding: var(--space-md);
+            }
+
+            .model-tag {
+                align-self: center;
+            }
+
+            .model-row:hover {
+                transform: translateX(0) scale(1.01);
+            }
+
+            .hero-stats {
+                gap: 32px;
+            }
+        }
+
+        /* 尊重用户的减弱动画偏好 */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+
+            .reveal,
+            .reveal-fade,
+            .reveal-scale {
+                opacity: 1 !important;
+                transform: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ========== 导航 ========== -->
+    <nav class="nav" id="nav">
+        <div class="nav-inner">
+            <span class="nav-brand">DeepSeek</span>
+            <div class="nav-links">
+                <a href="#hero" class="active">首页</a>
+                <a href="#features">特性</a>
+                <a href="#models">模型</a>
+                <a href="#vision">愿景</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 滚动进度条 -->
+    <div class="progress-bar" id="progressBar"></div>
+
+    <!-- ========== 主内容 ========== -->
+    <main class="page">
+
+        <!-- ================================================================
+             Section 1: Hero — 深色沉浸区
+             ================================================================ -->
+        <section class="section hero" id="hero">
+            <p class="hero-eyebrow reveal-fade">深度求索</p>
+            <h1 class="hero-title reveal">DeepSeek</h1>
+            <p class="hero-subtitle reveal delay-2">
+                用<em>AI</em>重新定义可能
+            </p>
+
+            <div class="hero-stats">
+                <div class="hero-stat reveal delay-3">
+                    <div class="hero-stat-number" data-target="1000000">0</div>
+                    <div class="hero-stat-label">上下文窗口 (Token)</div>
+                </div>
+                <div class="hero-stat reveal delay-4">
+                    <div class="hero-stat-number" data-target="1.6" data-decimal="1">0</div>
+                    <div class="hero-stat-label">参数量 (万亿)</div>
+                </div>
+                <div class="hero-stat reveal delay-5">
+                    <div class="hero-stat-number" data-target="100">0</div>
+                    <div class="hero-stat-label">覆盖国家与地区</div>
+                </div>
+            </div>
+
+            <div class="scroll-hint reveal-fade delay-6">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 5v14M5 12l7 7 7-7"/>
+                </svg>
+            </div>
+        </section>
+
+        <!-- ================================================================
+             Section 2: 核心特性 — 浅色区
+             ================================================================ -->
+        <section class="section section-light" id="features">
+            <div class="section-inner">
+                <h2 class="section-title reveal">核心特性</h2>
+                <p class="section-desc reveal delay-1">
+                    突破性的技术架构，<strong>重新定义</strong>AI的能力边界
+                </p>
+
+                <div class="card-grid">
+                    <div class="card reveal delay-2">
+                        <span class="card-icon">🧠</span>
+                        <h3>强大推理</h3>
+                        <p>基于混合专家架构与强化学习后训练，在数学、编程、逻辑推理等复杂任务中表现卓越。</p>
+                    </div>
+                    <div class="card reveal delay-3">
+                        <span class="card-icon">⚡</span>
+                        <h3>极速响应</h3>
+                        <p>优化的推理引擎，毫秒级响应速度，让对话流畅自然，灵感永不等待。</p>
+                    </div>
+                    <div class="card reveal delay-4">
+                        <span class="card-icon">📚</span>
+                        <h3>超长上下文</h3>
+                        <p>支持高达100万token的上下文窗口，轻松处理长篇文档和复杂多轮对话。</p>
+                    </div>
+                    <div class="card reveal delay-5">
+                        <span class="card-icon">🔓</span>
+                        <h3>开放生态</h3>
+                        <p>提供丰富的API接口和开发工具，与全球开发者共建AI新生态。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================================================================
+             Section 3: 模型家族 — 白色区
+             ================================================================ -->
+        <section class="section section-white" id="models">
+            <div class="section-inner">
+                <h2 class="section-title reveal">模型家族</h2>
+                <p class="section-desc reveal delay-1">
+                    覆盖多种场景，<strong>总有一款</strong>适合你的需求
+                </p>
+
+                <div class="model-list">
+                    <div class="model-row reveal delay-2">
+                        <div class="model-badge">🌟</div>
+                        <div class="model-info">
+                            <h3>DeepSeek-V4-Pro</h3>
+                            <p>旗舰级通用模型，1.6T总参数 / 49B激活参数，1M上下文窗口，推理能力对标顶尖闭源模型。</p>
+                        </div>
+                        <span class="model-tag">旗舰</span>
+                    </div>
+                    <div class="model-row reveal delay-3">
+                        <div class="model-badge">⚡</div>
+                        <div class="model-info">
+                            <h3>DeepSeek-V4-Flash</h3>
+                            <p>284B总参数 / 13B激活参数，推理能力接近V4-Pro，响应更快，性价比极高。</p>
+                        </div>
+                        <span class="model-tag">高速</span>
+                    </div>
+                    <div class="model-row reveal delay-4">
+                        <div class="model-badge">💡</div>
+                        <div class="model-info">
+                            <h3>DeepSeek-V4.1-Flash</h3>
+                            <p>552B参数MoE架构，全新因果编码器-解码器设计，代码能力突出，Codeforces评分3471。</p>
+                        </div>
+                        <span class="model-tag">代码</span>
+                    </div>
+                    <div class="model-row reveal delay-5">
+                        <div class="model-badge">🔬</div>
+                        <div class="model-info">
+                            <h3>DeepSeek-R1</h3>
+                            <p>专注于深度推理的模型，在数学、代码和科学问题上表现惊艳，支持128K上下文。</p>
+                        </div>
+                        <span class="model-tag">推理</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================================================================
+             Section 4: 愿景 — 深色结尾
+             ================================================================ -->
+        <section class="section vision" id="vision">
+            <h2 class="vision-title reveal">探索未知<br>永不止步</h2>
+            <p class="vision-desc reveal delay-2">
+                我们相信，人工智能将重塑每一个行业，<br>
+                而 DeepSeek 愿成为这场变革中最可靠的伙伴。
+            </p>
+            <a href="#" class="cta-button reveal delay-3">
+                开始探索
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+            </a>
+        </section>
+
+        <!-- 页脚 -->
+        <footer class="footer">
+            <p>© 2026 DeepSeek 深度求索 · 保留所有权利</p>
+            <p style="margin-top: 4px;">本页面为演示用途 · Apple 风格设计</p>
+        </footer>
+
+    </main>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // ============================================================
+            // 1. 检测浏览器是否支持 scroll-driven animations
+            //    如果不支持，添加 no-scroll-timeline 类作为回退
+            // ============================================================
+            var supportsScrollTimeline = CSS.supports('animation-timeline', 'view()');
+            if (!supportsScrollTimeline) {
+                document.documentElement.classList.add('no-scroll-timeline');
+                initFallbackAnimations();
+            }
+
+            // ============================================================
+            // 2. 回退方案：使用 IntersectionObserver 触发 .visible 类
+            // ============================================================
+            function initFallbackAnimations() {
+                var revealElements = document.querySelectorAll('.reveal, .reveal-fade, .reveal-scale');
+
+                var observer = new IntersectionObserver(function(entries) {
+                    entries.forEach(function(entry) {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            observer.unobserve(entry.target);
+                        }
+                    });
+                }, {
+                    root: null,
+                    rootMargin: '0px 0px -10% 0px',
+                    threshold: 0.1
+                });
+
+                revealElements.forEach(function(el) {
+                    observer.observe(el);
+                });
+            }
+
+            // ============================================================
+            // 3. 滚动进度条
+            // ============================================================
+            var progressBar = document.getElementById('progressBar');
+
+            function updateProgress() {
+                var scrollTop = window.scrollY;
+                var docHeight = document.documentElement.scrollHeight - window.innerHeight;
+                var progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+                progressBar.style.width = progress + '%';
+
+                // 滚动超过首屏后显示进度条
+                if (scrollTop > window.innerHeight * 0.5) {
+                    progressBar.classList.add('visible');
+                } else {
+                    progressBar.classList.remove('visible');
+                }
+            }
+
+            // ============================================================
+            // 4. 导航栏深浅色切换
+            // ============================================================
+            var nav = document.getElementById('nav');
+            var heroSection = document.getElementById('hero');
+
+            function updateNavTheme() {
+                if (!heroSection) return;
+                var heroRect = heroSection.getBoundingClientRect();
+                var heroBottom = heroRect.bottom;
+
+                // 当 Hero 区域（深色）仍在视口上半部分时，导航使用深色主题
+                if (heroBottom > window.innerHeight * 0.3) {
+                    nav.classList.add('dark');
+                } else {
+                    nav.classList.remove('dark');
+                }
+            }
+
+            // ============================================================
+            // 5. 数字滚动动画 (Hero 统计)
+            // ============================================================
+            var statsAnimated = false;
+            var statNumbers = document.querySelectorAll('.hero-stat-number');
+
+            function animateNumbers() {
+                if (statsAnimated) return;
+                statsAnimated = true;
+
+                statNumbers.forEach(function(el) {
+                    var target = parseFloat(el.getAttribute('data-target'));
+                    var decimal = parseInt(el.getAttribute('data-decimal') || '0');
+                    var duration = 1800;
+                    var startTime = null;
+
+                    function update(currentTime) {
+                        if (!startTime) startTime = currentTime;
+                        var elapsed = currentTime - startTime;
+                        var progress = Math.min(elapsed / duration, 1);
+
+                        // easeOutExpo
+                        var eased = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+                        var current = target * eased;
+
+                        if (decimal > 0) {
+                            el.textContent = current.toFixed(decimal);
+                        } else {
+                            el.textContent = Math.floor(current).toLocaleString();
+                        }
+
+                        if (progress < 1) {
+                            requestAnimationFrame(update);
+                        } else {
+                            if (decimal > 0) {
+                                el.textContent = target.toFixed(decimal);
+                            } else {
+                                el.textContent = target.toLocaleString();
+                            }
+                        }
+                    }
+
+                    requestAnimationFrame(update);
+                });
+            }
+
+            // 使用 IntersectionObserver 触发数字动画
+            var heroObserver = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        setTimeout(animateNumbers, 500);
+                        heroObserver.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.3 });
+
+            if (heroSection) heroObserver.observe(heroSection);
+
+            // ============================================================
+            // 6. 导航链接高亮
+            // ============================================================
+            var navLinks = document.querySelectorAll('.nav-links a[href^="#"]');
+
+            var sectionObserver = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        var id = entry.target.getAttribute('id');
+                        navLinks.forEach(function(link) {
+                            link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+                        });
+                    }
+                });
+            }, { rootMargin: '-40% 0px -55% 0px' });
+
+            document.querySelectorAll('section[id]').forEach(function(section) {
+                sectionObserver.observe(section);
+            });
+
+            // ============================================================
+            // 7. 平滑滚动 (导航链接)
+            // ============================================================
+            navLinks.forEach(function(link) {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var targetId = this.getAttribute('href');
+                    var targetEl = document.querySelector(targetId);
+                    if (targetEl) {
+                        targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                });
+            });
+
+            // ============================================================
+            // 8. 使用 requestAnimationFrame 节流滚动事件
+            // ============================================================
+            var ticking = false;
+
+            function onScroll() {
+                if (!ticking) {
+                    requestAnimationFrame(function() {
+                        updateProgress();
+                        updateNavTheme();
+                        ticking = false;
+                    });
+                    ticking = true;
+                }
+            }
+
+            window.addEventListener('scroll', onScroll, { passive: true });
+
+            // ============================================================
+            // 9. 页面加载完成
+            // ============================================================
+            window.addEventListener('load', function() {
+                updateProgress();
+                updateNavTheme();
+
+                // 如果浏览器不支持 scroll-driven animations，
+                // 立即触发首屏元素的显示
+                if (!supportsScrollTimeline) {
+                    document.querySelectorAll('.hero .reveal, .hero .reveal-fade').forEach(function(el) {
+                        el.classList.add('visible');
+                    });
+                }
+
+                console.log(
+                    '%cDeepSeek ✨ Apple Style%c\n' +
+                    '滚动驱动动画: ' + (supportsScrollTimeline ? '✅ 原生支持' : '⚠️ 回退模式'),
+                    'color: #2997ff; font-size: 14px; font-weight: 600;',
+                    'color: #86868b; font-size: 12px;'
+                );
+            });
+
+        })();
+    </script>
+</body>
+</html>

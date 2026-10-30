@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>💸 花光10亿 - 修复胜利条件</title>
+    <style>
+        :root {
+            --orange: #FF5000;
+            --red: #FF0036;
+            --green: #00AA4E;
+            --bg: #F4F4F4;
+            --gold: #F5A623;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: #E0E0E0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 10px;
+        }
+        .app-container {
+            width: 100%; max-width: 480px; height: 92vh;
+            background: var(--bg); border-radius: 20px;
+            display: flex; flex-direction: column;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.25); overflow: hidden;
+        }
+        .status-bar {
+            background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+            padding: 10px 16px; color: #fff; flex-shrink: 0;
+        }
+        .balance-row { display:flex; align-items:center; justify-content:space-between; }
+        .balance-amount { font-size:24px; font-weight:800; font-family:monospace; }
+        .target-badge { background:var(--orange); color:#fff; font-size:10px; padding:3px 10px; border-radius:12px; font-weight:700; animation:pulse 2s infinite; }
+        @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,80,0,0.5)} 50%{box-shadow:0 0 0 10px rgba(255,80,0,0)} }
+        .balance-sub { display:flex; gap:8px; margin-top:6px; font-size:10px; color:#aaa; }
+        .balance-sub span { background:rgba(255,255,255,0.1); padding:2px 8px; border-radius:10px; }
+        .search-bar { padding:6px 12px; background:#fff; border-bottom:1px solid #eee; }
+        .search-bar input { width:100%; border:none; background:#f5f5f5; padding:8px 14px; border-radius:20px; font-size:13px; outline:none; }
+        .category-tabs { display:flex; gap:6px; padding:8px 12px; background:#fff; overflow-x:auto; flex-shrink:0; scrollbar-width:none; }
+        .category-tabs::-webkit-scrollbar { display:none; }
+        .cat-tab {
+            flex-shrink:0; padding:6px 13px; border-radius:16px; font-size:11px;
+            background:#f5f5f5; color:#666; font-weight:600; cursor:pointer;
+            border:1.5px solid transparent; transition:0.2s; white-space:nowrap;
+        }
+        .cat-tab.active { background:#FFF1EB; color:var(--orange); border-color:var(--orange); }
+        .product-list {
+            flex:1; overflow-y:auto; padding:8px 10px;
+            display:grid; grid-template-columns:1fr 1fr; gap:8px; background:#F4F4F4;
+        }
+        .product-card {
+            background:#fff; border-radius:12px; padding:10px 8px 8px;
+            display:flex; flex-direction:column; align-items:center; gap:5px;
+            box-shadow:0 1px 4px rgba(0,0,0,0.04); border:2px solid transparent;
+            cursor:pointer; transition:0.15s;
+        }
+        .product-card:active { transform:scale(0.97); }
+        .product-card .emoji { font-size:36px; line-height:1; }
+        .product-card .name { font-size:12px; font-weight:700; color:#222; text-align:center; min-height:30px; }
+        .product-card .price { font-size:16px; font-weight:800; color:var(--red); }
+        .product-card .yield-tag { font-size:10px; background:#FFF9E6; color:#C79100; padding:2px 6px; border-radius:4px; font-weight:700; }
+        .btn-row { display:flex; gap:4px; width:100%; margin-top:4px; }
+        .buy-btn {
+            background:linear-gradient(135deg, #FF5000, #FF6D2E); color:#fff;
+            border:none; padding:8px 6px; border-radius:16px; font-size:11px;
+            font-weight:700; cursor:pointer; text-align:center; flex:1;
+        }
+        .buy-btn.cart-add { background:#fff; color:var(--orange); border:1.5px solid var(--orange); font-size:10px; flex:0.8; }
+        .buy-btn:active { opacity:0.7; transform:scale(0.94); }
+        .bottom-nav { display:flex; background:#fff; border-top:1px solid #eee; flex-shrink:0; padding:5px 0; }
+        .nav-item {
+            flex:1; display:flex; flex-direction:column; align-items:center; gap:2px;
+            cursor:pointer; font-size:10px; color:#888; position:relative; padding:5px 0;
+        }
+        .nav-item.active { color:var(--orange); }
+        .nav-item .badge {
+            position:absolute; top:0; right:50%; transform:translateX(20px);
+            background:var(--red); color:#fff; font-size:10px; min-width:17px;
+            height:17px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-weight:700;
+        }
+        .overlay {
+            position:fixed; top:0; left:0; width:100%; height:100%;
+            background:rgba(0,0,0,0.5); z-index:100; display:flex; align-items:flex-end; justify-content:center;
+        }
+        .panel {
+            background:#fff; width:100%; max-width:480px; max-height:75vh;
+            border-radius:20px 20px 0 0; display:flex; flex-direction:column; animation:slideUp 0.3s;
+        }
+        @keyframes slideUp { from{ transform:translateY(100%); } to{ transform:translateY(0); } }
+        .panel-header { display:flex; justify-content:space-between; align-items:center; padding:14px 20px; border-bottom:1px solid #eee; }
+        .panel-close { width:30px; height:30px; border-radius:50%; background:#f5f5f5; border:none; font-size:18px; cursor:pointer; }
+        .panel-body { flex:1; overflow-y:auto; padding:12px 16px; }
+        .panel-footer { padding:12px 16px; border-top:1px solid #eee; }
+        .btn-primary { background:var(--orange); color:#fff; border:none; padding:12px 20px; border-radius:22px; font-size:14px; font-weight:700; cursor:pointer; width:100%; }
+        .btn-primary:disabled { background:#ccc; }
+        .toast {
+            position:fixed; top:40%; left:50%; transform:translate(-50%,-50%);
+            background:rgba(0,0,0,0.85); color:#fff; padding:10px 22px; border-radius:20px;
+            font-size:13px; z-index:300; pointer-events:none; opacity:0; transition:0.3s;
+        }
+        .toast.show { opacity:1; }
+        .win-overlay {
+            position:fixed; top:0; left:0; width:100%; height:100%;
+            background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:200;
+        }
+        .win-dialog {
+            background:#fff; border-radius:24px; padding:30px; text-align:center;
+            width:90%; max-width:350px; animation:bounceIn 0.5s;
+        }
+        @keyframes bounceIn { 0%{transform:scale(0.5); opacity:0;} 70%{transform:scale(1.05);} 100%{transform:scale(1); opacity:1;} }
+        .win-dialog h2 { font-size:22px; margin:10px 0; }
+    </style>
+</head>
+<body>
+<div class="app-container" id="app">
+    <div class="status-bar">
+        <div class="balance-row">
+            <div><span style="font-size:10px;color:#aaa;">💰 余额</span> <span class="balance-amount" id="balanceDisplay">1,000,000,000</span></div>
+            <span class="target-badge">🎯 目标: ¥0</span>
+        </div>
+        <div class="balance-sub">
+            <span>💸 已花: <b id="spentDisplay">¥0</b></span>
+            <span id="incomeRateDisplay">📈 日收益: ¥0</span>
+            <span>⏱ <b id="gameTime">第1天</b></span>
+        </div>
+    </div>
+    <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="搜索商品、公司...">
+    </div>
+    <div class="category-tabs" id="categoryTabs"></div>
+    <div class="product-list" id="productList"></div>
+    <div class="bottom-nav">
+        <div class="nav-item active" id="navShop">🏪 商城</div>
+        <div class="nav-item" id="navCart">🛒 购物车 <span class="badge" id="cartBadge" style="display:none">0</span></div>
+        <div class="nav-item" id="navAssets">📋 资产</div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="overlay" id="cartOverlay" style="display:none;">
+    <div class="panel">
+        <div class="panel-header"><h3>🛒 购物车</h3><button class="panel-close" id="cartClose">✕</button></div>
+        <div class="panel-body" id="cartBody"></div>
+        <div class="panel-footer">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span>合计：</span><span style="font-weight:800;color:var(--red);" id="cartTotal">¥0</span></div>
+            <button class="btn-primary" id="cartCheckout" disabled>💳 结算</button>
+        </div>
+    </div>
+</div>
+<div class="overlay" id="assetsOverlay" style="display:none;">
+    <div class="panel">
+        <div class="panel-header"><h3>📋 我的资产</h3><button class="panel-close" id="assetsClose">✕</button></div>
+        <div class="panel-body" id="assetsBody"></div>
+        <div class="panel-footer" style="font-size:10px;color:#999;text-align:center;">💡 有收益的资产会让钱越花越多</div>
+    </div>
+</div>
+<div class="win-overlay" id="winOverlay" style="display:none;">
+    <div class="win-dialog">
+        <div style="font-size:60px;">🏆</div>
+        <h2>花光了10亿！</h2>
+        <div id="winStats" style="font-size:13px;color:#555;margin:10px 0;"></div>
+        <button class="btn-primary" id="restartBtn">🔄 再来一局</button>
+    </div>
+</div>
+
+<script>
+(function() {
+    // ========== 商品数据 (122种) ==========
+    const products = [
+        { id:1, name:'矿泉水', cat:'daily', emoji:'💧', price:2, yield:0 },
+        { id:2, name:'可乐', cat:'daily', emoji:'🥤', price:5, yield:0 },
+        { id:3, name:'方便面', cat:'daily', emoji:'🍜', price:4, yield:0 },
+        { id:4, name:'牙刷', cat:'daily', emoji:'🪥', price:15, yield:0 },
+        { id:5, name:'毛巾', cat:'daily', emoji:'🧻', price:30, yield:0 },
+        { id:6, name:'T恤', cat:'daily', emoji:'👕', price:99, yield:0 },
+        { id:7, name:'牛仔裤', cat:'daily', emoji:'👖', price:299, yield:0 },
+        { id:8, name:'运动鞋', cat:'daily', emoji:'👟', price:599, yield:0 },
+        { id:9, name:'双肩包', cat:'daily', emoji:'🎒', price:199, yield:0 },
+        { id:10, name:'雨伞', cat:'daily', emoji:'☂️', price:49, yield:0 },
+        { id:11, name:'充电宝', cat:'daily', emoji:'🔋', price:129, yield:0 },
+        { id:12, name:'保温杯', cat:'daily', emoji:'🍶', price:89, yield:0 },
+        { id:13, name:'墨镜', cat:'daily', emoji:'🕶️', price:259, yield:0 },
+        { id:14, name:'遮阳帽', cat:'daily', emoji:'🧢', price:69, yield:0 },
+        { id:15, name:'拖鞋', cat:'daily', emoji:'🩴', price:39, yield:0 },
+        { id:16, name:'床单四件套', cat:'daily', emoji:'🛏️', price:199, yield:0 },
+        { id:17, name:'乳胶枕头', cat:'daily', emoji:'🛌', price:149, yield:0 },
+        { id:18, name:'台灯', cat:'daily', emoji:'💡', price:179, yield:0 },
+        { id:19, name:'香薰蜡烛', cat:'daily', emoji:'🕯️', price:55, yield:0 },
+        { id:20, name:'零食大礼包', cat:'daily', emoji:'🍿', price:88, yield:0 },
+        { id:21, name:'旗舰手机', cat:'digital', emoji:'📱', price:6999, yield:0 },
+        { id:22, name:'笔记本电脑', cat:'digital', emoji:'💻', price:12999, yield:0 },
+        { id:23, name:'平板电脑', cat:'digital', emoji:'📋', price:5499, yield:0 },
+        { id:24, name:'智能手表', cat:'digital', emoji:'⌚', price:2999, yield:0 },
+        { id:25, name:'游戏主机', cat:'digital', emoji:'🎮', price:3499, yield:0 },
+        { id:26, name:'4K显示器', cat:'digital', emoji:'🖥️', price:4299, yield:0 },
+        { id:27, name:'机械键盘', cat:'digital', emoji:'⌨️', price:899, yield:0 },
+        { id:28, name:'无线鼠标', cat:'digital', emoji:'🖱️', price:399, yield:0 },
+        { id:29, name:'蓝牙音箱', cat:'digital', emoji:'🔊', price:1299, yield:0 },
+        { id:30, name:'无人机', cat:'digital', emoji:'🛸', price:6999, yield:0 },
+        { id:31, name:'VR头盔', cat:'digital', emoji:'🥽', price:8999, yield:0 },
+        { id:32, name:'数码相机', cat:'digital', emoji:'📷', price:15999, yield:0 },
+        { id:33, name:'智能门锁', cat:'digital', emoji:'🔐', price:2499, yield:0 },
+        { id:34, name:'扫地机器人', cat:'digital', emoji:'🤖', price:3999, yield:0 },
+        { id:35, name:'投影仪', cat:'digital', emoji:'📽️', price:7999, yield:0 },
+        { id:36, name:'降噪耳机', cat:'digital', emoji:'🎧', price:2499, yield:0 },
+        { id:37, name:'折叠屏手机', cat:'digital', emoji:'📲', price:15999, yield:0 },
+        { id:38, name:'劳力士手表', cat:'luxury', emoji:'⌚', price:85000, yield:0 },
+        { id:39, name:'爱马仕铂金包', cat:'luxury', emoji:'👜', price:350000, yield:0 },
+        { id:40, name:'LV行李箱', cat:'luxury', emoji:'🧳', price:45000, yield:0 },
+        { id:41, name:'钻石项链', cat:'luxury', emoji:'💎', price:500000, yield:0 },
+        { id:42, name:'保时捷911', cat:'luxury', emoji:'🏎️', price:1500000, yield:0 },
+        { id:43, name:'法拉利', cat:'luxury', emoji:'🏎️', price:5000000, yield:0 },
+        { id:44, name:'兰博基尼', cat:'luxury', emoji:'🔥', price:6800000, yield:0 },
+        { id:45, name:'劳斯莱斯幻影', cat:'luxury', emoji:'👑', price:8000000, yield:0 },
+        { id:46, name:'私人游艇', cat:'luxury', emoji:'🛥️', price:25000000, yield:0 },
+        { id:47, name:'私人飞机', cat:'luxury', emoji:'✈️', price:80000000, yield:0 },
+        { id:48, name:'香奈儿套装', cat:'luxury', emoji:'👗', price:120000, yield:0 },
+        { id:49, name:'古驰手袋', cat:'luxury', emoji:'👜', price:28000, yield:0 },
+        { id:50, name:'百达翡丽', cat:'luxury', emoji:'⌚', price:2500000, yield:0 },
+        { id:51, name:'蒂芙尼钻戒', cat:'luxury', emoji:'💍', price:380000, yield:0 },
+        { id:52, name:'高尔夫球杆', cat:'luxury', emoji:'⛳', price:68000, yield:0 },
+        { id:53, name:'水晶吊灯', cat:'luxury', emoji:'💡', price:180000, yield:0 },
+        { id:54, name:'定制西装', cat:'luxury', emoji:'🤵', price:55000, yield:0 },
+        { id:55, name:'一线城市公寓', cat:'property', emoji:'🏙️', price:5000000, yield:3.6 },
+        { id:56, name:'豪华别墅', cat:'property', emoji:'🏡', price:30000000, yield:4.0 },
+        { id:57, name:'写字楼一层', cat:'property', emoji:'🏢', price:50000000, yield:5.0 },
+        { id:58, name:'海景度假酒店', cat:'property', emoji:'🏨', price:80000000, yield:6.0 },
+        { id:59, name:'四合院', cat:'property', emoji:'🏯', price:150000000, yield:2.0 },
+        { id:60, name:'商铺', cat:'property', emoji:'🏬', price:8000000, yield:4.5 },
+        { id:61, name:'公寓楼整栋', cat:'property', emoji:'🏘️', price:200000000, yield:5.0 },
+        { id:62, name:'工业园区仓库', cat:'property', emoji:'🏭', price:35000000, yield:5.5 },
+        { id:63, name:'海外别墅', cat:'property', emoji:'🌴', price:12000000, yield:3.0 },
+        { id:64, name:'国债(100万起)', cat:'finance', emoji:'📜', price:1000000, yield:2.8 },
+        { id:65, name:'银行理财', cat:'finance', emoji:'🏦', price:50000, yield:3.5 },
+        { id:66, name:'货币基金', cat:'finance', emoji:'💰', price:10000, yield:2.2 },
+        { id:67, name:'股票组合', cat:'finance', emoji:'📈', price:500000, yield:8.0 },
+        { id:68, name:'比特币', cat:'finance', emoji:'₿', price:350000, yield:15.0 },
+        { id:69, name:'黄金(1kg)', cat:'finance', emoji:'🥇', price:450000, yield:1.5 },
+        { id:70, name:'私募基金', cat:'finance', emoji:'🔒', price:10000000, yield:12.0 },
+        { id:71, name:'企业债券', cat:'finance', emoji:'📋', price:2000000, yield:6.0 },
+        { id:72, name:'REITs基金', cat:'finance', emoji:'🏢', price:300000, yield:5.5 },
+        { id:73, name:'期货对冲组合', cat:'finance', emoji:'⚡', price:5000000, yield:18.0 },
+        { id:74, name:'小型餐馆', cat:'company', emoji:'🍽️', price:2000000, yield:15.0 },
+        { id:75, name:'连锁奶茶店(10家)', cat:'company', emoji:'🧋', price:5000000, yield:16.0 },
+        { id:76, name:'中型制造企业', cat:'company', emoji:'🏭', price:50000000, yield:10.0 },
+        { id:77, name:'科技初创公司', cat:'company', emoji:'🚀', price:30000000, yield:20.0 },
+        { id:78, name:'上市互联网公司', cat:'company', emoji:'🌐', price:500000000, yield:12.0 },
+        { id:79, name:'物流公司', cat:'company', emoji:'🚚', price:80000000, yield:9.0 },
+        { id:80, name:'电影院线(5家)', cat:'company', emoji:'🎬', price:35000000, yield:8.0 },
+        { id:81, name:'连锁超市(20家)', cat:'company', emoji:'🏪', price:20000000, yield:11.0 },
+        { id:82, name:'在线教育平台', cat:'company', emoji:'📚', price:100000000, yield:14.0 },
+        { id:83, name:'游戏开发公司', cat:'company', emoji:'🎮', price:150000000, yield:18.0 },
+        { id:84, name:'新能源电池厂', cat:'company', emoji:'🔋', price:250000000, yield:15.0 },
+        { id:85, name:'生物医药公司', cat:'company', emoji:'🧬', price:180000000, yield:22.0 },
+        { id:86, name:'梵高画作', cat:'collectible', emoji:'🎨', price:200000000, yield:8.0 },
+        { id:87, name:'毕加索素描', cat:'collectible', emoji:'✏️', price:80000000, yield:6.0 },
+        { id:88, name:'古董瓷器', cat:'collectible', emoji:'🏺', price:15000000, yield:5.0 },
+        { id:89, name:'限量威士忌', cat:'collectible', emoji:'🥃', price:500000, yield:10.0 },
+        { id:90, name:'稀有邮票', cat:'collectible', emoji:'📮', price:200000, yield:7.0 },
+        { id:91, name:'茅台老酒', cat:'collectible', emoji:'🍶', price:30000, yield:12.0 },
+        { id:92, name:'和田玉摆件', cat:'collectible', emoji:'🪨', price:500000, yield:4.0 },
+        { id:93, name:'红木家具', cat:'collectible', emoji:'🪑', price:2000000, yield:3.0 },
+        { id:94, name:'恐龙化石', cat:'collectible', emoji:'🦴', price:50000000, yield:9.0 },
+        { id:95, name:'稀有球鞋', cat:'collectible', emoji:'👟', price:25000, yield:15.0 },
+        { id:96, name:'古董劳力士', cat:'collectible', emoji:'⌚', price:3500000, yield:8.0 },
+        { id:97, name:'环球旅行', cat:'service', emoji:'🌍', price:500000, yield:0 },
+        { id:98, name:'太空旅行', cat:'service', emoji:'🚀', price:30000000, yield:0 },
+        { id:99, name:'私人厨师一年', cat:'service', emoji:'👨‍🍳', price:600000, yield:0 },
+        { id:100, name:'私人医生一年', cat:'service', emoji:'👨‍⚕️', price:800000, yield:0 },
+        { id:101, name:'终身健身会员', cat:'service', emoji:'🏋️', price:200000, yield:0 },
+        { id:102, name:'米其林三星晚宴', cat:'service', emoji:'🍽️', price:50000, yield:0 },
+        { id:103, name:'私人演唱会', cat:'service', emoji:'🎵', price:5000000, yield:0 },
+        { id:104, name:'潜水课程', cat:'service', emoji:'🤿', price:30000, yield:0 },
+        { id:105, name:'飞行员培训', cat:'service', emoji:'👨‍✈️', price:200000, yield:0 },
+        { id:106, name:'南极探险', cat:'service', emoji:'🐧', price:800000, yield:0 },
+        { id:107, name:'私人岛屿婚礼', cat:'service', emoji:'💒', price:3000000, yield:0 },
+        { id:108, name:'游戏顶级皮肤', cat:'virtual', emoji:'🎮', price:2888, yield:0 },
+        { id:109, name:'精品域名', cat:'virtual', emoji:'🌐', price:500000, yield:0 },
+        { id:110, name:'NFT艺术品', cat:'virtual', emoji:'🖼️', price:100000, yield:0 },
+        { id:111, name:'终身视频会员', cat:'virtual', emoji:'🎬', price:9999, yield:0 },
+        { id:112, name:'云存储永久', cat:'virtual', emoji:'☁️', price:4999, yield:0 },
+        { id:113, name:'虚拟世界地皮', cat:'virtual', emoji:'🌌', price:80000, yield:0 },
+        { id:114, name:'行星命名权', cat:'special', emoji:'🪐', price:10000000, yield:0 },
+        { id:115, name:'私人海岛', cat:'special', emoji:'🏝️', price:100000000, yield:5.0 },
+        { id:116, name:'坦克', cat:'special', emoji:'🪖', price:15000000, yield:0 },
+        { id:117, name:'直升机', cat:'special', emoji:'🚁', price:20000000, yield:0 },
+        { id:118, name:'金条1kg', cat:'special', emoji:'🟡', price:450000, yield:1.5 },
+        { id:119, name:'恐龙蛋化石', cat:'special', emoji:'🥚', price:8000000, yield:6.0 },
+        { id:120, name:'陨石', cat:'special', emoji:'☄️', price:3000000, yield:3.0 },
+        { id:121, name:'欧洲城堡', cat:'special', emoji:'🏰', price:60000000, yield:3.5 },
+        { id:122, name:'潜艇', cat:'special', emoji:'🤿', price:35000000, yield:0 },
+    ];
+
+    // 游戏状态
+    const INIT_BALANCE = 1_000_000_000;
+    let balance = INIT_BALANCE;
+    let totalSpent = 0;
+    let totalEarned = 0;
+    let gameDays = 1;
+    let gameWon = false;
+    let purchased = {};
+    let cart = {};
+    let currentCat = 'all';
+    let searchQuery = '';
+
+    function fmtMoney(n) { return n.toLocaleString('zh-CN', {maximumFractionDigits:0}); }
+    function fmtCompact(n) { if(n>=1e8) return (n/1e8).toFixed(2)+'亿'; if(n>=1e4) return (n/1e4).toFixed(1)+'万'; return n.toString(); }
+
+    const $ = (sel) => document.querySelector(sel);
+    const balanceEl = $('#balanceDisplay');
+    const spentEl = $('#spentDisplay');
+    const incomeEl = $('#incomeRateDisplay');
+    const gameTimeEl = $('#gameTime');
+    const productListEl = $('#productList');
+    const catTabsEl = $('#categoryTabs');
+    const searchInput = $('#searchInput');
+    const cartBadge = $('#cartBadge');
+    const cartOverlay = $('#cartOverlay');
+    const cartBody = $('#cartBody');
+    const cartTotal = $('#cartTotal');
+    const cartCheckout = $('#cartCheckout');
+    const assetsOverlay = $('#assetsOverlay');
+    const assetsBody = $('#assetsBody');
+    const winOverlay = $('#winOverlay');
+    const winStats = $('#winStats');
+    const toastEl = $('#toast');
+
+    function showToast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add('show');
+        clearTimeout(toastEl._t);
+        toastEl._t = setTimeout(() => toastEl.classList.remove('show'), 1500);
+    }
+
+    function getDailyIncome() {
+        let total = 0;
+        for(let [id, qty] of Object.entries(purchased)) {
+            const p = products.find(x => x.id == id);
+            if(p && p.yield>0) total += (p.price * qty) * (p.yield/100/365);
+        }
+        return total;
+    }
+
+    function updateUI() {
+        balanceEl.textContent = fmtMoney(Math.max(0, Math.floor(balance)));
+        spentEl.textContent = '¥' + fmtCompact(totalSpent);
+        const daily = getDailyIncome();
+        incomeEl.textContent = '📈 日收益: ¥' + fmtCompact(daily) + '/天';
+        gameTimeEl.textContent = '第'+gameDays+'天';
+        const cartCount = Object.values(cart).reduce((a,b)=>a+b,0);
+        cartBadge.style.display = cartCount>0 ? 'flex' : 'none';
+        cartBadge.textContent = cartCount;
+    }
+
+    function getFilteredProducts() {
+        let list = products;
+        if(currentCat !== 'all') list = list.filter(p => p.cat === currentCat);
+        if(searchQuery.trim()) {
+            const q = searchQuery.trim().toLowerCase();
+            list = list.filter(p => p.name.toLowerCase().includes(q) || p.cat.includes(q) || fmtCompact(p.price).includes(q));
+        }
+        return list;
+    }
+
+    function renderCategories() {
+        const cats = ['all','daily','digital','luxury','property','finance','company','collectible','service','virtual','special'];
+        const names = {all:'全部', daily:'日常', digital:'数码', luxury:'奢侈品', property:'房产', finance:'金融', company:'公司', collectible:'收藏', service:'服务', virtual:'虚拟', special:'奇葩'};
+        catTabsEl.innerHTML = cats.map(c => `<div class="cat-tab${c===currentCat?' active':''}" data-cat="${c}">${names[c]}</div>`).join('');
+    }
+
+    function renderProducts() {
+        const list = getFilteredProducts();
+        if(list.length === 0) {
+            productListEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:#999;">🔍 没有找到商品</div>';
+            return;
+        }
+        productListEl.innerHTML = list.map(p => `
+            <div class="product-card" data-id="${p.id}">
+                <div class="emoji">${p.emoji}</div>
+                <div class="name">${p.name}</div>
+                <div class="price">¥${fmtCompact(p.price)}</div>
+                ${p.yield>0 ? `<span class="yield-tag">📈 ${p.yield}%</span>` : ''}
+                <div class="btn-row">
+                    <button class="buy-btn" data-action="buy" data-id="${p.id}">购买</button>
+                    <button class="buy-btn cart-add" data-action="cart" data-id="${p.id}">+车</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function buyProduct(id, qty=1) {
+        if(gameWon) return false;
+        const p = products.find(x => x.id == id);
+        if(!p) return false;
+        const cost = p.price * qty;
+        if(cost > balance) {
+            showToast('⚠️ 余额不足');
+            return false;
+        }
+        balance -= cost;
+        totalSpent += cost;
+        purchased[id] = (purchased[id]||0) + qty;
+        if(cart[id]) delete cart[id];
+        showToast('✅ 购买 '+p.name);
+        updateUI();
+        checkWin();
+        return true;
+    }
+
+    function addToCart(id, qty=1) {
+        if(gameWon) return;
+        cart[id] = (cart[id]||0) + qty;
+        showToast('🛒 已加入购物车');
+        updateUI();
+        renderCart();
+    }
+
+    function checkoutCart() {
+        const items = Object.entries(cart).filter(([_,q])=>q>0);
+        if(items.length===0) return;
+        let total = 0;
+        items.forEach(([id,q]) => {
+            const p = products.find(x=>x.id==id);
+            if(p) total += p.price*q;
+        });
+        if(total > balance) {
+            showToast('余额不足，总计¥'+fmtCompact(total));
+            return;
+        }
+        items.forEach(([id,q]) => buyProduct(parseInt(id), q));
+        cart = {};
+        updateUI();
+        renderCart();
+    }
+
+    function sellAsset(id) {
+        if(!purchased[id] || purchased[id]<=0) return;
+        const p = products.find(x=>x.id==id);
+        if(!p) return;
+        const sellPrice = Math.floor(p.price * 0.7);
+        purchased[id]--;
+        if(purchased[id]<=0) delete purchased[id];
+        balance += sellPrice;
+        totalSpent -= p.price;
+        if(totalSpent<0) totalSpent=0;
+        showToast('💸 卖出 '+p.name);
+        updateUI();
+        renderAssets();
+    }
+
+    // ========== 胜利条件修复 ==========
+    function checkWin() {
+        if(gameWon) return;
+        // 只要余额向下取整后 ≤ 0，立即获胜
+        if(Math.floor(balance) <= 0) {
+            gameWon = true;
+            balance = 0;
+            updateUI();
+            winStats.innerHTML = `
+                <p>💰 初始资金：10亿</p>
+                <p>💸 总花费：¥${fmtMoney(totalSpent)}</p>
+                <p>📈 累计收益：¥${fmtMoney(Math.floor(totalEarned))}</p>
+                <p>⏱ 天数：${gameDays}天</p>
+                <p style="color:var(--orange);font-weight:bold;">🏆 恭喜！成功花光10亿！</p>
+            `;
+            winOverlay.style.display = 'flex';
+        }
+    }
+
+    function renderCart() {
+        const items = Object.entries(cart).filter(([_,q])=>q>0);
+        if(items.length===0) {
+            cartBody.innerHTML = '<p style="text-align:center;color:#999;padding:30px;">购物车空空如也</p>';
+            cartTotal.textContent = '¥0';
+            cartCheckout.disabled = true;
+            return;
+        }
+        let total = 0;
+        cartBody.innerHTML = items.map(([id,q]) => {
+            const p = products.find(x=>x.id==id);
+            if(!p) return '';
+            const sub = p.price * q;
+            total += sub;
+            return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f0f0f0;">
+                <span style="font-size:24px;">${p.emoji}</span>
+                <div style="flex:1;"><b>${p.name}</b><br><span style="color:var(--red);">¥${fmtCompact(p.price)} × ${q}</span></div>
+                <div style="display:flex;gap:4px;align-items:center;">
+                    <button data-cart-dec="${id}" style="width:24px;height:24px;border-radius:50%;border:1px solid #ccc;background:#fff;">−</button>
+                    <span>${q}</span>
+                    <button data-cart-inc="${id}" style="width:24px;height:24px;border-radius:50%;border:1px solid #ccc;background:#fff;">+</button>
+                </div>
+                <b style="min-width:55px;text-align:right;">¥${fmtCompact(sub)}</b>
+            </div>`;
+        }).join('');
+        cartTotal.textContent = '¥'+fmtCompact(total);
+        cartCheckout.disabled = total > balance || total <= 0;
+    }
+
+    function renderAssets() {
+        const entries = Object.entries(purchased).filter(([_,q])=>q>0);
+        if(entries.length===0) {
+            assetsBody.innerHTML = '<p style="text-align:center;color:#999;padding:30px;">暂无资产</p>';
+            return;
+        }
+        assetsBody.innerHTML = entries.map(([id,q]) => {
+            const p = products.find(x=>x.id==id);
+            if(!p) return '';
+            const val = p.price * q;
+            const daily = p.yield>0 ? (val * p.yield/100/365) : 0;
+            return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f0f0f0;">
+                <span style="font-size:28px;">${p.emoji}</span>
+                <div style="flex:1;"><b>${p.name}</b> ×${q}<br><span style="font-size:10px;color:var(--gold);">${p.yield>0 ? '📈 日收益约¥'+fmtCompact(daily) : '不产生收益'}</span></div>
+                <div style="text-align:right;"><b>¥${fmtCompact(val)}</b></div>
+                <button data-sell="${id}" style="margin-left:6px;background:#fff;border:1px solid #ddd;border-radius:12px;padding:4px 10px;font-size:10px;">卖出</button>
+            </div>`;
+        }).join('');
+    }
+
+    // 事件委托
+    productListEl.addEventListener('click', (e) => {
+        const btn = e.target.closest('button');
+        if(!btn) return;
+        const id = parseInt(btn.dataset.id);
+        const action = btn.dataset.action;
+        if(action === 'buy') buyProduct(id, 1);
+        else if(action === 'cart') addToCart(id, 1);
+    });
+
+    cartBody.addEventListener('click', (e) => {
+        const btn = e.target.closest('button');
+        if(!btn) return;
+        const id = parseInt(btn.dataset.cartInc || btn.dataset.cartDec);
+        if(btn.dataset.cartInc) addToCart(id, 1);
+        if(btn.dataset.cartDec) {
+            if(cart[id] && cart[id] > 0) {
+                cart[id]--;
+                if(cart[id] <= 0) delete cart[id];
+                updateUI();
+                renderCart();
+            }
+        }
+    });
+
+    assetsBody.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-sell]');
+        if(btn) sellAsset(parseInt(btn.dataset.sell));
+    });
+
+    catTabsEl.addEventListener('click', (e) => {
+        const tab = e.target.closest('.cat-tab');
+        if(!tab) return;
+        currentCat = tab.dataset.cat;
+        renderCategories();
+        renderProducts();
+    });
+
+    searchInput.addEventListener('input', () => {
+        searchQuery = searchInput.value;
+        renderProducts();
+    });
+
+    // 底部导航
+    $('#navShop').addEventListener('click', ()=>{
+        cartOverlay.style.display='none'; assetsOverlay.style.display='none';
+        document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+        $('#navShop').classList.add('active');
+    });
+    $('#navCart').addEventListener('click', ()=>{
+        assetsOverlay.style.display='none'; renderCart();
+        cartOverlay.style.display='flex';
+        document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+        $('#navCart').classList.add('active');
+    });
+    $('#navAssets').addEventListener('click', ()=>{
+        cartOverlay.style.display='none'; renderAssets();
+        assetsOverlay.style.display='flex';
+        document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+        $('#navAssets').classList.add('active');
+    });
+    $('#cartClose').addEventListener('click', ()=> cartOverlay.style.display='none');
+    $('#assetsClose').addEventListener('click', ()=> assetsOverlay.style.display='none');
+    cartCheckout.addEventListener('click', ()=>{ checkoutCart(); renderCart(); });
+
+    $('#restartBtn').addEventListener('click', ()=>{
+        balance = INIT_BALANCE; totalSpent = 0; totalEarned = 0;
+        gameDays = 1; gameWon = false;
+        purchased = {}; cart = {};
+        currentCat = 'all'; searchQuery = '';
+        searchInput.value = '';
+        winOverlay.style.display = 'none';
+        cartOverlay.style.display = 'none';
+        assetsOverlay.style.display = 'none';
+        document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+        $('#navShop').classList.add('active');
+        renderCategories(); renderProducts(); updateUI();
+        showToast('🔄 新游戏！目标：花光10亿');
+    });
+
+    // 游戏循环：1秒=1天，修复胜利触发
+    setInterval(() => {
+        if(gameWon) return;
+        const income = getDailyIncome();
+        if(income > 0) {
+            balance += income;
+            totalEarned += income;
+        }
+        gameDays++;
+        updateUI();
+        checkWin(); // 每日收益后也要检查胜利
+    }, 1000);
+
+    // 初始化
+    renderCategories();
+    renderProducts();
+    updateUI();
+    console.log('🛍️ 游戏就绪（胜利条件已修复：余额≤0即获胜）');
+})();
+</script>
+</body>
+</html>

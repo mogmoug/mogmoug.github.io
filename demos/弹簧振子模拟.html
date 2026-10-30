@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>高中物理：弹簧振子模拟器 | 简谐运动公式 | 可拖拽</title>
+    <style>
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: linear-gradient(145deg, #f0f4fa 0%, #e2e8f2 100%);
+            font-family: 'Segoe UI', Roboto, 'Microsoft YaHei', 'PingFang SC', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 24px;
+        }
+
+        .sim-container {
+            max-width: 1300px;
+            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        /* 主模拟卡片 */
+        .sim-card {
+            flex: 3;
+            min-width: 320px;
+            background: rgba(255,255,255,0.94);
+            backdrop-filter: blur(2px);
+            border-radius: 2rem;
+            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.8);
+            padding: 1.2rem 1.5rem 1.8rem 1.5rem;
+            transition: all 0.2s;
+        }
+
+        /* 公式介绍卡片 */
+        .formula-card {
+            flex: 1.2;
+            min-width: 260px;
+            background: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(8px);
+            border-radius: 1.8rem;
+            box-shadow: 0 12px 28px -8px rgba(0,0,0,0.2);
+            padding: 1.2rem 1.3rem;
+            color: #f1f5f9;
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.2s;
+        }
+
+        .formula-card h3 {
+            margin: 0 0 0.8rem 0;
+            font-size: 1.35rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #facc15;
+            border-left: 4px solid #facc15;
+            padding-left: 12px;
+        }
+
+        .formula-card .formula-block {
+            margin-bottom: 1rem;
+            background: rgba(0,0,0,0.3);
+            border-radius: 1.2rem;
+            padding: 0.6rem 1rem;
+        }
+
+        .formula-card p {
+            margin: 0.5rem 0;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        }
+
+        .formula-card .formula {
+            font-family: 'Courier New', 'SF Mono', monospace;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #ffffff;
+            background: #0f172a;
+            display: inline-block;
+            padding: 0.1rem 0.5rem;
+            border-radius: 12px;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+
+        .formula-card .note {
+            font-size: 0.75rem;
+            color: #cbd5e6;
+            margin-top: 0.2rem;
+            font-style: italic;
+        }
+
+        .divider-light {
+            height: 1px;
+            background: rgba(255,255,255,0.2);
+            margin: 12px 0;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 1.5rem;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1), inset 0 0 0 1px rgba(0,0,0,0.05);
+            cursor: grab;
+            width: 100%;
+            height: auto;
+        }
+
+        canvas:active {
+            cursor: grabbing;
+        }
+
+        .control-panel {
+            margin-top: 1.2rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .sliders-group {
+            flex: 3;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            background: #f8fafd;
+            padding: 0.7rem 1.2rem;
+            border-radius: 1.8rem;
+            backdrop-filter: blur(4px);
+        }
+
+        .slider-item {
+            flex: 1;
+            min-width: 130px;
+        }
+
+        .slider-item label {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            font-weight: 600;
+            color: #1e2a3e;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .slider-item label span:first-child {
+            background: #2c3e66;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 40px;
+            font-size: 0.75rem;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            -webkit-appearance: none;
+            background: #cbd5e1;
+            border-radius: 5px;
+            outline: none;
+        }
+
+        input[type="range"]:focus {
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #2c3e66;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            border: 2px solid white;
+        }
+
+        .value-display {
+            display: inline-block;
+            background: #eef2f8;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin-left: 8px;
+            color: #0f2b3d;
+        }
+
+        .mode-bar {
+            flex: 1.2;
+            display: flex;
+            gap: 10px;
+            background: #f1f4f9;
+            padding: 0.5rem 1rem;
+            border-radius: 3rem;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mode-btn {
+            background: transparent;
+            border: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            padding: 6px 16px;
+            border-radius: 2rem;
+            cursor: pointer;
+            transition: 0.2s;
+            color: #334155;
+            font-family: inherit;
+        }
+
+        .mode-btn.active {
+            background: #2c3e66;
+            color: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .info-board {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 0.5rem 1.2rem;
+            border-radius: 2rem;
+            display: flex;
+            gap: 1.5rem;
+            font-weight: 500;
+            font-size: 0.9rem;
+            backdrop-filter: blur(4px);
+            margin-bottom: 0.8rem;
+            flex-wrap: wrap;
+        }
+
+        .info-board span {
+            color: #facc15;
+            font-weight: 700;
+            margin-left: 6px;
+            font-family: monospace;
+            font-size: 1rem;
+        }
+
+        button.reset-btn {
+            background: #475569;
+            border: none;
+            color: white;
+            border-radius: 2rem;
+            padding: 0 20px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        button.reset-btn:hover {
+            background: #1e293b;
+        }
+
+        .footnote {
+            font-size: 0.7rem;
+            text-align: center;
+            margin-top: 14px;
+            color: #5b6e8c;
+        }
+
+        @media (max-width: 850px) {
+            .sim-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .formula-card {
+                order: 2;
+                width: auto;
+            }
+            .sim-card {
+                order: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="sim-container">
+    <!-- 主模拟区域 -->
+    <div class="sim-card">
+        <canvas id="simCanvas" width="900" height="400" style="width:100%; height:auto; max-width:900px; aspect-ratio:900/400"></canvas>
+
+        <div class="info-board">
+            <div>📐 周期 T = <span id="periodValue">2.00</span> s</div>
+            <div>📏 当前振幅 A = <span id="amplitudeValue">0.00</span> m</div>
+            <div id="staticExtensionInfo" style="font-size:0.8rem;">⚖️ 静伸长 Δl = -- m</div>
+        </div>
+
+        <div class="control-panel">
+            <div class="sliders-group">
+                <div class="slider-item">
+                    <label><span>劲度系数 k</span> <span id="kVal" class="value-display">20.0 N/m</span></label>
+                    <input type="range" id="kSlider" min="5" max="80" step="0.5" value="20">
+                </div>
+                <div class="slider-item">
+                    <label><span>质量 m</span> <span id="mVal" class="value-display">0.50 kg</span></label>
+                    <input type="range" id="mSlider" min="0.2" max="2.5" step="0.01" value="0.5">
+                </div>
+            </div>
+            <div class="mode-bar">
+                <button id="modeHorBtn" class="mode-btn active">↔️ 水平振子</button>
+                <button id="modeVerBtn" class="mode-btn">⬇️ 竖直振子</button>
+                <button id="resetBtn" class="reset-btn">⟳ 复位</button>
+            </div>
+        </div>
+        <div class="footnote">
+            💡 鼠标直接拖拽小球 → 改变振幅 | 松开后自动开始简谐振动 | 改变 k / m 或模式，系统自动重置平衡位置
+        </div>
+    </div>
+
+    <!-- 新增公式介绍小界面 -->
+    <div class="formula-card">
+        <h3>📖 简谐运动·核心公式</h3>
+        <div class="formula-block">
+            <p>🔹 周期公式</p>
+            <div class="formula">T = 2π √(m / k)</div>
+            <p class="note">周期与振幅无关 (等时性)</p>
+        </div>
+        <div class="formula-block">
+            <p>🔹 角频率 & 回复力</p>
+            <div class="formula">ω = √(k / m)</div>
+            <div class="formula" style="margin-top: 6px;">F = - k·x</div>
+            <p class="note">回复力与位移成正比，方向相反</p>
+        </div>
+        <div class="formula-block">
+            <p>🔹 竖直模式静伸长</p>
+            <div class="formula" id="deltaLFormula">Δl = m·g / k</div>
+            <p class="note">静平衡位置 = 原长 + Δl</p>
+        </div>
+        <div class="divider-light"></div>
+        <div class="formula-block">
+            <p>🔹 机械能守恒</p>
+            <div class="formula">E = ½ k A² = ½ m v² + ½ k x²</div>
+        </div>
+        <div class="formula-block">
+            <p>🔹 当前参数推算</p>
+            <p>⚙️ 理论周期 T₀ = <span id="theoryTDisplay" style="color:#facc15; font-weight:bold;">--</span> s</p>
+            <p>📐 最大回复力 F_max = <span id="maxForceDisplay" style="color:#facc15; font-weight:bold;">--</span> N</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function(){
+        // ----- 物理常量 -----
+        const G = 9.8;               // 重力加速度 m/s²
+        
+        // ----- canvas 元素 -----
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // ----- 固定几何参数 (像素坐标) -----
+        const wallX_H = 120;
+        const wallY_V = 60;
+        const SPRING_NATURAL_LEN_PX = 100;
+        const BALL_RADIUS = 18;
+        const MAX_DISP_M = 2.2;      // 最大允许相对位移 ±2.2米
+        const METER_TO_PX = 70;
+        
+        // ----- 模拟状态 -----
+        let mode = "horizontal";      // "horizontal" or "vertical"
+        let k = 20.0;                // N/m
+        let m = 0.5;                // kg
+        
+        let x_rel = 0.0;
+        let v = 0.0;
+        let omega2 = 0;
+        let period = 0;
+        let currentAmplitude = 0.0;
+        
+        let animationId = null;
+        let lastFrameTime = 0;
+        let dragging = false;
+        
+        // 平衡位置相关(像素)
+        let horizontalEquilibriumX_px = wallX_H + SPRING_NATURAL_LEN_PX;
+        let verticalEquilibriumOffsetY_px = 0;   // 静伸长总长(像素) 从固定点向下
+        let currentEqX_px = horizontalEquilibriumX_px;
+        let currentEqY_px = wallY_V + SPRING_NATURAL_LEN_PX;
+        
+        // ----- 辅助 DOM 元素更新 -----
+        const theoryTSpan = document.getElementById('theoryTDisplay');
+        const maxForceSpan = document.getElementById('maxForceDisplay');
+        const staticExtensionSpan = document.getElementById('staticExtensionInfo');
+        const deltaLFormulaSpan = document.getElementById('deltaLFormula');
+        
+        // 更新所有辅助显示 (周期、静伸长、最大回复力等)
+        function updateAuxiliaryInfo() {
+            // 理论周期
+            const T_theory = 2 * Math.PI * Math.sqrt(m / k);
+            theoryTSpan.innerText = T_theory.toFixed(3) + " s";
+            // 最大回复力 F_max = k * A (当前振幅)
+            const Fmax = k * currentAmplitude;
+            maxForceSpan.innerText = Fmax.toFixed(2) + " N";
+            // 竖直模式静伸长
+            const deltaL_m = (m * G) / k;
+            if (mode === "vertical") {
+                staticExtensionSpan.innerHTML = `⚖️ 静伸长 Δl = ${deltaL_m.toFixed(4)} m`;
+                deltaLFormulaSpan.innerHTML = `Δl = m·g / k = ${deltaL_m.toFixed(3)} m`;
+            } else {
+                staticExtensionSpan.innerHTML = `⚖️ 竖直模式适用 Δl = mg/k`;
+                deltaLFormulaSpan.innerHTML = `Δl = m·g / k  (竖直振子)`;
+            }
+        }
+        
+        // 更新周期显示与辅助
+        function updatePhysicsParams() {
+            omega2 = k / m;
+            period = 2 * Math.PI * Math.sqrt(m / k);
+            document.getElementById('periodValue').innerText = period.toFixed(3);
+            updateAuxiliaryInfo();
+        }
+        
+        // 根据模式与k,m更新平衡位置(像素)
+        function updateEquilibriumPosition() {
+            if (mode === "horizontal") {
+                const naturalLenM = SPRING_NATURAL_LEN_PX / METER_TO_PX;
+                horizontalEquilibriumX_px = wallX_H + naturalLenM * METER_TO_PX;
+                currentEqX_px = horizontalEquilibriumX_px;
+                currentEqY_px = wallY_V + SPRING_NATURAL_LEN_PX; // 占位
+            } 
+            else { // vertical
+                const deltaL_m = (m * G) / k;
+                const naturalLenM = SPRING_NATURAL_LEN_PX / METER_TO_PX;
+                const totalLenM = naturalLenM + deltaL_m;
+                const equilibriumOffsetPx = totalLenM * METER_TO_PX;
+                verticalEquilibriumOffsetY_px = equilibriumOffsetPx;
+                currentEqY_px = wallY_V + equilibriumOffsetPx;
+                currentEqX_px = canvas.width/2;
+            }
+            // 更新UI中的静伸长信息
+            updateAuxiliaryInfo();
+        }
+        
+        function resetMotion() {
+            x_rel = 0.0;
+            v = 0.0;
+            currentAmplitude = 0.0;
+            updateAmplitudeDisplay();
+            updateAuxiliaryInfo();
+            drawCanvas();
+        }
+        
+        function fullSystemReset() {
+            updateEquilibriumPosition();
+            resetMotion();
+            updatePhysicsParams();
+            drawCanvas();
+        }
+        
+        function onParameterChange() {
+            k = parseFloat(document.getElementById('kSlider').value);
+            m = parseFloat(document.getElementById('mSlider').value);
+            document.getElementById('kVal').innerText = k.toFixed(1) + " N/m";
+            document.getElementById('mVal').innerText = m.toFixed(2) + " kg";
+            updatePhysicsParams();
+            updateEquilibriumPosition();
+            resetMotion();
+            drawCanvas();
+        }
+        
+        function setMode(newMode) {
+            if (mode === newMode) return;
+            mode = newMode;
+            document.getElementById('modeHorBtn').classList.toggle('active', mode === 'horizontal');
+            document.getElementById('modeVerBtn').classList.toggle('active', mode === 'vertical');
+            updateEquilibriumPosition();
+            resetMotion();
+            drawCanvas();
+        }
+        
+        function getBallDrawPosition() {
+            if (mode === "horizontal") {
+                const ballX_px = currentEqX_px + x_rel * METER_TO_PX;
+                const ballY_px = canvas.height / 2 + 8;
+                return { x: Math.min(Math.max(ballX_px, BALL_RADIUS+5), canvas.width - BALL_RADIUS-5), y: ballY_px };
+            } 
+            else {
+                const ballY_px = currentEqY_px + x_rel * METER_TO_PX;
+                const ballX_px = canvas.width / 2;
+                return { x: ballX_px, y: Math.min(Math.max(ballY_px, BALL_RADIUS+10), canvas.height - BALL_RADIUS-5) };
+            }
+        }
+        
+        function drawSpring(fx, fy, tx, ty, color = "#5b6e8c") {
+            ctx.save();
+            ctx.beginPath();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = color;
+            ctx.lineCap = "round";
+            const dx = tx - fx;
+            const dy = ty - fy;
+            const distance = Math.hypot(dx, dy);
+            if (distance < 5) return;
+            const angle = Math.atan2(dy, dx);
+            const perpX = -Math.sin(angle);
+            const perpY = Math.cos(angle);
+            const waveAmplitude = 5;
+            const waveCount = Math.max(8, Math.floor(distance / 8));
+            ctx.beginPath();
+            for (let i = 0; i <= waveCount; i++) {
+                const t = i / waveCount;
+                const alongX = fx + dx * t;
+                const alongY = fy + dy * t;
+                const offset = Math.sin(t * Math.PI * 3) * waveAmplitude;
+                const wigX = alongX + perpX * offset;
+                const wigY = alongY + perpY * offset;
+                if (i === 0) ctx.moveTo(wigX, wigY);
+                else ctx.lineTo(wigX, wigY);
+            }
+            ctx.stroke();
+            ctx.restore();
+        }
+        
+        function drawWall(x, y, isHorizontalWall) {
+            ctx.save();
+            ctx.fillStyle = "#8b5a2b";
+            ctx.strokeStyle = "#4e3e2e";
+            ctx.lineWidth = 2;
+            if (isHorizontalWall) {
+                ctx.fillRect(x-12, y-25, 12, 70);
+                ctx.fillStyle = "#b87c4f";
+                ctx.fillRect(x-10, y-20, 8, 60);
+                for(let i=-20;i<=40;i+=15){
+                    ctx.beginPath();
+                    ctx.moveTo(x-5, y+i);
+                    ctx.lineTo(x+2, y+i-5);
+                    ctx.stroke();
+                }
+            } else {
+                ctx.fillRect(x-50, y-12, 100, 16);
+                ctx.fillStyle = "#b87c4f";
+                ctx.fillRect(x-45, y-8, 90, 10);
+                for(let i=-45;i<=45;i+=20){
+                    ctx.beginPath();
+                    ctx.moveTo(x+i, y-2);
+                    ctx.lineTo(x+i+8, y+5);
+                    ctx.stroke();
+                }
+            }
+            ctx.restore();
+        }
+        
+        function drawCanvas() {
+            if (!ctx) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.globalAlpha = 0.3;
+            ctx.beginPath();
+            ctx.strokeStyle = "#cbd5e6";
+            ctx.lineWidth = 0.5;
+            for(let i=0;i<canvas.width;i+=40){
+                ctx.beginPath();
+                ctx.moveTo(i,0);
+                ctx.lineTo(i,canvas.height);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0,i);
+                ctx.lineTo(canvas.width,i);
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+            
+            if (mode === "horizontal") {
+                drawWall(wallX_H, canvas.height/2 + 8, true);
+            } else {
+                drawWall(canvas.width/2, wallY_V, false);
+            }
+            
+            const ballPos = getBallDrawPosition();
+            
+            if (mode === "horizontal") {
+                const anchorX = wallX_H + 4;
+                const anchorY = canvas.height/2 + 8;
+                drawSpring(anchorX, anchorY, ballPos.x, ballPos.y, "#5e7a9c");
+                ctx.beginPath();
+                ctx.setLineDash([6, 8]);
+                ctx.moveTo(currentEqX_px, anchorY-15);
+                ctx.lineTo(currentEqX_px, anchorY+15);
+                ctx.strokeStyle = "#94a3b8";
+                ctx.stroke();
+                ctx.setLineDash([]);
+            } 
+            else {
+                const anchorX = canvas.width/2;
+                const anchorY = wallY_V + 8;
+                drawSpring(anchorX, anchorY, ballPos.x, ballPos.y, "#5e7a9c");
+                ctx.beginPath();
+                ctx.setLineDash([6, 8]);
+                ctx.moveTo(anchorX-40, currentEqY_px);
+                ctx.lineTo(anchorX+40, currentEqY_px);
+                ctx.strokeStyle = "#94a3b8";
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+            
+            // 小球
+            ctx.shadowBlur = 6;
+            ctx.shadowColor = "rgba(0,0,0,0.2)";
+            ctx.beginPath();
+            ctx.arc(ballPos.x, ballPos.y, BALL_RADIUS, 0, 2*Math.PI);
+            ctx.fillStyle = "#ff8c5a";
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.beginPath();
+            ctx.arc(ballPos.x-2, ballPos.y-2, 5, 0, 2*Math.PI);
+            ctx.fillStyle = "#fff9e8";
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(ballPos.x-2, ballPos.y-2, 2.5, 0, 2*Math.PI);
+            ctx.fillStyle = "#ffffff";
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(ballPos.x+3, ballPos.y+3, 3, 0, 2*Math.PI);
+            ctx.fillStyle = "#f0c0a0";
+            ctx.fill();
+            
+            ctx.font = "12px 'Segoe UI'";
+            ctx.fillStyle = "#2d3e5f";
+            if(mode === "horizontal"){
+                ctx.fillText("平衡位置", currentEqX_px-25, canvas.height/2+8-8);
+            } else {
+                ctx.fillText("平衡位置", canvas.width/2-40, currentEqY_px-6);
+            }
+            ctx.font = "bold 14px 'Fira Mono'";
+            ctx.fillStyle = "#1f3a5f";
+            ctx.fillText(`x = ${x_rel.toFixed(3)} m`, ballPos.x+15, ballPos.y-10);
+            ctx.restore();
+        }
+        
+        function updateAmplitudeDisplay() {
+            document.getElementById('amplitudeValue').innerText = currentAmplitude.toFixed(3);
+            updateAuxiliaryInfo(); // 振幅改变会影响F_max
+        }
+        
+        function updatePhysics(dtSec) {
+            if (dtSec > 0.03) dtSec = 0.03;
+            if (dragging) return;
+            const acc = -omega2 * x_rel;
+            v += acc * dtSec;
+            x_rel += v * dtSec;
+            if (x_rel > MAX_DISP_M) {
+                x_rel = MAX_DISP_M;
+                if (v > 0) v = 0;
+            }
+            if (x_rel < -MAX_DISP_M) {
+                x_rel = -MAX_DISP_M;
+                if (v < 0) v = 0;
+            }
+            const absDisp = Math.abs(x_rel);
+            if (absDisp > currentAmplitude) {
+                currentAmplitude = absDisp;
+                updateAmplitudeDisplay();
+            }
+        }
+        
+        let lastFrameTimeAnim = null;
+        function animate(currentTimeMs) {
+            if (!lastFrameTimeAnim) {
+                lastFrameTimeAnim = currentTimeMs;
+                requestAnimationFrame(animate);
+                drawCanvas();
+                return;
+            }
+            let dt = Math.min(0.033, (currentTimeMs - lastFrameTimeAnim) / 1000);
+            if (dt > 0.001 && !dragging) {
+                updatePhysics(dt);
+                drawCanvas();
+            } else {
+                drawCanvas();
+            }
+            lastFrameTimeAnim = currentTimeMs;
+            animationId = requestAnimationFrame(animate);
+        }
+        
+        // ----- 拖拽交互 -----
+        function handleDragStart(e) {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            let clientX, clientY;
+            if (e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            const canvasX = (clientX - rect.left) * scaleX;
+            const canvasY = (clientY - rect.top) * scaleY;
+            const ballPos = getBallDrawPosition();
+            const dx_px = canvasX - ballPos.x;
+            const dy_px = canvasY - ballPos.y;
+            if (Math.hypot(dx_px, dy_px) <= BALL_RADIUS + 8) {
+                dragging = true;
+                canvas.style.cursor = 'grabbing';
+                v = 0;
+                updateDragFromMouse(canvasX, canvasY);
+                drawCanvas();
+            }
+        }
+        
+        function updateDragFromMouse(canvasX, canvasY) {
+            if (!dragging) return;
+            if (mode === "horizontal") {
+                let targetX_px = Math.min(Math.max(canvasX, BALL_RADIUS+5), canvas.width - BALL_RADIUS-5);
+                let newX_rel = (targetX_px - currentEqX_px) / METER_TO_PX;
+                newX_rel = Math.min(MAX_DISP_M, Math.max(-MAX_DISP_M, newX_rel));
+                x_rel = newX_rel;
+                currentAmplitude = Math.abs(x_rel);
+                updateAmplitudeDisplay();
+            } 
+            else {
+                let targetY_px = Math.min(Math.max(canvasY, BALL_RADIUS+10), canvas.height - BALL_RADIUS-5);
+                let newY_rel = (targetY_px - currentEqY_px) / METER_TO_PX;
+                newY_rel = Math.min(MAX_DISP_M, Math.max(-MAX_DISP_M, newY_rel));
+                x_rel = newY_rel;
+                currentAmplitude = Math.abs(x_rel);
+                updateAmplitudeDisplay();
+            }
+            drawCanvas();
+        }
+        
+        function handleDragMove(e) {
+            if (!dragging) return;
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            let clientX, clientY;
+            if (e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            const canvasX = (clientX - rect.left) * scaleX;
+            const canvasY = (clientY - rect.top) * scaleY;
+            updateDragFromMouse(canvasX, canvasY);
+        }
+        
+        function handleDragEnd(e) {
+            if (dragging) {
+                dragging = false;
+                canvas.style.cursor = 'grab';
+                v = 0;
+                currentAmplitude = Math.abs(x_rel);
+                updateAmplitudeDisplay();
+                drawCanvas();
+            }
+        }
+        
+        function onReset() {
+            resetMotion();
+            drawCanvas();
+        }
+        
+        // 事件绑定
+        function bindEvents() {
+            canvas.addEventListener('mousedown', handleDragStart);
+            window.addEventListener('mousemove', handleDragMove);
+            window.addEventListener('mouseup', handleDragEnd);
+            canvas.addEventListener('touchstart', handleDragStart);
+            window.addEventListener('touchmove', handleDragMove);
+            window.addEventListener('touchend', handleDragEnd);
+            canvas.style.cursor = 'grab';
+            document.getElementById('kSlider').addEventListener('input', onParameterChange);
+            document.getElementById('mSlider').addEventListener('input', onParameterChange);
+            document.getElementById('modeHorBtn').addEventListener('click', () => setMode('horizontal'));
+            document.getElementById('modeVerBtn').addEventListener('click', () => setMode('vertical'));
+            document.getElementById('resetBtn').addEventListener('click', onReset);
+        }
+        
+        function init() {
+            bindEvents();
+            k = 20.0; m = 0.5;
+            document.getElementById('kSlider').value = k;
+            document.getElementById('mSlider').value = m;
+            document.getElementById('kVal').innerText = k.toFixed(1) + " N/m";
+            document.getElementById('mVal').innerText = m.toFixed(2) + " kg";
+            updatePhysicsParams();
+            updateEquilibriumPosition();
+            resetMotion();
+            drawCanvas();
+            lastFrameTimeAnim = null;
+            animationId = requestAnimationFrame(animate);
+        }
+        
+        init();
+    })();
+</script>
+</body>
+</html>

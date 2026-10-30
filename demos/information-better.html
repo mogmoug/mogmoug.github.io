@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 信息增益助手（DeepSeek）</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background: #f5f7fb;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 720px;
+            width: 100%;
+            background: #fff;
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+            padding: 32px 28px;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .subtitle {
+            color: #64748b;
+            font-size: 14px;
+            margin-bottom: 24px;
+            border-left: 3px solid #3b82f6;
+            padding-left: 12px;
+            background: #f8fafc;
+            border-radius: 0 8px 8px 0;
+            line-height: 1.5;
+        }
+        .field-group {
+            margin-bottom: 18px;
+        }
+        label {
+            display: block;
+            font-weight: 500;
+            color: #334155;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+        input[type="password"],
+        textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 12px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+            background: #fafbfc;
+            font-family: inherit;
+        }
+        input[type="password"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+        textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        .btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 40px;
+            font-weight: 500;
+            font-size: 15px;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn:hover {
+            background: #2563eb;
+        }
+        .btn:active {
+            transform: scale(0.96);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+        .btn-secondary:hover {
+            background: #cbd5e1;
+        }
+        .btn-success {
+            background: #10b981;
+        }
+        .btn-success:hover {
+            background: #059669;
+        }
+        .api-key-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .api-key-row input {
+            flex: 1;
+        }
+        .api-key-row .btn {
+            flex-shrink: 0;
+            padding: 10px 18px;
+            font-size: 13px;
+        }
+        .hidden {
+            display: none !important;
+        }
+        .card {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 16px;
+        }
+        .question-item {
+            background: white;
+            border-radius: 12px;
+            padding: 16px 18px;
+            margin-bottom: 14px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            border: 1px solid #edf2f7;
+        }
+        .question-item .q-text {
+            font-weight: 500;
+            color: #0f172a;
+            margin-bottom: 10px;
+            font-size: 15px;
+        }
+        .question-item .q-required {
+            color: #ef4444;
+            margin-left: 4px;
+        }
+        .options-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px 20px;
+        }
+        .options-group label {
+            font-weight: 400;
+            font-size: 14px;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+        .options-group input[type="radio"],
+        .options-group input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #3b82f6;
+        }
+        .short-text-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .short-text-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+        .yes-no-group {
+            display: flex;
+            gap: 16px;
+        }
+        .yes-no-group label {
+            font-weight: 400;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .loading {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #475569;
+            padding: 12px 0;
+        }
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2.5px solid #e2e8f0;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .answer-box {
+            background: #f1f5f9;
+            border-radius: 12px;
+            padding: 18px 20px;
+            margin-top: 12px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 15px;
+            line-height: 1.7;
+            border-left: 4px solid #3b82f6;
+        }
+        .error-msg {
+            color: #dc2626;
+            background: #fef2f2;
+            padding: 10px 16px;
+            border-radius: 10px;
+            border-left: 4px solid #dc2626;
+            margin: 8px 0;
+            font-size: 14px;
+        }
+        .info-badge {
+            display: inline-block;
+            background: #dbeafe;
+            color: #1e40af;
+            padding: 2px 10px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-left: 8px;
+        }
+        .footer {
+            margin-top: 24px;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 13px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 18px;
+        }
+        .token-stats {
+            display: flex;
+            gap: 24px;
+            justify-content: center;
+            background: #f1f5f9;
+            border-radius: 30px;
+            padding: 6px 20px;
+            font-size: 13px;
+            color: #334155;
+            margin: 8px 0 12px 0;
+        }
+        .token-stats span {
+            font-weight: 600;
+            color: #0f172a;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="app">
+    <h1>🧠 信息增益助手</h1>
+    <div class="subtitle">
+        AI 通过主动提问挖掘您缺失的关键信息，让回答更精准，减少追问。
+    </div>
+
+    <!-- 第一步：API Key + 原始问题 -->
+    <div id="step-start">
+        <div class="field-group">
+            <label>🔑 DeepSeek API Key</label>
+            <div class="api-key-row">
+                <input type="password" id="apiKeyInput" placeholder="sk-..." value="">
+                <button class="btn btn-secondary" id="saveKeyBtn">保存</button>
+            </div>
+            <div style="font-size:12px; color:#94a3b8; margin-top:4px;">Key 仅保存在本地浏览器，不会上传</div>
+        </div>
+
+        <div class="field-group">
+            <label>📝 您的原始问题</label>
+            <textarea id="originalQuestion" placeholder="例如：帮我写一个Python脚本，处理Excel数据..."></textarea>
+        </div>
+
+        <button class="btn" id="startBtn">🚀 开始提问（信息增益）</button>
+        <div id="startError" class="error-msg hidden"></div>
+    </div>
+
+    <!-- 第二步：问题列表（动态渲染） -->
+    <div id="step-questions" class="hidden">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <span style="font-weight:600; color:#0f172a;">📋 请补充以下信息（<span id="requiredCount">0</span> 道必答）</span>
+            <span class="info-badge">信息增益中</span>
+        </div>
+        <div id="questionsContainer"></div>
+        <div style="display:flex; gap:12px; margin-top:20px; flex-wrap:wrap;">
+            <button class="btn btn-success" id="submitAnswersBtn">✅ 提交补充信息</button>
+            <button class="btn btn-secondary" id="skipQuestionsBtn">⏭️ 跳过，直接回答</button>
+        </div>
+        <div id="questionError" class="error-msg hidden"></div>
+    </div>
+
+    <!-- 加载指示器 -->
+    <div id="loadingIndicator" class="hidden" style="margin:16px 0;">
+        <div class="loading"><div class="spinner"></div> AI 正在思考…</div>
+    </div>
+
+    <!-- 第三步：最终答案 -->
+    <div id="step-answer" class="hidden">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="font-weight:600; color:#0f172a;">✨ 最终回答</span>
+            <span id="tokenStats" class="token-stats hidden">
+                <span>📊 信息增益: <span id="gainPercent">+0%</span></span>
+                <span>📄 原始 <span id="origTokens">0</span> → 补充后 <span id="newTokens">0</span></span>
+            </span>
+        </div>
+        <div id="answerContent" class="answer-box">等待回答…</div>
+        <button class="btn btn-secondary" id="resetBtn" style="margin-top:16px;">🔄 重新开始</button>
+    </div>
+
+    <div class="footer">
+        数据仅本地处理 · 调用 DeepSeek API
+    </div>
+</div>
+
+<script>
+    (function() {
+        // --- DOM refs ---
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const saveKeyBtn = document.getElementById('saveKeyBtn');
+        const originalQuestion = document.getElementById('originalQuestion');
+        const startBtn = document.getElementById('startBtn');
+        const startError = document.getElementById('startError');
+
+        const stepStart = document.getElementById('step-start');
+        const stepQuestions = document.getElementById('step-questions');
+        const questionsContainer = document.getElementById('questionsContainer');
+        const requiredCount = document.getElementById('requiredCount');
+        const submitAnswersBtn = document.getElementById('submitAnswersBtn');
+        const skipQuestionsBtn = document.getElementById('skipQuestionsBtn');
+        const questionError = document.getElementById('questionError');
+
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const stepAnswer = document.getElementById('step-answer');
+        const answerContent = document.getElementById('answerContent');
+        const tokenStats = document.getElementById('tokenStats');
+        const gainPercent = document.getElementById('gainPercent');
+        const origTokens = document.getElementById('origTokens');
+        const newTokens = document.getElementById('newTokens');
+        const resetBtn = document.getElementById('resetBtn');
+
+        // --- state ---
+        let apiKey = localStorage.getItem('deepseek_api_key') || '';
+        let originalPrompt = '';
+        let questionsData = [];          // 存储问题数组
+        let userAnswers = {};            // { id: value }
+        let finalAnswer = '';
+        let tokenCountOriginal = 0;
+        let tokenCountWithSupplement = 0;
+
+        // --- utils ---
+        function showError(el, msg) {
+            el.textContent = msg;
+            el.classList.remove('hidden');
+        }
+        function hideError(el) {
+            el.classList.add('hidden');
+        }
+
+        // 简单的token估算（粗略，只用于展示）
+        function roughTokenCount(text) {
+            // 中文约1字=1 token，英文约4字符=1 token，这里粗略平均
+            const chinese = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
+            const other = text.length - chinese;
+            return Math.ceil(chinese * 1.2 + other / 3.5);
+        }
+
+        // --- API 调用 ---
+        async function callDeepSeek(messages, apiKey, model = 'deepseek-chat', temperature = 0.3) {
+            const url = 'https://api.deepseek.com/v1/chat/completions';
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: model,
+                    messages: messages,
+                    temperature: temperature,
+                    max_tokens: 2000,
+                    stream: false
+                })
+            });
+            if (!response.ok) {
+                const errText = await response.text();
+                let errMsg = `API 请求失败 (${response.status})`;
+                try {
+                    const errJson = JSON.parse(errText);
+                    errMsg = errJson.error?.message || errMsg;
+                } catch(e) {}
+                throw new Error(errMsg);
+            }
+            const data = await response.json();
+            return data.choices[0].message.content;
+        }
+
+        // --- 提问者生成问题 ---
+        async function generateQuestions(original, apiKey) {
+            const systemPrompt = `你是一位专业的提问专家，任务是通过提问来补全用户原始问题中缺失的关键信息，从而让回答者能给出高质量答案。
+
+用户原始问题：
+${original}
+
+请生成3~5个优质问题，类型可以是：
+- "choice": 单选题（提供选项）
+- "yes_no": 是非题
+- "short_text": 简答题
+
+要求：
+1. 问题必须简洁、通俗、不增加用户负担。
+2. 问题应直击信息缺口（如背景、目标、约束、偏好、已有尝试等）。
+3. 每个问题需包含 id (q1, q2, ...), type, question, required (boolean)。
+4. 对于 choice 类型，提供 options 数组（至少2个）。
+5. 对于 yes_no 类型，无需 options。
+6. 输出必须是**纯JSON**，格式如下：
+{
+  "questions": [
+    { "id": "q1", "type": "choice", "question": "您希望最终输出什么形式？", "options": ["报告", "代码", "方案"], "required": true },
+    { "id": "q2", "type": "short_text", "question": "您已经尝试过哪些方法？", "required": false }
+  ]
+}
+不要添加任何解释或markdown标记，只输出JSON对象。`;
+
+            const messages = [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: `请根据以上要求为以下原始问题生成问题：\n${original}` }
+            ];
+            const raw = await callDeepSeek(messages, apiKey, 'deepseek-chat', 0.2);
+            // 尝试解析JSON
+            let parsed = null;
+            try {
+                parsed = JSON.parse(raw);
+            } catch (e) {
+                // 尝试提取大括号内容
+                const match = raw.match(/\{[\s\S]*\}/);
+                if (match) {
+                    try {
+                        parsed = JSON.parse(match[0]);
+                    } catch(e2) {
+                        throw new Error('无法解析AI返回的JSON，请重试。');
+                    }
+                } else {
+                    throw new Error('AI返回内容不包含有效JSON，请重试。');
+                }
+            }
+            if (!parsed.questions || !Array.isArray(parsed.questions) || parsed.questions.length === 0) {
+                throw new Error('AI返回的问题列表为空，请重试。');
+            }
+            return parsed.questions;
+        }
+
+        // --- 回答者生成答案 ---
+        async function generateAnswer(original, supplement, apiKey) {
+            const systemPrompt = `你是一位专业的助手，请根据用户原始问题和补充信息，给出全面、准确、有用的回答。充分利用补充信息来细化回答。
+
+原始问题：${original}
+
+用户补充信息：${supplement}
+
+请直接回答，不要重复问题，不要赘述补充信息。回答要详细、有条理。`;
+            const messages = [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: `请回答：${original}\n\n补充信息：${supplement}` }
+            ];
+            return await callDeepSeek(messages, apiKey, 'deepseek-chat', 0.7);
+        }
+
+        // --- 渲染问题表单 ---
+        function renderQuestions(questions) {
+            questionsContainer.innerHTML = '';
+            let requiredCountVal = 0;
+            questions.forEach((q, index) => {
+                if (q.required) requiredCountVal++;
+                const div = document.createElement('div');
+                div.className = 'question-item';
+                div.dataset.id = q.id;
+
+                const label = document.createElement('div');
+                label.className = 'q-text';
+                label.innerHTML = `${index+1}. ${q.question} ${q.required ? '<span class="q-required">*</span>' : ''}`;
+                div.appendChild(label);
+
+                const inputWrapper = document.createElement('div');
+                inputWrapper.className = 'options-group';
+
+                if (q.type === 'choice') {
+                    const options = q.options || ['是', '否'];
+                    options.forEach(opt => {
+                        const radio = document.createElement('input');
+                        radio.type = 'radio';
+                        radio.name = q.id;
+                        radio.value = opt;
+                        radio.required = q.required;
+                        const labelEl = document.createElement('label');
+                        labelEl.appendChild(radio);
+                        labelEl.appendChild(document.createTextNode(opt));
+                        inputWrapper.appendChild(labelEl);
+                    });
+                } else if (q.type === 'yes_no') {
+                    ['是', '否'].forEach(opt => {
+                        const radio = document.createElement('input');
+                        radio.type = 'radio';
+                        radio.name = q.id;
+                        radio.value = opt;
+                        radio.required = q.required;
+                        const labelEl = document.createElement('label');
+                        labelEl.appendChild(radio);
+                        labelEl.appendChild(document.createTextNode(opt));
+                        inputWrapper.appendChild(labelEl);
+                    });
+                } else if (q.type === 'short_text') {
+                    const textInput = document.createElement('input');
+                    textInput.type = 'text';
+                    textInput.className = 'short-text-input';
+                    textInput.placeholder = '请输入…';
+                    textInput.required = q.required;
+                    textInput.dataset.qid = q.id;
+                    inputWrapper.appendChild(textInput);
+                } else {
+                    // fallback: short_text
+                    const textInput = document.createElement('input');
+                    textInput.type = 'text';
+                    textInput.className = 'short-text-input';
+                    textInput.placeholder = '请输入…';
+                    textInput.required = q.required;
+                    textInput.dataset.qid = q.id;
+                    inputWrapper.appendChild(textInput);
+                }
+
+                div.appendChild(inputWrapper);
+                questionsContainer.appendChild(div);
+            });
+            requiredCount.textContent = requiredCountVal;
+            // 存储问题数据以便后续收集答案
+            questionsData = questions;
+        }
+
+        // --- 收集答案 ---
+        function collectAnswers() {
+            const answers = {};
+            let allValid = true;
+            questionsData.forEach(q => {
+                const container = document.querySelector(`.question-item[data-id="${q.id}"]`);
+                if (!container) return;
+                let value = '';
+                if (q.type === 'choice' || q.type === 'yes_no') {
+                    const selected = container.querySelector(`input[name="${q.id}"]:checked`);
+                    value = selected ? selected.value : '';
+                } else if (q.type === 'short_text') {
+                    const input = container.querySelector(`.short-text-input[data-qid="${q.id}"]`);
+                    value = input ? input.value.trim() : '';
+                }
+                answers[q.id] = value;
+                if (q.required && !value) {
+                    allValid = false;
+                }
+            });
+            return { answers, valid: allValid };
+        }
+
+        // --- 构建补充信息文本 ---
+        function buildSupplementText(questions, answers) {
+            const parts = [];
+            questions.forEach(q => {
+                const answer = answers[q.id] || '未回答';
+                parts.push(`${q.question}：${answer}`);
+            });
+            return parts.join('\n');
+        }
+
+        // --- 主流程 ---
+        async function handleStart() {
+            hideError(startError);
+            const key = apiKeyInput.value.trim() || apiKey;
+            if (!key) {
+                showError(startError, '请先输入或保存 DeepSeek API Key');
+                return;
+            }
+            const question = originalQuestion.value.trim();
+            if (!question) {
+                showError(startError, '请先输入您的问题');
+                return;
+            }
+            // 保存key
+            apiKey = key;
+            localStorage.setItem('deepseek_api_key', key);
+
+            originalPrompt = question;
+            // 显示加载
+            loadingIndicator.classList.remove('hidden');
+            startBtn.disabled = true;
+
+            try {
+                const questions = await generateQuestions(question, key);
+                loadingIndicator.classList.add('hidden');
+                startBtn.disabled = false;
+
+                // 切换视图
+                stepStart.classList.add('hidden');
+                stepQuestions.classList.remove('hidden');
+                renderQuestions(questions);
+                // 清空旧答案
+                userAnswers = {};
+                hideError(questionError);
+
+                // 统计原始token
+                tokenCountOriginal = roughTokenCount(question);
+            } catch (err) {
+                loadingIndicator.classList.add('hidden');
+                startBtn.disabled = false;
+                showError(startError, `生成问题失败：${err.message}`);
+            }
+        }
+
+        async function handleSubmitAnswers(skip = false) {
+            hideError(questionError);
+            if (!skip) {
+                const { answers, valid } = collectAnswers();
+                if (!valid) {
+                    showError(questionError, '请回答所有必填问题（标记 * 的），或点击“跳过”');
+                    return;
+                }
+                userAnswers = answers;
+            } else {
+                // 跳过时，所有问题填“跳过”
+                const dummy = {};
+                questionsData.forEach(q => {
+                    dummy[q.id] = '（跳过）';
+                });
+                userAnswers = dummy;
+            }
+
+            // 组装补充信息
+            const supplement = buildSupplementText(questionsData, userAnswers);
+            // 计算补充后的token
+            const fullPrompt = originalPrompt + '\n' + supplement;
+            tokenCountWithSupplement = roughTokenCount(fullPrompt);
+
+            // 切换加载
+            loadingIndicator.classList.remove('hidden');
+            submitAnswersBtn.disabled = true;
+            skipQuestionsBtn.disabled = true;
+
+            try {
+                const answer = await generateAnswer(originalPrompt, supplement, apiKey);
+                finalAnswer = answer;
+
+                // 显示答案
+                loadingIndicator.classList.add('hidden');
+                stepQuestions.classList.add('hidden');
+                stepAnswer.classList.remove('hidden');
+                answerContent.textContent = answer;
+
+                // 显示统计
+                tokenStats.classList.remove('hidden');
+                const gain = tokenCountWithSupplement - tokenCountOriginal;
+                const percent = tokenCountOriginal > 0 ? Math.round((gain / tokenCountOriginal) * 100) : 0;
+                gainPercent.textContent = `${percent >= 0 ? '+' : ''}${percent}%`;
+                origTokens.textContent = tokenCountOriginal;
+                newTokens.textContent = tokenCountWithSupplement;
+
+                submitAnswersBtn.disabled = false;
+                skipQuestionsBtn.disabled = false;
+            } catch (err) {
+                loadingIndicator.classList.add('hidden');
+                submitAnswersBtn.disabled = false;
+                skipQuestionsBtn.disabled = false;
+                showError(questionError, `生成答案失败：${err.message}`);
+            }
+        }
+
+        function resetAll() {
+            // 重置到开始
+            stepStart.classList.remove('hidden');
+            stepQuestions.classList.add('hidden');
+            stepAnswer.classList.add('hidden');
+            loadingIndicator.classList.add('hidden');
+            tokenStats.classList.add('hidden');
+            hideError(startError);
+            hideError(questionError);
+            startBtn.disabled = false;
+            submitAnswersBtn.disabled = false;
+            skipQuestionsBtn.disabled = false;
+            questionsContainer.innerHTML = '';
+            originalPrompt = '';
+            questionsData = [];
+            userAnswers = {};
+            finalAnswer = '';
+            answerContent.textContent = '等待回答…';
+        }
+
+        // --- 事件绑定 ---
+        saveKeyBtn.addEventListener('click', function() {
+            const key = apiKeyInput.value.trim();
+            if (key) {
+                localStorage.setItem('deepseek_api_key', key);
+                apiKey = key;
+                alert('API Key 已保存到本地');
+            } else {
+                alert('请输入有效的 API Key');
+            }
+        });
+
+        // 页面加载时恢复key
+        if (apiKey) {
+            apiKeyInput.value = apiKey;
+        }
+
+        startBtn.addEventListener('click', handleStart);
+
+        submitAnswersBtn.addEventListener('click', function() {
+            handleSubmitAnswers(false);
+        });
+
+        skipQuestionsBtn.addEventListener('click', function() {
+            handleSubmitAnswers(true);
+        });
+
+        resetBtn.addEventListener('click', resetAll);
+
+        // 回车快捷提交原始问题
+        originalQuestion.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                startBtn.click();
+            }
+        });
+
+        // 如果用户按回车在短输入框中，不触发表单提交（防止意外）
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.target.closest('.short-text-input')) {
+                // 允许换行？不处理
+            }
+        });
+
+        console.log('🧠 信息增益助手已加载，输入API Key和问题开始吧！');
+    })();
+</script>
+</body>
+</html>

@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cordis 通俗导览 · 动态组合的编程范式</title>
+<style>
+:root{
+  --bg:#0d1117; --bg2:#111827; --card:#161e2b; --line:#2a3548;
+  --txt:#e6edf3; --dim:#9aa7b8; --accent:#4cc2ff; --accent2:#a78bfa;
+  --green:#3fb68b; --amber:#e8b04b; --red:#e06c75; --pink:#f0a6c0;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:var(--bg);color:var(--txt);
+  font-family:"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;overflow:hidden}
+.deck{position:relative;width:100vw;height:100vh}
+.slide{position:absolute;inset:0;display:none;flex-direction:column;
+  padding:4.5vh 7vw;animation:fade .4s ease}
+.slide.active{display:flex}
+@keyframes fade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.part{font-size:13px;letter-spacing:.3em;color:var(--accent);text-transform:uppercase;margin-bottom:10px}
+h1{font-size:clamp(32px,4.4vw,56px);font-weight:800;line-height:1.15}
+h2{font-size:clamp(24px,3vw,38px);font-weight:800;margin-bottom:4px}
+.lead{color:var(--dim);font-size:clamp(14px,1.35vw,18px);margin-top:8px;line-height:1.7;max-width:75ch}
+.body{flex:1;display:flex;flex-direction:column;justify-content:center;gap:18px;min-height:0}
+.grid{display:grid;gap:16px}
+.cols2{grid-template-columns:1fr 1fr}
+.cols3{grid-template-columns:1fr 1fr 1fr}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px}
+.card h3{font-size:17px;margin-bottom:8px;color:var(--accent)}
+.card p,.card li{color:var(--dim);font-size:14.5px;line-height:1.8}
+.card ul{padding-left:18px}
+.big{font-size:clamp(18px,2vw,24px);line-height:1.8;color:var(--txt)}
+.big b{color:var(--accent)}
+/* 类比框 */
+.analogy{border:1px dashed var(--amber);border-radius:14px;padding:16px 20px;background:rgba(232,176,75,.06)}
+.analogy .tag-a{font-size:12px;color:var(--amber);letter-spacing:.25em;display:block;margin-bottom:6px}
+.analogy p{color:#d9cba6;font-size:14.5px;line-height:1.8}
+/* 一句话总结条 */
+.takeaway{background:linear-gradient(90deg,rgba(76,194,255,.12),transparent);
+  border-left:3px solid var(--accent);border-radius:0 12px 12px 0;
+  padding:12px 18px;font-size:15px;color:var(--txt)}
+.takeaway b{color:var(--accent)}
+.formula{font-family:"Cambria Math","STIX Two Math",serif;font-size:clamp(15px,1.6vw,21px);
+  background:#0b0f16;border:1px solid var(--line);border-radius:12px;
+  padding:14px 20px;text-align:center;color:#cfe8ff}
+.formula .hl{color:var(--accent2)}
+.plain{background:#0b0f16;border:1px solid var(--line);border-radius:12px;padding:12px 18px;
+  font-size:14px;color:var(--dim);line-height:1.7}
+.plain b{color:var(--txt)}
+.flow{display:flex;align-items:stretch;gap:10px;flex-wrap:wrap}
+.flow .st{flex:1;min-width:130px;background:var(--card);border:1px solid var(--line);
+  border-radius:12px;padding:14px;text-align:center}
+.flow .st b{display:block;margin-bottom:5px;font-size:14.5px}
+.flow .st span{font-size:12.5px;color:var(--dim);line-height:1.6;display:block}
+.flow .cn{align-self:center;color:var(--accent);font-size:18px}
+.vs{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:stretch}
+.vs .mid{display:flex;align-items:center;color:var(--dim);font-weight:700;font-size:18px}
+.footer{position:absolute;bottom:20px;left:7vw;right:7vw;display:flex;
+  justify-content:space-between;align-items:center;color:var(--dim);font-size:12.5px}
+.dots{display:flex;gap:6px;flex-wrap:wrap;max-width:60vw;justify-content:flex-end}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--line);cursor:pointer;transition:.2s}
+.dots i.on{background:var(--accent);transform:scale(1.35)}
+.nav{position:fixed;top:50%;transform:translateY(-50%);width:44px;height:44px;
+  border-radius:50%;border:1px solid var(--line);background:rgba(22,30,43,.85);
+  color:var(--txt);font-size:18px;cursor:pointer;z-index:10;transition:.2s}
+.nav:hover{border-color:var(--accent);color:var(--accent)}
+#prev{left:16px}#next{right:16px}
+.progress{position:fixed;top:0;left:0;height:3px;background:var(--accent);transition:width .3s;z-index:20}
+.pill{display:inline-block;border:1px solid var(--accent);color:var(--accent);border-radius:20px;
+  padding:3px 14px;font-size:13px;margin:0 6px 6px 0}
+.warn{border-left:3px solid var(--amber);padding-left:14px;color:var(--dim);font-size:14px;line-height:1.7}
+.stat{font-size:32px;font-weight:800;color:var(--accent);text-align:center}
+.stat small{font-size:13px;color:var(--dim);font-weight:400;display:block;margin-top:4px}
+.mono{font-family:Consolas,Menlo,monospace;font-size:13px;color:#9ecbff}
+.emoji{font-size:clamp(40px,5vw,64px)}
+@media (max-width:820px){.cols2,.cols3,.vs{grid-template-columns:1fr}.vs .mid{display:none}}
+</style>
+</head>
+<body>
+<div class="progress" id="bar"></div>
+<button class="nav" id="prev">‹</button>
+<button class="nav" id="next">›</button>
+<div class="deck" id="deck">
+
+<!-- 1 封面 -->
+<section class="slide active">
+  <div class="body">
+    <div class="part">CORDIS · 零门槛导览</div>
+    <h1>让软件像乐高一样<span style="color:var(--accent)">随时拆装</span></h1>
+    <p class="lead" style="font-size:clamp(16px,1.8vw,22px);color:var(--txt)">Cordis：时空可组合性的编程范式<br>
+      <span class="muted" style="font-size:15px">A Programming Paradigm for Spatiotemporal Composability</span></p>
+    <p class="lead">一篇论文提出了一个「元框架」：它不关心你写什么软件（聊天机器人、IDE、AI Agent 都行），只关心一件最底层的事——<b>怎么让功能模块在程序运行中被装上、拆下，而不弄乱整个程序</b>。</p>
+    <div class="analogy"><span class="tag-a">🏠 先建立一个直觉</span>
+      <p>想象你租了一间合租房：室友可以随时搬进来、搬出去。理想情况是——他搬走后，房间恢复原样（他用过的水电费结清了），而且新室友入住时，缺什么家具能自动配齐。Cordis 就是给<b>程序</b>提供了这样一套「合租守则」。</p></div>
+  </div>
+  <div class="footer"><span>← → 翻页</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 2 本讲路线 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">ROADMAP</div>
+    <h2>今天我们要搞清楚四件事</h2>
+    <div class="flow">
+      <div class="st"><b>① 背景</b><span>为什么「运行时拆装功能」是个大难题？现在的软件做得多糟糕？</span></div>
+      <div class="cn">→</div>
+      <div class="st"><b>② 概念</b><span>四个核心思想：可撤销的动作、自动反应的依赖、一个总账本、各干各的互不打扰</span></div>
+      <div class="cn">→</div>
+      <div class="st"><b>③ 计算</b><span>数学家如何把这套守则写成精确规则，并证明它不会出错、不会卡死</span></div>
+      <div class="cn">→</div>
+      <div class="st"><b>④ 应用</b><span>真实框架 Cordis 和拥有 4000+ 插件的聊天机器人 Koishi</span></div>
+    </div>
+    <div class="analogy"><span class="tag-a">📖 阅读须知</span>
+      <p>不用担心看不懂公式——本 PPT 里每个公式都会配一句<b>人话翻译</b>。你只需要带着一个信念：<b>所有高深的理论，都是为了把「拆干净、装正确」这两件事变成程序自动完成的，而不是靠程序员手写收拾残局的代码。</b></p></div>
+  </div>
+  <div class="footer"><span>建议 15 分钟读完</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- ============ 背景 ============ -->
+<!-- 3 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 1 · 背景</div>
+    <h2>什么是「组合」？</h2>
+    <p class="big">软件工程最基本的思想：<b>把大系统拆成小零件，再把零件拼起来</b>。小零件好写、好测试、好复用。</p>
+    <div class="grid cols2">
+      <div class="card"><h3>🧱 我们熟悉的组合方式</h3>
+        <ul><li>调用一个<b>函数</b></li><li><b>import</b> 一个模块</li><li>继承一个<b>类</b></li></ul>
+        <p style="margin-top:6px">共同点：<b>程序一启动，谁和谁搭配就定死了</b>，运行中无法改变。这叫「静态组合」。</p></div>
+      <div class="card"><h3>🎛️ 但现代软件不想这样</h3>
+        <ul><li>VSCode：装插件<b>不用重启</b>（真的吗？见下页）</li>
+        <li>手机 App：模块按需加载</li><li>AI Agent：自己给自己<b>写新工具、装上新能力</b></li></ul>
+        <p style="margin-top:6px">程序跑着跑着，要能把一个新零件<b>塞进去</b>，把旧零件<b>拔出来</b>。这叫「动态组合」。</p></div>
+    </div>
+    <div class="takeaway"><b>一句话：</b>动态组合 = 飞机在天上飞的时候换发动机。听上去很酷，也真的很难——难在哪？接下来两页看真实案例。</div>
+  </div>
+  <div class="footer"><span>1 / 背景：问题是什么</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 4 VSCode -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 1 · 背景</div>
+    <h2>案例 ①：VSCode 插件的窘境</h2>
+    <p class="lead">论文调查了 VSCode 商店里安装量前 100 的插件，发现两个尴尬的事实：</p>
+    <div class="grid cols2">
+      <div class="card"><h3>🔌 拔不掉</h3>
+        <p><b style="color:var(--red)">87 个</b>插件含有可执行代码，它们运行在同一个「扩展宿主」进程里。一旦激活过，<b>想卸载？请重启整个 VSCode</b>。</p>
+        <p style="margin-top:6px">虽然有 <span class="mono">deactivate()</span> 钩子，但它只在<b>整个进程关闭时</b>才被调用一下，等于摆设。</p></div>
+      <div class="card"><h3>🔗 连不上</h3>
+        <p>只有 <b style="color:var(--red)">7 个</b>插件声明了对其他插件的依赖。想用一个插件的功能？只能拿到一个<b>没有类型保证</b>的对象（any），靠猜。</p>
+        <p style="margin-top:6px">于是插件生态里大家各玩各的，很少互相协作。</p></div>
+    </div>
+    <div class="analogy"><span class="tag-a">🏠 翻译成人话</span>
+      <p>合租房里每个室友都往公共区域堆自己的东西。有人要搬走，房东说：「不行，得整栋楼断电、所有人搬出去，再重新入住。」——这就是「重启进程」。而室友之间想借东西，没有任何借条制度，全靠口头吆喝。</p></div>
+    <div class="takeaway"><b>一句话：</b>连微软这样的大厂，也只能用「重启大法」解决拆装问题。这是行业普遍的痛。</div>
+  </div>
+  <div class="footer"><span>数据来自论文 §1.2.1（2025 年 6 月商店数据）</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 5 Agent -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 1 · 背景</div>
+    <h2>案例 ②：会自我进化的 AI Agent</h2>
+    <p class="lead">现在的 AI Agent（智能体）都跑在一个「Harness（支架）」里，管理工具、权限、记忆、子 Agent……论文展望的下一步是：<b>Agent 自己修改自己的支架</b>——连续地、几乎没有人盯着。</p>
+    <div class="grid cols2">
+      <div class="card"><h3>❌ 如果拆不干净</h3>
+        <ul><li>每改一次都要重启 → 缓存、连接、算到一半的任务全丢</li><li>改得太频繁 → 系统大量时间在重启</li>
+        <li>最坏情况：一个改坏了的组件，把「负责修复的组件」自己也弄挂了</li></ul></div>
+      <div class="card"><h3>❌ 如果依赖管不好</h3>
+        <ul><li>每个模块自己盯着「我依赖的东西还在吗」→ 代码里全是重复提心吊胆的逻辑</li>
+        <li> naive 地替换代码 → 依赖它的模块<b>悄悄坏掉</b>，或者出现循环依赖，重启时才暴露</li></ul></div>
+    </div>
+    <div class="analogy"><span class="tag-a">🤖 翻译成人话</span>
+      <p>一个机器人一边跑步一边给自己换零件。换零件时不能摔倒（不能停机），换上的新零件不能卡住旧零件，拆掉的零件不能留下螺丝在关节里。人来不及检查每一步——所以<b>规则必须内建</b>，不能靠自觉。</p></div>
+  </div>
+  <div class="footer"><span>论文 §1.2.2</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 6 笨办法 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 1 · 背景</div>
+    <h2>现在的「笨办法」：把问题踢给操作系统</h2>
+    <div class="grid cols2">
+      <div class="card"><h3>🖥️ 重启进程</h3>
+        <p>一个模块捣乱了？把<b>整个进程</b>杀掉重来。</p>
+        <p style="margin-top:6px">代价：进程里的状态全丢（缓存、连接、算到一半的东西），重建要几秒到几分钟。为了不宕机，得多开几份副本烧钱——<b>用冗余弥补「收不回一个零件」的无力</b>。</p></div>
+      <div class="card"><h3>📦 容器编排（如 Kubernetes）</h3>
+        <p>服务之间依赖？放到<b>不同容器</b>里，靠网络调用。</p>
+        <p style="margin-top:6px">代价：本来一个函数调用就能解决的事，变成走网络；同一个进程内的零件之间，反而无法表达依赖。</p></div>
+    </div>
+    <div class="analogy"><span class="tag-a">🏠 翻译成人话</span>
+      <p>为了减少一次搬家纠纷，就让<b>所有</b>室友搬出去重住；为了两人能借个充电器，专门修一条高速公路让快递送。粒度太粗了——<b>我们想要的是「只动一个零件」，而不是「掀翻整座楼」。</b></p></div>
+    <div class="takeaway"><b>一句话：</b>操作系统给的是「整栋楼」级别的拆装，而现代软件需要在「一个零件」级别拆装。这个粒度差，就是 Cordis 要填的坑。</div>
+  </div>
+  <div class="footer"><span>论文 §1.2.3</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 7 两个维度 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 1 · 背景</div>
+    <h2>难题的两个面：「拆干净」与「装正确」</h2>
+    <p class="lead">论文把动态组合拆成两个互相独立的问题。它们恰好对应两种旧理论：效果和余效果。先记住名字，后面逐个用大白话讲。</p>
+    <div class="grid cols2">
+      <div class="card"><h3>⏳ 时间可组合性</h3>
+        <p>零件被拔掉时，它在房间里留下的<b>所有痕迹要恢复原样</b>：订的外卖取消、占的座位让出、音响音量调回原位。</p>
+        <p style="margin-top:6px">理论对应：<b style="color:var(--accent)">效果（Effect）</b> = 程序对环境的修改</p></div>
+      <div class="card"><h3>🧭 空间可组合性</h3>
+        <p>零件之间要<b>光明正大地互相依赖</b>：缺什么就明说，等别人提供了再开工；提供的人走了，依赖它的人要自动收到通知并妥善收尾。</p>
+        <p style="margin-top:6px">理论对应：<b style="color:var(--accent2)">余效果（Coeffect）</b> = 程序对环境的需求</p></div>
+    </div>
+    <div class="analogy"><span class="tag-a">🍳 一个厨房类比记住两者</span>
+      <p>你（组件）进厨房做饭：<b>效果</b>是你对厨房做的改变——开火、弄脏锅、占用灶台；做完饭要<b>全部复原</b>（关火、洗锅、擦干净）。<b>余效果</b>是你做饭需要的条件——要有煤气、要有锅；没煤气时你就不该开工，煤气被停时要立刻关火收尾。</p></div>
+    <div class="takeaway"><b>一句话：</b>效果管「我改了什么」，余效果管「我需要什么」。静态程序里这两个问题简单（作用域 + import），运行时拆装时它们变得很难。接下来进入核心概念。</div>
+  </div>
+  <div class="footer"><span>论文 §1.1 · Dimensions of Composability</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- ============ 概念 ============ -->
+<!-- 8 效果 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 2 · 核心概念 1/4</div>
+    <h2>效果（Effect）：程序对世界做的改变</h2>
+    <p class="lead">写代码时，函数理论上「给定输入、返回输出」，很干净。但实际程序会<b>对外界搞小动作</b>，这些小动作就叫「副作用 / 效果」。</p>
+    <div class="grid cols3">
+      <div class="card"><h3>📝 改全局变量</h3><p>计数器 +1、往列表里塞一条记录、改配置</p></div>
+      <div class="card"><h3>🌐 动外部资源</h3><p>开一个网络端口、写文件、申请一块内存</p></div>
+      <div class="card"><h3>🔔 注册回调</h3><p>「按钮被点就叫我」、订阅消息、装一个事件监听</p></div>
+    </div>
+    <div class="analogy"><span class="tag-a">🏠 人话</span>
+      <p>你在房间里每做一件事——开灯、开空调、往墙上钉钉子——都是一次「效果」。<b>进来时房间什么样，理论上一笔一笔都应该记得，走时能还原。</b>问题是：传统程序里，这些动作散落在各处，没有人帮你记账。</p></div>
+    <div class="plain">📚 背景知识：学术界早就用「效果系统」研究副作用（类型上标注函数会干什么坏事），但那是<b>编译期</b>的静态分析，管不到运行时装卸。</div>
+  </div>
+  <div class="footer"><span>论文 §2.1 · Effects</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 9 余效果 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 2 · 核心概念 2/4</div>
+    <h2>余效果（Coeffect）：程序需要世界提供什么</h2>
+    <p class="lead">「效果」是<b>往外给</b>，「余效果」是<b>朝内要</b>——程序运行前，环境里必须备好的东西。</p>
+    <div class="grid cols2">
+      <div class="card"><h3>需要什么才算「余效果」？</h3>
+        <ul><li>需要<b>权限</b>：能访问数据库吗？</li><li>需要<b>资源</b>：配置文件在哪？</li>
+          <li>需要<b>别的组件</b>：我的插件依赖「数据库插件」先装好</li></ul></div>
+      <div class="card"><h3>和效果正好相反</h3>
+        <p>效果：我<b>影响</b>世界 → 拆走时要<b>擦干净</b></p>
+        <p>余效果：世界<b>支撑</b>我 → 缺了我就<b>不该跑</b>，没了我要<b>知道</b></p></div>
+    </div>
+    <div class="analogy"><span class="tag-a">🎒 人话</span>
+      <p>上大学是个「有余效果的程序」：需要高中毕业证（前置条件）、需要宿舍床位（资源）。学校（运行时）检查你<b>声明的需求清单</b>，齐了才准你注册入学；宿舍被收回时，必须通知你搬离，而不是让你睡大街。</p></div>
+    <div class="takeaway"><b>一句话：</b>效果 = 程序对环境的要求单。Cordis 的革命性一步：把这张要求单从「编译时检查」变成「运行时持续监督」。</div>
+  </div>
+  <div class="footer"><span>论文 §2.2 · Coeffects</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 10 关键一跃 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 2 · 核心概念</div>
+    <h2>关键一跃：从「纸面理论」到「 runtime 机制」</h2>
+    <div class="flow">
+      <div class="st"><b>📐 效果系统（老）</b><span>编译器在类型上标注副作用，用于静态检查</span></div>
+      <div class="cn">⇓ 提升为运行时机制</div>
+      <div class="st"><b>🔁 可逆效果（新）</b><span>每次修改必须附带一个「撤销按钮」，运行时代为保管</span></div>
+    </div>
+    <div class="flow">
+      <div class="st"><b>📐 余效果系统（老）</b><span>编译期核对依赖清单，程序启动后不再变化</span></div>
+      <div class="cn">⇓ 提升为运行时机制</div>
+      <div class="st"><b>📡 反应式余效果（新）</b><span>依赖清单挂在系统里，环境一变就自动重新评估</span></div>
+    </div>
+    <div class="analogy"><span class="tag-a">💡 为什么要「提升」？</span>
+      <p>静态系统的前提是个<b>固定的世界</b>：词法作用域不会变、import 的模块不会消失。但插件是「程序跑到一半才来的」，没有谁能提前画好它的作用域边界。所以 Cordis 说：别在纸上检查了，<b>把账本本身做出来，让运行时拿着笔，时刻记账、时刻对账</b>。</p></div>
+    <div class="takeaway"><b>接下来的四页，分别用大白话讲透这四个概念：可逆效果、反应式余效果、统一上下文、独立性。</b></div>
+  </div>
+  <div class="footer"><span>论文 §2.3 · Relationship to Dynamic Composability</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 11 可逆效果1 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 2 · 核心概念 1/4：可逆效果</div>
+    <h2>规则一：每个动作，必须自带「撤销按钮」</h2>
+    <p class="lead">在 Cordis 的世界里，一个「效果」不再是干巴巴的修改，而是一个<b>配对</b>：</p>
+    <div class="formula">效果 = <span class="hl">（做这件事的函数， 撤销这件事的函数）</span></div>
+    <div class="grid cols2">
+      <div class="card"><h3>✅ 合格的效果</h3>
+        <ul><li>注册事件监听 → 逆：注销它</li><li>开网络端口 → 逆：关端口</li><li>往路由表加一项 → 逆：删掉那一项</li></ul></div>
+      <div class="card"><h3>❌ 不合格</h3>
+        <ul><li>「发一条广播消息」→ 发出去的话收不回（没有逆）</li>
+          <li>「把随机数写进日志」→ 逆无法恢复原值</li></ul>
+        <p style="margin-top:6px">这类动作也能存在，但要标记为「不可撤销」——系统知道它<b>收不回来</b>。</p></div>
+    </div>
+    <div class="analogy"><span class="tag-a">🧾 人话</span>
+      <p>像淘宝下单：每个订单同时生成一张<b>退货单</b>。你（组件）只管买买买（注册功能），退货单由系统统一收进文件袋。<b>哪天你被卸载了，系统按退货单逐项退款，不需要你本人记得自己买过什么。</b></p></div>
+    <div class="takeaway"><b>一句话：</b>效果的「逆」不是程序员卸载时补写的清理代码，而是<b>做动作的那一刻就必须一起交出来的</b>——这就堵住了「忘了写清理代码导致内存泄漏」的千古漏洞。</div>
+  </div>
+  <div class="footer"><span>论文 §3.1 · Revertible Effects</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 12 可逆效果2 累加器 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 2 · 核心概念 1/4：可逆效果</div>
+    <h2>规则二：系统替你记一本「撤销账簿」（累加器）</h2>
+    <p class="lead">组件运行期间做的每个效果，它的「逆」会被<b>按顺序串成一串</b>，存在系统手里，这就是「累加器」（accumulator）。</p>
+    <div class="flow">
+      <div class="st"><b>步骤 1</b><span>注册监听 A → 存「撤销 A」</span></div>
+      <div class="cn">→</div>
+      <div class="st"><b>步骤 2</b><span>占用端口 B → 存「释放 B」</span></div>
+      <div class="cn">→</div>
+      <div class="st"><b>步骤 3</b><span>写配置 C → 存「还原 C」</span></div>
+      <div class="cn">→</div>
+      <div class="st"><b>卸载时</b><span>按 <b>3 → 2 → 1</b> 倒序执行全部撤销</span></div>
+    </div>
+    <div class="formula">人话：账簿记的是「<span class="hl">先 A 后 B 后 C</span>」，销账必须「<span class="hl">先 C 后 B 后 A</span>」——后进先出（LIFO）</div>
+    <div class="analogy"><span class="tag-a">🧥 人话：为什么必须倒序？</span>
+      <p>穿衣：先穿袜子、再穿鞋。脱的时候能先脱袜子吗？不能——必须先脱鞋。<b>撤销必须按相反顺序，每一步的撤销才能找到自己制造的那个状态。</b>系统保证账簿按倒序销，程序员完全不用操心顺序。</p></div>
+    <div class="takeaway"><b>一句话：</b>组件只管做，系统管记账，卸载时倒序销账。这叫<b>局部时间可组合性</b>——单个组件自己的痕迹，保证能拆干净。</div>
+  </div>
+  <div class="footer"><span>论文 §3.1.3 · Effect Iterators（定理 7、16）</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 13 可逆效果3 一个组件够吗 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 2 · 核心概念 1/4：可逆效果</div>
+    <h2>但……现实不是单口相声</h2>
+    <p class="big">上面说的「记账—销账」只对<b>一个组件自己玩</b>时成立。真实系统里几百个组件同时跑，问题来了：</p>
+    <div class="grid cols2">
+      <div class="card"><h3>😵 问题 A：插队</h3>
+        <p>组件甲在「注册监听」和「注销监听」之间，组件乙也改动了同一份监听表。甲的撤销还能找到自己的东西吗？</p></div>
+      <div class="card"><h3>😵 问题 B：乱序</h3>
+        <p>系统不是按「谁最后装的谁先拆」整体来的——组件丙突然要被拔掉，它的撤销要立刻执行，可账簿里还压着别人的东西。</p></div>
+    </div>
+    <div class="analogy"><span class="tag-a">🏠 人话</span>
+      <p>账簿思路像「每个室友离开时把自己的东西带走」。但合租房里大家的东西<b>堆在同一个客厅</b>：甲的东西压着乙的东西，甲先走的话一搬就碰倒了乙的。怎么办？——要么大家的东西<b>天然不挨着</b>（互不干扰），要么有<b>管家按规矩调度</b>（先让乙收走，再放甲走）。</p></div>
+    <div class="takeaway"><b>一句话：</b>单组件的「拆干净」只是地基。要整个系统都不乱，还需要后面两个概念：<b>统一上下文</b>（规矩在哪记）和<b>独立性</b>（什么时候允许插队）。</div>
+  </div>
+  <div class="footer"><span>承上启下</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 14 反应式余效果1 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 2 · 核心概念 2/4：反应式余效果</div>
+    <h2>规则三：想要啥，先打报告；货到了，自动开工</h2>
+    <p class="lead">每个组件开工前，要交一张<b>需求清单</b>（比如：我需要「数据库服务」「HTTP 服务」）。系统维护一张<b>供需总表</b>：谁提供了什么、谁需要什么。</p>
+    <div class="flow">
+      <div class="st"><b>📝 声明</b><span>组件交需求清单：{数据库, 缓存}</span></div>
+      <div class="cn">→</div>
+      <div class="st"><b>⏳ 等待</b><span>清单没齐 → 组件休眠，不报错、不占资源</span></div>
+      <div class="cn">→</div>
+      <div class="st"><b>✅ 开工</b><span>有人提供数据库了 → 系统自动激活组件</span></div>
+      <div class="cn">→</div>
+      <div class="st"><b>🛑 收尾</b><span>数据库被卸载 → 系统自动让组件安全停机</span></div>
+    </div>
+    <div class="analogy"><span class="tag-a">🛎️ 人话：餐厅的备料逻辑</span>
+      <p>你是厨师（组件），开工前写采购单（需求清单）：要牛肉、要土豆。采购（运行时）盯着仓库：牛肉到了 → 通知你开炒；炒到一半牛肉被收走了 → 立刻通知你<b>关火、把半成品妥善处理</b>，而不是让你端着空锅继续演。</p></div>
+    <div class="takeaway"><b>一句话：</b>组件不再「自己去找、自己盯着」依赖，而是<b>声明 + 听通知</b>。每个环境变化都会被对照清单自动分类：开工 / 停工 / 无事发生。</div>
+  </div>
+  <div class="footer"><span>论文 §3.2 · Reactive Coeffects</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 15 反应式余效果2 三种通知 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 2 · 核心概念 2/4：反应式余效果</div>
+    <h2>总表的每次变动，都会被分成三类</h2>
+    <div class="grid cols3">
+      <div class="card" style="border-top:3px solid var(--green)"><h3>✅ 激活通知</h3>
+        <p>之前不满足的清单<b>现在齐了</b> → 让组件开始运行它的效果（注册功能）。</p></div>
+      <div class="card" style="border-top:3px solid var(--red)"><h3>⛔ 去激活通知</h3>
+        <p>之前齐的清单<b>现在缺了</b> → 触发组件的销账流程（用前面说的账簿撤销一切）。</p></div>
+      <div class="card" style="border-top:3px solid var(--dim)"><h3>😴 无事发生</h3>
+        <p>变动没影响这份清单 → 组件继续该干嘛干嘛，完全不被打扰。</p></div>
+    </div>
+    <div class="plain">🔬 为什么系统<b>不可能漏掉</b>任何变化？因为供需总表只允许通过「可逆效果」来修改（还记得吗，注册依赖本身也是一个效果）——而每次效果的执行都在系统的监视边界上。<b>所有变更必然经过守门员，守门员必然看清单。</b>这就是论文说的「反应性的代数基础」。</div>
+    <div class="analogy"><span class="tag-a">📨 人话</span>
+      <p>像快递柜：每个包裹进出都发短信。你的清单是「等 3 个包裹」，收到第 3 条短信时系统替你开门；之后任何一个包裹被取走，系统立刻发「停工短信」。</p></div>
+    <div class="takeaway"><b>一句话：</b>这叫<b>局部空间可组合性</b>——单个组件的需求被持续监督，绝不在缺货时开工，绝不在断供时硬撑。</div>
+  </div>
+  <div class="footer"><span>论文 §3.2.2 · Specification and Notification</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 16 统一上下文 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 2 · 核心概念 3/4：统一上下文</div>
+    <h2>规则四：全系统只认一个「总前台」</h2>
+    <p class="lead">前面出现了两本账：效果的「撤销账簿」和依赖的「供需总表」。Cordis 把两者合并成一个实体，叫<b>上下文（context）</b>。<b>任何组件，想和外界发生任何关系，只能走这个前台。</b></p>
+    <div class="formula">统一上下文 = <span class="hl">（当前状态 γ · 撤销账簿 φ · 供需总表 Σ）</span></div>
+    <div class="grid cols2">
+      <div class="card"><h3>🚪 为什么必须「只此一家」？</h3>
+        <ul><li>所有效果都登记 → 账簿必然完整，<b>没有漏网之鱼</b></li>
+          <li>所有需求都登记 → 监督必然完整，<b>没有偷偷摸摸的依赖</b></li>
+          <li>组件之间不私相授受 → 想互相影响，只能经总表「一个提供、一个声明」</li></ul></div>
+      <div class="card"><h3>🌳 还是一棵树</h3>
+        <p>上下文可以派生子上下文：父组件加载子组件 = 在前台挂一个分机。卸载父组件 → 分机连同整条支线一起拆。<b>嵌套多少层都行，每层独立可拆装。</b></p></div>
+    </div>
+    <div class="analogy"><span class="tag-a">🏢 人话</span>
+      <p>以前的公司里，报销走一个系统、请假走另一个系统、领物资又走第三个——有人就能钻空子。Cordis 说：<b>全公司只设一个前台</b>，报销、请假、领料全在这里登记。谁什么时候拿了什么、欠了什么，翻一本账全知道；人走了，按这本账清算。</p></div>
+    <div class="takeaway"><b>一句话：</b>「上下文范式」= <b>一切交互必经总前台</b>。它是纪律，不是技巧——绕开前台的私下交易，系统一概不认、也无法保证安全。</div>
+  </div>
+  <div class="footer"><span>论文 §3.3.1 · Unified Context</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 17 观察等价 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 2 · 核心概念 3/4：统一上下文</div>
+    <h2>「恢复原样」的严格含义：看不出来 = 一样</h2>
+    <p class="lead">有些痕迹<b>物理上</b>消不掉：内存释放后堆的内部排布和原来不完全一样；发过的消息收不回。那「拆干净」是不是吹牛？</p>
+    <div class="vs">
+      <div class="card"><h3>❌ 不现实的标准</h3><p>要求内存每一块 bit 都和组件加载前一模一样——做不到，也没必要。</p></div>
+      <div class="mid">换成</div>
+      <div class="card"><h3>✅ Cordis 的标准：观察等价 ≃</h3><p>只要<b>后续任何操作都分辨不出差别</b>（查户口查不出来，试功能试不出来），就算恢复成功。</p></div>
+    </div>
+    <div class="analogy"><span class="tag-a">💰 人话</span>
+      <p>你借朋友 100 块现金，还他 100 块。<b>不是原来那两张钞票</b>（物理上不同），但朋友拿去买东西完全没区别——「 observationally 」你就是还清了。反过来，如果你转给他的是一张会被拒付的支票，那他一试就能试出来——<b>不算</b>等价。</p></div>
+    <div class="takeaway"><b>一句话：</b>等价的判据是每个钥匙自己的「操作集」：该钥匙提供的功能试不出差别，两状态就是等价的。<b>这个设计很妙：它把「算不算拆干净」变成接口设计者可以控制的开关。</b>（详见论文 §3.4.2 关于分配器的讨论）</div>
+  </div>
+  <div class="footer"><span>论文 §3.3.2 · Observational Equivalence</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 18 独立性 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 2 · 核心概念 4/4：独立性</div>
+    <h2>规则五：各干各的，谁也不挡谁</h2>
+    <p class="lead">还记得「插队」和「乱序」两个麻烦吗？Cordis 的解法是立下<b>独立</b>规矩：两个组件的效果，凡是会<b>互相踩到</b>的，就不许乱序拆；凡是踩不到的，随便拆。</p>
+    <div class="grid cols2">
+      <div class="card"><h3>🧩 互不干扰型（大多数）</h3>
+        <p>组件 A 改自己的路由表，组件 B 改自己的配置——互不相干。<b>系统可以在任何时刻、以任何顺序拆它们</b>，谁也不会拆坏谁。这叫「独立」。</p></div>
+      <div class="card"><h3>🤝 互相依赖型</h3>
+        <p>B 要用 A 提供的服务。这时不许乱来：<b>必须先停 B，再拆 A</b>（停机顺序由依赖方向决定）。这就是前一节「断供通知」管的事。</p></div>
+    </div>
+    <div class="plain">🔬 技术细节（看一眼就行）：怎么判断两个效果「互不干扰」？——它们的每一步操作<b>交换顺序后结果一样</b>（数学叫「交换律/commutativity」）。比如「注册两个不同的回调」谁先注册都行；但「两个中间件争同一个位置」就不行。判断标准由每个钥匙的接口自己声明（论文叫「见证 witness」）。</div>
+    <div class="analogy"><span class="tag-a">🏠 人话</span>
+      <p>合租房公约：「各用各的柜子」——谁想什么时候搬都行；「共用厨房」——按预约顺序用，走的人要等正在做饭的人做完。<b>大部分东西都是各自的柜子，所以系统大多数时候可以随便拆。</b></p></div>
+    <div class="takeaway"><b>一句话：</b>可交换的部分自由拆装（快），不可交换的部分按依赖顺序拆装（稳）。<b>秩序只加在真正需要的地方。</b></div>
+  </div>
+  <div class="footer"><span>论文 §3.4 · Attaining Independence（定理 43、45、47）</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 19 概念小结 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 2 · 小结</div>
+    <h2>四张卡片，记住 Cordis 的概念体系</h2>
+    <div class="grid cols2">
+      <div class="card"><h3>🔁 可逆效果</h3><p>每个动作自带撤销按钮；系统记成账簿，卸载时倒序销账。<br><b class="muted">解决「拆干净」。</b></p></div>
+      <div class="card"><h3>📡 反应式余效果</h3><p>先交需求清单，货齐自动开工，断供自动收尾。<br><b class="muted">解决「装正确」。</b></p></div>
+      <div class="card"><h3>🏢 统一上下文</h3><p>一切交互只经一个总前台；「恢复原样」按观察等价判定。<br><b class="muted">解决「账在哪记、标准是什么」。</b></p></div>
+      <div class="card"><h3>🧩 独立性</h3><p>互不干扰的随意拆，互相依赖的按序拆。<br><b class="muted">解决「几百个组件同时拆装不乱套」。</b></p></div>
+    </div>
+    <div class="analogy"><span class="tag-a">🎬 如果这像一部电影的设定</span>
+      <p>可逆效果 = 每个法术必留解咒口诀；反应式余效果 = 魔法阵缺材料时自动休眠；统一上下文 = 全知水晶球记录一切；独立性 = 不同法师的法术互不串味。<b>设定讲完了，下一部分看「数学剧本」——怎么把这些设定写成铁律。</b></p></div>
+  </div>
+  <div class="footer"><span>概念部分完 · 进入计算</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- ============ 计算 ============ -->
+<!-- 20 组件三件套 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 3 · 计算（形式化演算）</div>
+    <h2>把概念装进「组件」这个标准件</h2>
+    <p class="lead">数学上，一个组件就是三样东西的打包（论文记号 <b>(d, p, e)</b>）：</p>
+    <div class="grid cols3">
+      <div class="card"><h3>d · 需求单</h3><p>我需要哪些钥匙（服务）？<br><span class="muted">→ 反应式余效果会盯着它</span></p></div>
+      <div class="card"><h3>p · 供给单</h3><p>我能提供哪些钥匙？<br><span class="muted">→ 注册进供需总表，供别人声明</span></p></div>
+      <div class="card"><h3>e · 施工说明书</h3><p>我被激活时按什么步骤施工（一串可逆效果的迭代器）？<br><span class="muted">→ 倒序就是拆除说明书</span></p></div>
+    </div>
+    <div class="formula">组件 = <span class="hl">(需求单 d, 供给单 p, 可逆施工说明书 e)</span></div>
+    <div class="analogy"><span class="tag-a">🏠 人话</span>
+      <p>开一家奶茶店加盟：<b>需求单</b> = 我需要品牌授权、原料供应；<b>供给单</b> = 我提供堂食座位、外卖窗口；<b>说明书</b> = 装修步骤（每步写清怎么拆）。总部（运行时）拿着所有加盟店的单子统一调度。</p></div>
+    <div class="takeaway"><b>一句话：</b>组件是「自包含的拆装单元」。装载 = 执行说明书；卸载 = 倒着执行说明书的撤销部分；系统全程按 d、p 两张单子监督。</div>
+  </div>
+  <div class="footer"><span>论文 §4.1 · Components</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 21 fiber -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 3 · 计算</div>
+    <h2>纤维（Fiber）：组件的「一次上岗」</h2>
+    <p class="lead">同一个组件可以被实例化很多次（就像同一个 App 可以开多个窗口）。<b>每一次实例，就叫一根「纤维」</b>——它有自己的施工进度、自己的账簿、自己的工作牌。</p>
+    <div class="grid cols2">
+      <div class="card"><h3>📇 纤维的工牌信息</h3>
+        <ul><li>我是哪个组件实例的</li><li>我的上级是谁（谁加载了我）</li><li>我的施工进行到哪一步（还剩几道工序）</li><li>我的账簿（已积累的撤销）</li><li>我的需求当前由谁供货（committed view）</li></ul></div>
+      <div class="card"><h3>📒 注册表（Registry）</h3>
+        <p>系统里有一本花名册，登记所有在岗/待岗纤维。供需总表就是从花名册上<b>所有「在岗」纤维的供给</b>拼出来的——所以纤维一进入「离岗流程」，它的供给立刻从总表消失，依赖者立刻收到断供通知。</p></div>
+    </div>
+    <div class="analogy"><span class="tag-a">🏨 人话</span>
+      <p>组件是「厨师」这个职业，纤维是<b>某位具体的厨师小王的这次排班</b>。花名册上有小王的名字、他炒的哪桌菜、他领的工器具清单。小王一开始办离职，他的排班就从小黑板擦掉——等他用煤气灶的厨师立刻知道要换灶了。</p></div>
+    <div class="takeaway"><b>一句话：</b>组件 vs 纤维 = 职业 vs 员工。系统调度的最小单位是纤维。</div>
+  </div>
+  <div class="footer"><span>论文 §4.1 · Fibers & Registry</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 22 状态机 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 3 · 计算</div>
+    <h2>纤维的一生：四态循环</h2>
+    <div class="flow">
+      <div class="st"><b>😴 Inactive 待岗</b><span>已登记，没需求或没货，不占用任何资源</span></div>
+      <div class="cn">⇄</div>
+      <div class="st"><b>🔨 Reloading 施工中</b><span>需求已满足，正按说明书逐条施工（可被打断）</span></div>
+      <div class="cn">⇄</div>
+      <div class="st"><b>🟢 Active 在岗</b><span>施工完成，正式提供供给、消费需求</span></div>
+      <div class="cn">⇄</div>
+      <div class="st"><b>🧹 Unloading 拆除中</b><span>断供/退休，正倒序销账；期间仍可读自己的依赖</span></div>
+    </div>
+    <div class="plain">🚦 <b>谁在推动状态切换？</b>两股力量：① <b>外部编排</b>（管理员插入/退休纤维）——相当于人事命令；② <b>系统自己</b>（每次供需变化后自动比对「目标状态」和「当前状态」，不一致就走流程）——相当于自动感应门。整个系统<b>没有中央调度器</b>，任何状态下只要「该做啥」和「在做啥」不一致，对应的规则就可以开火——所以论文的证明对所有调度策略都成立。</div>
+    <div class="analogy"><span class="tag-a">🎢 人话</span>
+      <p>像过山车的安全压杆：检测到你的姿势和目标姿势不一致，就会「咔哒」一声调整到位。四态循环就是压杆的四种位置，规则就是那一声咔哒。</p></div>
+  </div>
+  <div class="footer"><span>论文 §4.2 图 1 · 组件生命周期</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 23 九条规则上 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 3 · 计算</div>
+    <h2>九条规则（上）：人事命令 3 条</h2>
+    <div class="grid cols3">
+      <div class="card"><h3>🟦 O-Insert 入职</h3>
+        <p>登记一根新纤维。前提：名字没重复、上级存在、<b>供给单不与任何老员工冲突</b>（一把钥匙只许一个人配）。</p></div>
+      <div class="card"><h3>🟨 O-Retire 申请退休</h3>
+        <p>管理员说「你可以走了」。只是<b>挂个退休flag</b>——真正的拆除由系统自己走流程，保证账簿来得及销。</p></div>
+      <div class="card"><h3>🟥 O-Remove 除名</h3>
+        <p>从花名册彻底删掉。前提：已退休、账已清光、<b>没有下级</b>（先拆孩子再拆爹）。</p></div>
+    </div>
+    <div class="analogy"><span class="tag-a">🏢 人话</span>
+      <p>公司离职流程：① HR 发 offer（入职）；② 员工提离职申请（退休 flag）；③ 交接完、名下资产清零、组员都安置好，才从系统里注销工号（除名）。<b>「提离职」和「真走人」之间隔着整个交接期。</b></p></div>
+    <div class="takeaway"><b>设计巧思：</b>为什么退休和除名要分开？因为组件被标记退休时可能还在岗服务，<b>此时删它 = 扔掉账簿 = 泄漏资源</b>。分开走，安全就有保障。</div>
+  </div>
+  <div class="footer"><span>论文 §4.2.1 · Orchestration</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 24 九条规则下 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 3 · 计算</div>
+    <h2>九条规则（下）：自动感应 6 条</h2>
+    <div class="grid cols3">
+      <div class="card"><h3>🚦 L-Begin</h3><p>待岗纤维的目标需求刚被满足 → 开工，初始化空账簿，记下「对着哪套供货开工」。</p></div>
+      <div class="card"><h3>⚙️ L-Iter</h3><p>施工中的一小步：执行一道工序，把它的撤销压进账簿。<b>每步前检查供货变了没</b>。</p></div>
+      <div class="card"><h3>🏁 L-Finish</h3><p>最后一道工序完成，且供货没变动 → 正式在岗，把供给挂进总表。</p></div>
+      <div class="card"><h3>↩️ L-Divert</h3><p>施工到一半供货变了/被退休 → 改道拆除（带着已有账簿去销账，可放弃未完成的半道工序）。</p></div>
+      <div class="card"><h3>👋 L-Leave</h3><p>在岗纤维的需求断了/被退休 → 先<b>从总表撤下供给</b>（让依赖者立刻感知），进入拆除流程。</p></div>
+      <div class="card"><h3>🧹 L-Unload</h3><p>执行销账。前提：<b>没有别人还指着它的供给</b>（守卫）。销完账、清空工牌，回到待岗。</p></div>
+    </div>
+    <div class="takeaway"><b>一句话：</b>3 条人事命令 + 6 条自动感应 = 完整生命周期。所有规则的前提条件都只读花名册和总表——<b>没有一条规则需要「全局预言机」</b>，所以系统可以真正分布式地运转。</div>
+  </div>
+  <div class="footer"><span>论文 §4.2.2 · Lifecycle</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 25 视图机制 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 3 · 计算</div>
+    <h2>精巧设计：导航员与 committed view</h2>
+    <p class="lead">纤维开工时会记下一张「供货快照」——<b>我的每个需求当前由谁（哪根纤维）提供</b>，叫 committed view（已提交视图）。之后它干活时<b>只认这张快照</b>。</p>
+    <div class="grid cols2">
+      <div class="card"><h3>🧭 为什么要快照？</h3>
+        <p>拆除是<b>分好多小步</b>的漫长过程。这期间供货可能已经变了（比如数据库被换成新的）。<b>没有快照的话，拆到一半发现世界变了，代码会疯。</b>有了快照：「你对着 A 开工的，拆除时世界还是当你对着 A」——收尾代码可以继续用旧连接还连接池，不会拿到一个陌生的新对象。</p></div>
+      <div class="card"><h3>📊 两种视图的对照</h3>
+        <ul><li><b>target（目标）</b>：按当前总表算出来的「我现在应该对着谁」</li>
+          <li><b>committed（已提交）</b>：我开工时对着的那个版本</li>
+          <li>两者<b>一致</b> → 安心干活；<b>不一致</b> → 触发转移（开工/拆除）</li></ul></div>
+    </div>
+    <div class="analogy"><span class="tag-a">✈️ 人话</span>
+      <p>导航软件：你出发时定了路线 A（committed）。开到一半封路了（target 变了），导航会说「前方改道」并<b>走完当前路口再重算</b>（L-Divert 的惯性设计）——而不是在你高速行驶中猛地一把方向。</p></div>
+    <div class="takeaway"><b>一句话：</b>committed view 保证「<b>任何一次施工/拆除，从头到尾对着同一套世界</b>」，这是「装正确」在漫长异步过程中的严格形态。</div>
+  </div>
+  <div class="footer"><span>论文 §4.2.2 · Target Views（定理 71）</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 26 守卫 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 3 · 计算</div>
+    <h2>精巧设计：守卫（Guard）——等客人走完再关门</h2>
+    <p class="lead">L-Unload 销账前有个前提：<b>确认没有别的纤维还指着你的供给</b>（论文叫 ¬relied）。这就是「守卫」。</p>
+    <div class="grid cols2">
+      <div class="card"><h3>🚪 为什么必须有守卫？</h3>
+        <p>想象数据库纤维要拆了，而业务纤维还指着它、甚至正在用它做收尾。<b>如果直接拆</b>：业务纤维的收尾代码会访问一个已销毁的对象 → 崩溃或数据损坏。守卫强制顺序：<b>业务纤维先去激活完（它的收尾可以用完旧连接）→ 数据库纤维才开始销账。</b></p></div>
+      <div class="card"><h3>🔁 那会不会死锁？</h3>
+        <p>直觉上「A 等 B，B 等 A」会卡死。但注意 L-Leave 的设计：纤维一进 Unloading，<b>它的供给立刻从总表撤下</b> → 指望它的人发现需求断了 → 它们自己也去激活 → 链条一路向下传。<b>依赖图无环 ⇒ 最底层的那个先拆完，逐层向上，必然拆完。</b></p></div>
+    </div>
+    <div class="analogy"><span class="tag-a">🍽️ 人话</span>
+      <p>餐厅打烊：不能让厨师先走（客人还没吃完）。规矩是——挂出「停止接单」牌（L-Leave 撤供给）→ 已经在吃的客人陆续买单（依赖者去激活）→ 客人全走了（守卫解除）→ 厨师关灯锁门（L-Unload）。<b>「停止接单」这个动作让整件事必然能收场。</b></p></div>
+    <div class="takeaway"><b>一句话：</b>守卫 + 撤供给先行 = 拆除顺序由依赖图自动决定，不需要任何中央编排「按正确顺序停服务」——这正是 K8s 滚动更新梦寐以求而只能靠人配置的东西。</div>
+  </div>
+  <div class="footer"><span>论文 §4.2.2 · Guard（定理 70、73）</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 27 元理论四问 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 3 · 计算</div>
+    <h2>数学证明了什么？四个灵魂拷问</h2>
+    <div class="grid cols2">
+      <div class="card"><h3>❓ 拆得干净吗？</h3>
+        <p><b>恢复精确性定理（Thm 68）</b>：任何时候把一根纤维的账簿执行掉，效果都等于「这根纤维<b>从未存在过</b>」——即使中间别的纤维干过一百件事。前提：互不干扰的组件满足独立性（论文证明了这个前提天然成立）。</p></div>
+      <div class="card"><h3>❓ 依赖不乱吗？</h3>
+        <p><b>排序定理（Thm 70）</b>：提供者 A 的在岗时间严格覆盖消费者 B 的在岗时间——<b>B 绝不会对着空气开工</b>；且 B 干活期间，A 提供给它的东西不会被无关改动。</p></div>
+      <div class="card"><h3>❓ 会卡死吗？</h3>
+        <p><b>进展定理（Thm 73）</b>：只要依赖关系不成环，系统<b>没有死锁、必然在有限步内静止</b>（quiescent）。每个纤维的步骤数都有上界。</p></div>
+      <div class="card"><h3>❓ 结果唯一吗？</h3>
+        <p><b>合流定理（Thm 80）</b>：无论中间经历过多少「装-拆-换」的折腾，最终静止的状态 = <b>把最终配置从头静态装配一遍</b>的结果。<b>动态历史不留痕迹。</b></p></div>
+    </div>
+    <div class="analogy"><span class="tag-a">🧾 人话</span>
+      <p>像银行系统的审计报告：钱对得上（拆干净）、转账不丢不错（依赖有序）、系统不会停摆（有进展）、账本事后再怎么翻都一个数（合流）。<b>有了这四条，「动态组合」才从工程玄学变成可推理的数学对象。</b></p></div>
+  </div>
+  <div class="footer"><span>论文 §4.3 · Metatheory</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 28 合流的意义 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 3 · 计算</div>
+    <h2>合流定理：为什么它是「免检金牌」</h2>
+    <p class="lead">合流定理（Thm 80）是全文最重要的定理，值得单独一页。它说的是：</p>
+    <div class="formula">系统折腾了 N 次装卸之后静止的状态<br> = <span class="hl">直接按最终配置从头装配的状态</span></div>
+    <div class="grid cols2">
+      <div class="card"><h3>🧠 对程序员的意义</h3>
+        <p>你可以<b>忘掉运行历史</b>。推理系统行为时，只需要看「最终有哪些组件、各是什么配置」，就像读一份静态配置文件一样简单。中间发生过什么热更新、什么故障重试，都不影响结论。</p></div>
+      <div class="card"><h3>🛠️ 对运维的意义</h3>
+        <p>管理员可以放心做<b>任意序列</b>的增删改：装 A、删 B、升级 C、再回滚 C……不用担心「操作顺序不对留下脏状态」。终态只由最终配置决定——这是配置管理工具（如 K8s 声明式 API）理想形态的严格数学版。</p></div>
+    </div>
+    <div class="plain">🎓 类比：增量计算领域有个类似判据「change propagation 的结果必须与从头重算一致」。Cordis 把同款精神搬到了「动态组合」上。</div>
+    <div class="takeaway"><b>一句话：</b>合流定理让「运行时世界」和「静态配置文件」之间架起了等价桥梁——<b>这是把动态组合引入工程实践的理论地基</b>。</div>
+  </div>
+  <div class="footer"><span>论文 §4.3.5 · Confluence</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- ============ 应用 ============ -->
+<!-- 29 实现总览 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 4 · 应用</div>
+    <h2>Cordis 框架：三层楼结构</h2>
+    <div class="flow">
+      <div class="st"><b>🏛️ 第 3 层 · 领域框架</b><span>如 Koishi（聊天机器人）：只提供领域词汇（消息、指令），组合能力全靠下层</span></div>
+      <div class="cn">建于</div>
+      <div class="st"><b>📦 第 2 层 · 组件加载器</b><span>声明式配置 + 增量调和 + 热模块替换（HMR）</span></div>
+      <div class="cn">建于</div>
+      <div class="st"><b>⚙️ 第 1 层 · 核心库</b><span>效果追踪、余效果操作、组件生命周期 —— 论文理论 1:1 落地</span></div>
+    </div>
+    <div class="analogy"><span class="tag-a">🏠 人话</span>
+      <p>核心库是「水电煤」，加载器是「物业管理系统」，领域框架是「具体住户的装修」。Cordis 作为<b>元框架</b>只包办好水电煤和物业——你开奶茶店还是开书店，它不管。</p></div>
+    <p class="lead">下两页看核心库的三个原语，每个都对应前面讲过的概念。</p>
+  </div>
+  <div class="footer"><span>论文 §5 · Implementation</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 30 三个原语 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 4 · 应用</div>
+    <h2>核心库三原语：概念 → 代码</h2>
+    <div class="grid cols3">
+      <div class="card"><h3>🔁 ctx.effect(施工说明书)</h3>
+        <p>把「每个动作配撤销」变成 API：你传入一串带撤销的工序，系统返回一个「一键撤销」按钮（dispose）。</p>
+        <p style="margin-top:6px"><b>对应概念：</b>可逆效果 + 账簿。自销毁设计保证撤销永不重复执行。</p></div>
+      <div class="card"><h3>📡 ctx.set(钥匙, 服务)</h3>
+        <p>把「注册依赖」也变成一个 effect：注册的同时自动生成「注销」撤销。改动会自动 notify 所有声明了这把钥匙的纤维。</p>
+        <p style="margin-top:6px"><b>对应概念：</b>反应式余效果 + 供需总表。还支持 isolate（同一个钥匙在不同上下文指不同服务）和 intercept（访问时附加检查，如权限）。</p></div>
+      <div class="card"><h3>🧩 ctx.use(组件, 配置)</h3>
+        <p>实例化一根纤维。组件可以在自己的说明书里调用 ctx.use 加载子组件——<b>加载子组件本身也是一个 effect</b>，卸载父组件时自动级联卸载。</p>
+        <p style="margin-top:6px"><b>对应概念：</b>纤维 + 嵌套上下文树。</p></div>
+    </div>
+    <div class="analogy"><span class="tag-a">✨ 人话：写插件变得多简单？</span>
+      <p>以前写插件：activate 里注册一堆东西，deactivate 里提心吊胆地逐个删，漏一个就内存泄漏。现在：<b>每做一个动作顺手把撤销写在旁边，剩下的全交给 Cordis</b>。论文说，这让「正确性从每位作者的勤勉变成系统不变量」。</p></div>
+  </div>
+  <div class="footer"><span>论文 §5.1 · Core Library</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 31 加载器 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 4 · 应用</div>
+    <h2>组件加载器：写配置，剩下的自动发生</h2>
+    <div class="grid cols2">
+      <div class="card"><h3>📋 声明式配置</h3>
+        <p>管理员不写代码，只写一张配置表（YAML/JSON）：每个条目 = 一个纤维（id、模块地址、隔离设置、配置内容、是否停用）。</p>
+        <p style="margin-top:6px">改了配置？加载器<b>逐字段做最小手术</b>：改配置 → 递给组件自己 diff；改隔离 → 只重绑钥匙不换人；停用 → 卸载。</p></div>
+      <div class="card"><h3>♨️ 热模块替换（HMR）</h3>
+        <p>开发时改代码保存，系统自动：① 找出受影响的模块（不动点算法）② 找出配置中「过期」的条目 ③ <b>事务化重载</b>——中途任何一步失败，全部回滚，绝不留半新半旧的系统。</p>
+        <p style="margin-top:6px">对比 Webpack/Vite 的 HMR：那些需要开发者手动标注「这个模块支持热替换」；Cordis 里<b>纤维边界天然就是热替换边界</b>，零标注。</p></div>
+    </div>
+    <div class="plain">🛡️ 为什么加载器敢这么随便折腾？因为有数学兜底：<b>合流定理（Thm 80）</b>保证最终状态 = 按最终配置从头装配；<b>进展定理（Thm 73）</b>保证折腾必然收场；<b>恢复定理</b>保证被替换的组件不留下一丝痕迹。</div>
+    <div class="analogy"><span class="tag-a">🚗 人话</span>
+      <p>像导航的「重新规划路线」：你随便改目的地（改配置），导航自动算出最小改动方案，而且保证把你送到——因为背后有地图（数学模型）保证。</p></div>
+  </div>
+  <div class="footer"><span>论文 §5.2 · Component Loader & HMR</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 32 Koishi -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 4 · 应用</div>
+    <h2>实战检验：聊天机器人框架 Koishi</h2>
+    <div style="display:flex;gap:50px;justify-content:center;margin:8px 0">
+      <div class="stat">4 年<small>生产环境打磨</small></div>
+      <div class="stat">4000+<small>社区贡献插件</small></div>
+      <div class="stat">2 套运行时<small>服务端 + 浏览器控制台，各是独立 Cordis 应用</small></div>
+    </div>
+    <div class="grid cols2">
+      <div class="card"><h3>⏳ 时间维度检验：热插拔无感</h3>
+        <ul><li>管理员在网页上关掉一个插件 → 效果原地撤销，<b>不重启</b></li>
+          <li>开发时保存代码 → HMR 秒级生效，缓存和连接<b>原样保留</b></li>
+          <li>连新手插件作者都「免费」获得有序清理——这正是论文痛斥 VSCode 缺失的「关注点局部性」</li></ul></div>
+      <div class="card"><h3>🧭 空间维度检验：开放生态的依赖网</h3>
+        <ul><li>聊天适配器、数据库驱动由不同作者编写，功能插件<b>声明式依赖</b>它们</li>
+          <li>换个数据库 → 只有依赖它的插件被自动重载，其余无感</li>
+          <li>依赖不存在时插件<b>安静休眠</b>，出现了自动激活——跨独立作者协作而不私下交易</li></ul></div>
+    </div>
+    <div class="warn">⚠️ 诚实声明（论文原话）：这是单一生态、单一语言的观察性案例，证明的是「这套设计能支撑真实生产系统」，而不是「比别的架构快多少倍」。定量对比留作未来工作。</div>
+  </div>
+  <div class="footer"><span>论文 §5.3 · Case Study: Koishi</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 33 讨论 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">PART 4 · 应用</div>
+    <h2>冷静一下：Cordis 不是什么神仙</h2>
+    <div class="grid cols2">
+      <div class="card"><h3>🚫 收不回的东西</h3>
+        <p>「发出去的邮件、转走的钱、广播的消息」物理上收不回。Cordis 的诚实做法是：标记为不可撤销，或者推迟发送（等尘埃落定再发），或者记录「补偿动作」（如退款）。<b>系统不假装魔法存在。</b></p></div>
+      <div class="card"><h3>🚫 管不着的角落</h3>
+        <p>「一切交互必经总前台」意味着：绕过总前台的私下操作（直接调用别人的对象、读写全局变量）<b>不受保护</b>。这是纪律而非强制——语言/操作系统级合作（论文 §6.7）才能把它变成硬约束。</p></div>
+      <div class="card"><h3>⚠️ 循环依赖</h3>
+        <p>A 依赖 B、B 又依赖 A？两个都会<b>永远休眠</b>（不是死锁，是安静躺平）。好消息：加载时就能静态发现；坏消息：得靠程序员把互相依赖拆成单向依赖（论文 §6.5 给了拆法，代价是组件变多）。</p></div>
+      <div class="card"><h3>⚠️ 版本与接口漂移</h3>
+        <p>两个插件都用「database」这个钥匙名但说的是完全不同的东西怎么办？目前靠包管理器的 peer dependency 约定俗成；彻底解法（结构化接口兼容检查）仍是开放问题（§6.6）。</p></div>
+    </div>
+    <div class="analogy"><span class="tag-a">🧭 人话</span>
+      <p>Cordis 给了合租房完美的公约，但它管不到你<b>私藏的违禁电器</b>（绕过前台的代码），也没法让泼出去的水收回来（已发出的消息）。它把「能管好的」用数学管到极致，把「管不好的」明确标记出来——这本身就是优秀工程的态度。</p></div>
+  </div>
+  <div class="footer"><span>论文 §6 · Discussion</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+<!-- 34 总结 -->
+<section class="slide">
+  <div class="body">
+    <div class="part">总结 · 一页带走</div>
+    <h2>Cordis = 把「拆装」变成数学</h2>
+    <div class="flow">
+      <div class="st"><b>① 每个动作配撤销<br>（可逆效果）</b><span>拆得干净：账簿倒序销账</span></div>
+      <div class="cn">+</div>
+      <div class="st"><b>② 需求清单被持续监督<br>（反应式余效果）</b><span>装得正确：货齐开工、断供收尾</span></div>
+      <div class="cn">+</div>
+      <div class="st"><b>③ 一切只经总前台<br>（统一上下文）</b><span>账有处记、标准明确（观察等价）</span></div>
+      <div class="cn">+</div>
+      <div class="st"><b>④ 互不干扰的随便拆<br>（独立性）</b><span>互相依赖的按序拆（守卫）</span></div>
+    </div>
+    <div class="formula">⇒ 九条规则的生命周期演算 ⇒ 四大定理：恢复精确 · 依赖有序 · 必然静止 · 合流于静态装配</div>
+    <div class="analogy"><span class="tag-a">🚀 为什么这很重要？</span>
+      <p>论文最后点题：下一个大场景是<b>自进化 AI Agent</b>——AI 不停地给自己写新零件、换旧零件，没人检查每一步。没有 Cordis 这样的保证，要么不停重启丢状态，要么某次改坏万劫不复。<b>「可恢复、可协调、可持续的自我进化」——这就是这套理论瞄准的未来。</b></p></div>
+  </div>
+  <div class="footer"><span>Cordis · Spatiotemporal Composability · 谢谢观看</span><span class="dots" data-dots></span><span></span></div>
+</section>
+
+</div>
+<script>
+const slides=[...document.querySelectorAll('.slide')];
+let cur=0;
+const dotsContainers=document.querySelectorAll('[data-dots]');
+function renderDots(){
+  dotsContainers.forEach(c=>{
+    c.innerHTML='';
+    slides.forEach((_,i)=>{
+      const el=document.createElement('i');
+      if(i===cur)el.classList.add('on');
+      el.title='第'+(i+1)+'页';
+      el.onclick=()=>go(i);
+      c.appendChild(el);
+    });
+  });
+  document.getElementById('bar').style.width=((cur+1)/slides.length*100)+'%';
+  slides.forEach((s,i)=>{
+    const spans=s.querySelectorAll('.footer span');
+    if(spans.length)spans[spans.length-1].textContent=(i+1)+' / '+slides.length;
+  });
+}
+function go(i){
+  cur=Math.max(0,Math.min(slides.length-1,i));
+  slides.forEach((s,j)=>s.classList.toggle('active',j===cur));
+  renderDots();
+}
+document.getElementById('next').onclick=()=>go(cur+1);
+document.getElementById('prev').onclick=()=>go(cur-1);
+document.addEventListener('keydown',e=>{
+  if(['ArrowRight',' ','PageDown'].includes(e.key))go(cur+1);
+  if(['ArrowLeft','PageUp'].includes(e.key))go(cur-1);
+  if(e.key==='Home')go(0);
+  if(e.key==='End')go(slides.length-1);
+});
+let tx=null;
+document.addEventListener('touchstart',e=>tx=e.touches[0].clientX);
+document.addEventListener('touchend',e=>{
+  if(tx===null)return;
+  const dx=e.changedTouches[0].clientX-tx;
+  if(Math.abs(dx)>50)go(cur+(dx<0?1:-1));
+  tx=null;
+});
+renderDots();
+</script>
+</body>
+</html>

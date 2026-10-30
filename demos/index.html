@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>小 Demo 游乐场 — Mogmoug</title>
+    <meta name="description" content="56 个纯前端单文件 Demo：物理模拟、3D 游戏、系统桌面、AI 聊天、工具与数据看板。零构建，点开即玩。" />
+    <meta name="author" content="Mogmoug" />
+    <link rel="canonical" href="https://mogmoug.github.io/demos/index.html" />
+    <meta name="theme-color" content="#f5fbf7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#080f0c" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" href="/assets/mog.png" type="image/png" sizes="460x460" />
+    <link rel="apple-touch-icon" href="/assets/mog.png" />
+    <link rel="alternate" type="application/atom+xml" title="Mogmoug Blog" href="/feed.xml" />
+    <link rel="stylesheet" href="/assets/css/style.css" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Mogmoug" />
+    <meta property="og:title" content="小 Demo 游乐场 — Mogmoug" />
+    <meta property="og:description" content="56 个纯前端单文件 Demo：物理模拟、3D 游戏、系统桌面、AI 聊天、工具与数据看板。零构建，点开即玩。" />
+    <meta property="og:url" content="https://mogmoug.github.io/demos/index.html" />
+    <meta property="og:locale" content="zh_CN" />
+    
+    <meta name="twitter:card" content="summary" />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t) {
+            t =
+              window.matchMedia &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light";
+          }
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {}
+      })();
+    </script>
+    
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": "小 Demo 游乐场",
+  "url": "https://mogmoug.github.io/demos/index.html",
+  "description": "56 个纯前端单文件 Demo：物理模拟、3D 游戏、系统桌面、AI 聊天、工具与数据看板。",
+  "author": { "@type": "Person", "name": "Mogmoug", "url": "https://github.com/mogmoug" },
+  "inLanguage": "zh-CN"
+}
+</script>
+
+  </head>
+  <body>
+    
+    <a class="skip-link" href="#main">跳到正文</a>
+
+    <header class="site-header">
+      <div class="wrap header-inner">
+        <a class="brand" href="/index.html">
+          <img class="brand-logo" src="/assets/mog.png" alt="" width="28" height="28" />
+          <span>Mogmoug</span>
+        </a>
+        <nav class="site-nav" data-nav aria-label="主导航">
+          
+          <a href="/index.html">首页</a>
+          
+          <a href="/archive.html">归档</a>
+          
+          <a href="/tags.html">标签</a>
+          
+          <a href="/demos/index.html">Demo</a>
+          
+          <a href="/about.html">关于</a>
+          
+        </nav>
+        <div class="nav-actions">
+          <button class="icon-btn" type="button" data-search-open aria-label="搜索（按 / 键）">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+          </button>
+          <button class="icon-btn" type="button" data-theme-toggle aria-label="切换主题">
+            <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+            </svg>
+            <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+            </svg>
+          </button>
+          <button class="icon-btn nav-toggle" type="button" data-nav-toggle aria-label="打开菜单" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <path d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+      
+<div class="wrap">
+  <header class="page-head">
+    <h1>小 Demo 游乐场</h1>
+    <p>
+      56 个纯前端单文件 Demo，覆盖物理模拟、3D 游戏、系统桌面、AI 聊天、工具教学与数据看板。
+      每个都是独立 HTML，点开即玩，不依赖构建。
+    </p>
+  </header>
+
+  <div class="demo-toolbar">
+    <label class="demo-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="7" />
+        <path d="m20 20-3.5-3.5" />
+      </svg>
+      <input id="demo-search" type="search" placeholder="搜索 Demo 名称、说明或文件名…" autocomplete="off" />
+    </label>
+    <div class="demo-filters" id="demo-filters" role="group" aria-label="按分类筛选"></div>
+    <span class="demo-count" id="demo-count"></span>
+  </div>
+
+  <div id="demo-list"></div>
+  <p class="demo-empty" id="demo-empty" hidden>没有找到匹配的 Demo，换个关键词试试。</p>
+</div>
+
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap footer-inner">
+        <p>© 2026 Mogmoug · 用好奇心写代码</p>
+        <div class="footer-links">
+          
+          <a href="/archive.html">归档</a>
+          
+          <a href="/tags.html">标签</a>
+          
+          <a href="/demos/index.html">Demo</a>
+          
+          <a href="/feed.xml">RSS</a>
+          
+          
+          <a href="https://github.com/mogmoug" rel="me noopener" target="_blank">GitHub</a>
+          
+          <a href="https://space.bilibili.com/485986360" rel="me noopener" target="_blank">Bilibili</a>
+          
+        </div>
+      </div>
+      <div class="wrap footer-note">Eleventy 构建 · 无追踪</div>
+    </footer>
+
+    <button class="back-top" type="button" data-back-top aria-label="回到顶部">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="m6 15 6-6 6 6" />
+      </svg>
+    </button>
+
+    <div class="search-modal" data-search-modal role="dialog" aria-modal="true" aria-label="搜索文章" aria-hidden="true">
+      <div class="search-panel">
+        <div class="search-input-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </svg>
+          <input class="search-input" type="search" placeholder="搜索文章、标签…" data-search-input autocomplete="off" />
+          <span class="search-kbd">Esc</span>
+        </div>
+        <ul class="search-results" data-search-results></ul>
+      </div>
+    </div>
+
+    
+<script type="application/json" id="demo-data">{"categories":[{"id":"physics","name":"物理与科学模拟","desc":"力学、波动、电磁、气象与灾害仿真"},{"id":"game","name":"3D 与游戏","desc":"3D 场景、体素世界、休闲小游戏"},{"id":"system","name":"系统与终端模拟","desc":"操作系统桌面、终端与图灵机"},{"id":"ai","name":"AI 与聊天","desc":"对话界面、Agent 与浏览器内推理"},{"id":"tool","name":"工具与教学","desc":"计算器、实验、电路与课程讲解"},{"id":"data","name":"数据与资讯","desc":"数据看板与资讯页复刻"}],"items":[{"file":"弹簧振子模拟.html","title":"弹簧振子模拟器","description":"高中物理简谐运动，可拖拽，含公式","category":"physics","categoryName":"物理与科学模拟","sizeKb":28},{"file":"自由落体.html","title":"自由落体模拟","description":"重力做功与功率的物理可视化","category":"physics","categoryName":"物理与科学模拟","sizeKb":22},{"file":"机械波.html","title":"机械波模拟","description":"高中物理横波与质点振动","category":"physics","categoryName":"物理与科学模拟","sizeKb":16},{"file":"抛物线焦点弦圆切准线.html","title":"抛物线焦点弦几何","description":"Plotly.js 演示圆与准线相切","category":"physics","categoryName":"物理与科学模拟","sizeKb":13},{"file":"conicsections.html","title":"圆锥曲线演示","description":"椭圆、双曲线、抛物线主要结论","category":"physics","categoryName":"物理与科学模拟","sizeKb":29},{"file":"ball-gravity-sim.html","title":"引力小球模拟","description":"多体引力相互作用系统","category":"physics","categoryName":"物理与科学模拟","sizeKb":21},{"file":"electric-wave-sim.html","title":"电磁波仿真","description":"电磁波的产生与接收交互仿真","category":"physics","categoryName":"物理与科学模拟","sizeKb":29},{"file":"nuclear-bomb-sim.html","title":"核弹爆炸模拟器","description":"爆炸冲击波与火球增强版","category":"physics","categoryName":"物理与科学模拟","sizeKb":21},{"file":"weather-sim.html","title":"天气模拟系统","description":"数值气象模型 200×300 网格","category":"physics","categoryName":"物理与科学模拟","sizeKb":56},{"file":"flood-sim.html","title":"洪水模拟器","description":"二维地形积水扩散模拟","category":"physics","categoryName":"物理与科学模拟","sizeKb":31},{"file":"3d-flood-sim.html","title":"3D 地形洪水仿真","description":"三维地形上的洪水演进","category":"physics","categoryName":"物理与科学模拟","sizeKb":45},{"file":"2dsolarsys.html","title":"2D 太阳系","description":"真实比例的太阳系行星运行","category":"physics","categoryName":"物理与科学模拟","sizeKb":58},{"file":"3d-racer-car.html","title":"3D 极速狂飙","description":"3D 赛车游戏","category":"game","categoryName":"3D 与游戏","sizeKb":62},{"file":"3d-rocket-explore.html","title":"3D 地球探索","description":"火箭背包环绕地球飞行","category":"game","categoryName":"3D 与游戏","sizeKb":33},{"file":"3d-sandbox-game.html","title":"方块世界","description":"3D 沙盒建造游戏","category":"game","categoryName":"3D 与游戏","sizeKb":46},{"file":"3d-showoff.html","title":"POLY·LAB","description":"纯 JS 编写的 3D 演示","category":"game","categoryName":"3D 与游戏","sizeKb":22},{"file":"simple-voxel.html","title":"简陋 3D 方块游戏","description":"轻量体素小品","category":"game","categoryName":"3D 与游戏","sizeKb":34},{"file":"voxel-world.html","title":"Voxel World","description":"体素世界漫游","category":"game","categoryName":"3D 与游戏","sizeKb":34},{"file":"terrain-generator.html","title":"真实地形生成器","description":"程序化噪声地形 Procedural Terrain","category":"game","categoryName":"3D 与游戏","sizeKb":34},{"file":"terrain-voxel.html","title":"体素地形","description":"高度场 + 顶点着色","category":"game","categoryName":"3D 与游戏","sizeKb":22},{"file":"wuziqi.html","title":"五子棋","description":"经典双人对战","category":"game","categoryName":"3D 与游戏","sizeKb":46},{"file":"miniwar.html","title":"迷你领地战","description":"双人领地争夺对战","category":"game","categoryName":"3D 与游戏","sizeKb":30},{"file":"grow-vegetables-game.html","title":"阳光菜园","description":"休闲种菜游戏","category":"game","categoryName":"3D 与游戏","sizeKb":54},{"file":"pixel-growing-game.html","title":"像素农场物语","description":"开罗风格种菜经营","category":"game","categoryName":"3D 与游戏","sizeKb":70},{"file":"spendonebillion.html","title":"花光 10 亿","description":"花钱挑战小游戏","category":"game","categoryName":"3D 与游戏","sizeKb":34},{"file":"throwbottle.html","title":"晚风里的信","description":"扔漂流瓶模拟","category":"game","categoryName":"3D 与游戏","sizeKb":43},{"file":"wulinghongguangmodel.html","title":"五菱宏光 3D 模型","description":"网页端 3D 车模展示","category":"game","categoryName":"3D 与游戏","sizeKb":17},{"file":"windows-sim.html","title":"Windows 模拟","description":"浏览器里的 Windows 桌面","category":"system","categoryName":"系统与终端模拟","sizeKb":85},{"file":"mac-os-sim.html","title":"macOS 模拟","description":"浏览器里的 Mac 桌面","category":"system","categoryName":"系统与终端模拟","sizeKb":77},{"file":"ubuntudesk.html","title":"Ubuntu 桌面","description":"Linux 桌面环境模拟","category":"system","categoryName":"系统与终端模拟","sizeKb":75},{"file":"web80-tiny-computer.html","title":"Web-80 幻想电脑","description":"复古幻想小型机","category":"system","categoryName":"系统与终端模拟","sizeKb":58},{"file":"terminal-style-library-sys.html","title":"终端图书馆系统","description":"Terminal 风格管理信息系统","category":"system","categoryName":"系统与终端模拟","sizeKb":26},{"file":"turingmachine.html","title":"图灵机模拟器","description":"可编写纸带的图灵机","category":"system","categoryName":"系统与终端模拟","sizeKb":67},{"file":"fake-chatgpt.html","title":"ChatGPT 多会话版","description":"多会话聊天界面复刻","category":"ai","categoryName":"AI 与聊天","sizeKb":19},{"file":"simple-ai-chat.html","title":"DeepSeek 极简对话","description":"简洁对话界面","category":"ai","categoryName":"AI 与聊天","sizeKb":30},{"file":"deepseekchatcopy.html","title":"DeepSeek 网页版复刻","description":"还原 DeepSeek 官网交互","category":"ai","categoryName":"AI 与聊天","sizeKb":17},{"file":"ds-apple-style.html","title":"DeepSeek 苹果风","description":"Apple 设计语言的对话页","category":"ai","categoryName":"AI 与聊天","sizeKb":41},{"file":"ds-blog.html","title":"思考的痕迹","description":"DeepSeek 风格博客/随笔","category":"ai","categoryName":"AI 与聊天","sizeKb":54},{"file":"simpleagent.html","title":"DeepSeek Agent","description":"记忆与计费可视化","category":"ai","categoryName":"AI 与聊天","sizeKb":30},{"file":"information-better.html","title":"AI 信息增益助手","description":"信息筛选与增益分析","category":"ai","categoryName":"AI 与聊天","sizeKb":28},{"file":"handwriterecognization.html","title":"手写数字识别","description":"浏览器内手写 MNIST 推理","category":"ai","categoryName":"AI 与聊天","sizeKb":35},{"file":"quizdeskdemo.html","title":"AI 刷题学习桌","description":"智能刷题与错题整理","category":"ai","categoryName":"AI 与聊天","sizeKb":54},{"file":"calculator.html","title":"计算器","description":"简易计算器","category":"tool","categoryName":"工具与教学","sizeKb":10},{"file":"virtual-chemlab.html","title":"启元虚拟化学实验室","description":"功能最全的虚拟实验平台","category":"tool","categoryName":"工具与教学","sizeKb":129},{"file":"chemlab.html","title":"化学实验室模拟器","description":"虚拟实验平台","category":"tool","categoryName":"工具与教学","sizeKb":84},{"file":"chemlab1.html","title":"高锰酸钾制氧气","description":"专项化学实验模拟","category":"tool","categoryName":"工具与教学","sizeKb":92},{"file":"logic-sim.html","title":"逻辑电路模拟器","description":"门电路与组合逻辑仿真","category":"tool","categoryName":"工具与教学","sizeKb":56},{"file":"musicplayer.html","title":"音乐播放器","description":"网页音乐播放器","category":"tool","categoryName":"工具与教学","sizeKb":16},{"file":"bianchenglang.html","title":"自然语言编程","description":"图灵完备的自然语言解释器","category":"tool","categoryName":"工具与教学","sizeKb":74},{"file":"cordis_ppt_easy.html","title":"Cordis 编程范式导览","description":"动态组合的编程范式通俗讲解","category":"tool","categoryName":"工具与教学","sizeKb":65},{"file":"rust-intro.html","title":"Rust 简介","description":"Rust 语言入门介绍页","category":"tool","categoryName":"工具与教学","sizeKb":21},{"file":"gaozhongsim.html","title":"高中模拟器","description":"高中校园生活模拟","category":"tool","categoryName":"工具与教学","sizeKb":21},{"file":"plan-task-review.html","title":"计划 · 任务 · 笔记","description":"本地任务管理看板","category":"tool","categoryName":"工具与教学","sizeKb":61},{"file":"2025gov-report.html","title":"2025 统计公报看板","description":"国民经济和社会发展数据可视化","category":"data","categoryName":"数据与资讯","sizeKb":17},{"file":"41flashreport.html","title":"Flash 问题引导式精读","description":"DeepSeek-V4.1-Flash 精读报告","category":"data","categoryName":"数据与资讯","sizeKb":90},{"file":"twittercopy.html","title":"Twitter 主页","description":"社交平台界面复刻","category":"data","categoryName":"数据与资讯","sizeKb":40}],"featured":[{"file":"3d-racer-car.html","title":"3D 极速狂飙","description":"3D 赛车游戏","category":"game","categoryName":"3D 与游戏","sizeKb":62},{"file":"terrain-generator.html","title":"真实地形生成器","description":"程序化噪声地形 Procedural Terrain","category":"game","categoryName":"3D 与游戏","sizeKb":34},{"file":"windows-sim.html","title":"Windows 模拟","description":"浏览器里的 Windows 桌面","category":"system","categoryName":"系统与终端模拟","sizeKb":85},{"file":"turingmachine.html","title":"图灵机模拟器","description":"可编写纸带的图灵机","category":"system","categoryName":"系统与终端模拟","sizeKb":67},{"file":"quizdeskdemo.html","title":"AI 刷题学习桌","description":"智能刷题与错题整理","category":"ai","categoryName":"AI 与聊天","sizeKb":54},{"file":"2dsolarsys.html","title":"2D 太阳系","description":"真实比例的太阳系行星运行","category":"physics","categoryName":"物理与科学模拟","sizeKb":58}]}</script>
+<script>
+  (function () {
+    "use strict";
+
+    var data = JSON.parse(document.getElementById("demo-data").textContent);
+    var CATEGORIES = data.categories;
+    var DEMOS = data.items;
+
+    var listEl = document.getElementById("demo-list");
+    var emptyEl = document.getElementById("demo-empty");
+    var countEl = document.getElementById("demo-count");
+    var searchEl = document.getElementById("demo-search");
+    var filtersEl = document.getElementById("demo-filters");
+    var activeCat = "all";
+
+    var catName = {};
+    CATEGORIES.forEach(function (c) {
+      catName[c.id] = c.name;
+    });
+
+    var filterDefs = [{ id: "all", name: "全部" }].concat(CATEGORIES);
+    filterDefs.forEach(function (f) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip";
+      b.textContent = f.name;
+      b.setAttribute("data-cat", f.id);
+      b.setAttribute("aria-pressed", f.id === "all" ? "true" : "false");
+      filtersEl.appendChild(b);
+    });
+
+    filtersEl.addEventListener("click", function (e) {
+      var btn = e.target.closest("button[data-cat]");
+      if (!btn) return;
+      activeCat = btn.getAttribute("data-cat");
+      filtersEl.querySelectorAll("button[data-cat]").forEach(function (b) {
+        b.setAttribute("aria-pressed", b === btn ? "true" : "false");
+      });
+      render();
+    });
+
+    searchEl.addEventListener("input", render);
+
+    function render() {
+      var q = searchEl.value.trim().toLowerCase();
+      var shown = DEMOS.filter(function (d) {
+        var okCat = activeCat === "all" || d.category === activeCat;
+        var hay = (d.title + " " + d.description + " " + d.file).toLowerCase();
+        return okCat && (!q || hay.indexOf(q) !== -1);
+      });
+
+      listEl.innerHTML = "";
+      if (!shown.length) {
+        emptyEl.hidden = false;
+        countEl.textContent = "0 / " + DEMOS.length;
+        return;
+      }
+      emptyEl.hidden = true;
+      countEl.textContent = shown.length + " / " + DEMOS.length;
+
+      CATEGORIES.forEach(function (cat) {
+        var items = shown.filter(function (d) {
+          return d.category === cat.id;
+        });
+        if (!items.length) return;
+
+        var section = document.createElement("section");
+        section.className = "section demo-section";
+
+        var head = document.createElement("div");
+        head.className = "section-head";
+        var h2 = document.createElement("h2");
+        h2.textContent = cat.name;
+        var more = document.createElement("span");
+        more.className = "more";
+        more.textContent = items.length + " 个 · " + cat.desc;
+        head.appendChild(h2);
+        head.appendChild(more);
+
+        var grid = document.createElement("div");
+        grid.className = "post-grid demo-grid";
+
+        items.forEach(function (d) {
+          var a = document.createElement("a");
+          a.className = "post-card demo-card";
+          a.href = encodeURI(d.file);
+          a.target = "_blank";
+          a.rel = "noopener";
+
+          var meta = document.createElement("div");
+          meta.className = "meta";
+          var catEl = document.createElement("span");
+          catEl.className = "demo-cat";
+          catEl.textContent = catName[d.category] || d.categoryName;
+          var size = document.createElement("span");
+          size.className = "size";
+          size.textContent = d.sizeKb + "K";
+          meta.appendChild(catEl);
+          meta.appendChild(size);
+
+          var h3 = document.createElement("h3");
+          h3.textContent = d.title;
+          var p = document.createElement("p");
+          p.textContent = d.description;
+          var open = document.createElement("span");
+          open.className = "open";
+          open.textContent = "打开 Demo ↗";
+
+          a.appendChild(meta);
+          a.appendChild(h3);
+          a.appendChild(p);
+          a.appendChild(open);
+          grid.appendChild(a);
+        });
+
+        section.appendChild(head);
+        section.appendChild(grid);
+        listEl.appendChild(section);
+      });
+    }
+
+    render();
+  })();
+</script>
+
+    <script src="/assets/js/main.js" defer></script>
+  </body>
+</html>

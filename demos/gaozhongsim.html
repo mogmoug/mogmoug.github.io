@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>高中模拟器</title>
+<style>
+:root{
+  --bg:#0d1017; --panel:#161b27; --panel2:#1d2433; --line:#2a3346;
+  --text:#e6e9f0; --dim:#8892a6;
+  --study:#4f9cf9; --slack:#f97b4f; --rest:#4fd98a; --warn:#f94f6e;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  background:radial-gradient(1100px 600px at 50% -15%,#1a2438 0%,var(--bg) 62%);
+  color:var(--text); min-height:100vh; padding:24px 14px 90px;
+  display:flex; justify-content:center; -webkit-font-smoothing:antialiased;
+}
+#app{width:100%;max-width:660px}
+
+header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+h1{font-size:19px;font-weight:700;letter-spacing:1px}
+h1 span{color:var(--study)}
+#dayLabel{font-size:13px;color:var(--dim);font-variant-numeric:tabular-nums}
+
+.daybar{height:3px;background:#1c2333;border-radius:3px;overflow:hidden;margin-bottom:18px}
+.daybar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#4f9cf9,#8b7cf6);transition:width .5s}
+
+.stats{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:16px}
+.stat{display:flex;align-items:center;gap:10px;font-size:13px;margin:7px 0}
+.stat:first-child{margin-top:0}
+.stat:last-child{margin-bottom:0}
+.lab{width:66px;flex:none;color:var(--dim)}
+.bar{flex:1;height:9px;background:#212a3c;border-radius:5px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;border-radius:5px;transition:width .45s cubic-bezier(.4,0,.2,1)}
+.bar i.k{background:linear-gradient(90deg,#3d7fd6,#63a8ff)}
+.bar i.e{background:linear-gradient(90deg,#2f9e6a,#54dd97)}
+.bar i.s{background:linear-gradient(90deg,#c94a63,#ff7a91)}
+.val{width:30px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600;font-size:13px}
+.val.danger{color:var(--warn)}
+
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:18px;margin-bottom:16px;line-height:1.75;font-size:15px;
+}
+.card .tag{font-size:12px;color:var(--dim);letter-spacing:1px;margin-bottom:8px;display:block}
+.card p{color:#cfd6e4}
+
+.choice{
+  display:flex;justify-content:space-between;align-items:center;gap:14px;
+  width:100%;text-align:left;font-family:inherit;font-size:15px;
+  background:var(--panel2);border:1px solid var(--line);border-radius:12px;
+  padding:14px 16px;color:var(--text);cursor:pointer;margin-bottom:10px;
+  transition:background .16s,border-color .16s,transform .16s;
+}
+.choice:hover{background:#252e42;border-color:#3e4c66;transform:translateX(3px)}
+.choice:active{transform:translateX(3px) scale(.99)}
+.choice .cs{font-size:12px;color:var(--dim);white-space:nowrap;flex:none}
+
+#result .msg{
+  background:var(--panel);border:1px solid var(--line);border-left:3px solid #4f9cf9;
+  border-radius:10px;padding:13px 16px;margin-bottom:10px;line-height:1.7;font-size:14.5px;
+  color:#cbd3e2;animation:pop .3s ease;
+}
+#result .msg b{color:var(--text)}
+@keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.continue{
+  width:100%;font-family:inherit;font-size:15px;font-weight:600;
+  background:linear-gradient(90deg,#3d7fd6,#6a5ae0);border:none;border-radius:12px;
+  padding:14px;color:#fff;cursor:pointer;margin-top:6px;letter-spacing:1px;
+  transition:filter .16s,transform .16s;
+}
+.continue:hover{filter:brightness(1.12)}
+.continue:active{transform:scale(.985)}
+
+.ending{text-align:center;padding:8px 0 4px}
+.ending .big{font-size:30px;font-weight:800;letter-spacing:2px;margin:10px 0 6px;
+  background:linear-gradient(90deg,#7bb8ff,#b18cff,#ff9b7b);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.ending .sub{font-size:13px;color:var(--dim);margin-bottom:20px}
+.ending .body{font-size:15px;line-height:1.9;color:#cbd3e2;text-align:left}
+.ending .body p{margin-bottom:12px}
+.ending hr{border:none;border-top:1px dashed var(--line);margin:20px 0}
+.report{display:flex;justify-content:space-around;text-align:center;font-size:12px;color:var(--dim);margin-bottom:6px}
+.report div b{display:block;font-size:20px;color:var(--text);margin-bottom:2px;font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>高中模拟器 <span>·</span> 高三最后三十天</h1>
+    <div id="dayLabel">第 1 / 30 天</div>
+  </header>
+  <div class="daybar"><i id="dayBar"></i></div>
+
+  <div class="stats">
+    <div class="stat"><span class="lab">📚 知识</span><div class="bar"><i id="bar-knowledge" class="k"></i></div><span class="val" id="val-knowledge">15</span></div>
+    <div class="stat"><span class="lab">⚡ 体力</span><div class="bar"><i id="bar-energy" class="e"></i></div><span class="val" id="val-energy">65</span></div>
+    <div class="stat"><span class="lab">👁 怀疑</span><div class="bar"><i id="bar-suspicion" class="s"></i></div><span class="val" id="val-suspicion">10</span></div>
+  </div>
+
+  <div id="scene" class="card"></div>
+  <div id="choices"></div>
+  <div id="result"></div>
+</div>
+
+<script>
+/* ============ 工具 ============ */
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+const rnd = arr => arr[Math.floor(Math.random()*arr.length)];
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+/* ============ 状态 ============ */
+const S = {};
+
+function newGame(){
+  Object.assign(S,{
+    day:1, totalDays:30,
+    knowledge:15, energy:65, suspicion:10,
+    lastTag:null, lastOptId:null,
+    phoneConfiscated:false,
+    studyActions:0, slackActions:0,
+    usedEvents:[], over:false
+  });
+  document.getElementById('result').innerHTML='';
+  renderDay();
+}
+
+/* ============ 场景 ============ */
+const SCENES = [
+  '清晨六点半，教室里已经坐了一半人。窗外的天刚蒙蒙亮，走廊里传来拖把拖地的声音。',
+  '第二节课，数学老师在黑板上写满了解析几何，粉笔灰簌簌地落。',
+  '午后的阳光斜照进教室，前排已经有人开始打瞌睡。',
+  '晚自习，教室里安静得只剩下笔尖划过纸面的沙沙声。',
+  '英语老师抱着一沓卷子走进来：「今天随堂测一下。」全班一片哀嚎。',
+  '班主任在走廊上巡视，隔着窗户往教室里扫了一眼。',
+  '窗外下着雨，操场上空无一人，雨点噼里啪啦打在玻璃上。',
+  '体育课又被数学老师占了，理由是「你们时间不多了」。',
+  '食堂的菜还是那几样，你随便扒了几口就回了教室。',
+  '课间，前排的同学在讨论昨晚的电视剧，你听了一耳朵。',
+  '黑板右上角的高考倒计时又少了一格。',
+  '同桌买了一杯奶茶回来，整个教室都飘着甜味。',
+  '你翻到课本最后一页，发现上面写着上学期立下的flag。',
+  '风扇在头顶吱呀吱呀地转，把卷子边角吹得乱翻。'
+];
+
+/* ============ 选项池 ============ */
+const STUDY = [
+  { id:'listen', tag:'study', text:'📖 认真听课，笔记记满整页', effects:{knowledge:5,energy:-12},
+    result:'你强迫自己盯住黑板，把老师讲的每道例题都抄了下来。下课铃响时，手腕有点酸。' },
+  { id:'grind', tag:'study', text:'✏️ 埋头刷题，错题本越写越厚', effects:{knowledge:7,energy:-17},
+    result:'晚自习结束，你合上错题本，眼睛干涩发烫。但那些曾经看不懂的题型，好像有点眉目了。' },
+  { id:'ask', tag:'study', text:'🙋 去办公室找老师答疑', effects:{knowledge:4,energy:-8,suspicion:-12},
+    result:'老师有点惊讶地看了你一眼，然后耐心地给你讲了三遍。走出办公室时，脑子清楚了不少。' },
+  { id:'team', tag:'study', text:'👥 和同桌组队互讲难题', effects:{knowledge:4,energy:-7},
+    result:'你们为一道物理题争论了半小时，最后发现是审题错了。但这个过程让你记得更牢了。' },
+  { id:'preview', tag:'study', text:'📅 提前预习明天要讲的内容', effects:{knowledge:4,energy:-7},
+    result:'你翻着还没讲的课文，在空白处写满批注。明天上课应该会轻松一点。' }
+];
+
+const SLACK = [
+  { id:'nap', tag:'slack', text:'😴 趴在桌上睡一节课', effects:{knowledge:-3,energy:20,suspicion:5},
+    result:'你枕着手臂睡了一整节课。醒来时脖子上有道红印，嘴角还有口水。老师看了你两眼，没说话。' },
+  { id:'phone', tag:'slack', text:'📱 课桌底下偷偷刷手机', effects:{knowledge:-4,energy:12,suspicion:14},
+    result:'你把手机夹在课本中间，拇指飞快地划着。屏幕的光映在脸上，你得时刻用余光盯着前门。' },
+  { id:'netbar', tag:'slack', text:'🚪 翻墙去网吧开黑', effects:{knowledge:-9,energy:-5,suspicion:22},
+    result:'网吧的烟味呛人，但五杀那一刻是真的爽。回学校时天已经黑了，你从围墙翻回来，裤子蹭破一块。' },
+  { id:'copy', tag:'slack', text:'📝 抄同桌的作业交差', effects:{knowledge:-2,energy:6,suspicion:9},
+    result:'你一边抄一边改了几个字，免得被看出来。交上去的时候，手心全是汗。' },
+  { id:'toilet', tag:'slack', text:'🚽 躲进厕所隔间摸鱼', effects:{knowledge:-3,energy:14,suspicion:4},
+    result:'你坐在马桶盖上玩了二十分钟手机。隔壁传来冲水声和脚步声，你屏住呼吸。' }
+];
+
+const REST = [
+  { id:'sleep', tag:'rest', text:'🛏️ 今天早点睡', effects:{energy:24},
+    result:'你九点半就躺下了。很久没这么早睡过，第二天醒来时，感觉脑子是清的。' },
+  { id:'run', tag:'rest', text:'🏃 去操场跑两圈', effects:{energy:14,knowledge:1,suspicion:-6},
+    result:'晚风很凉，操场上还有人在打球。你跑了两圈，出了一身汗，心里那点烦躁散了不少。' },
+  { id:'snack', tag:'rest', text:'🧋 和同学去小卖部买点吃的', effects:{energy:16,knowledge:-1,suspicion:2},
+    result:'你们分了一包辣条和一瓶汽水，蹲在台阶上聊了半小时。回教室时，心情好了很多。' },
+  { id:'daze', tag:'rest', text:'📖 假装看书，其实在发呆', effects:{energy:12,knowledge:1,suspicion:-3},
+    result:'你把书摊在面前，眼睛盯着字，脑子里在想别的事。反正老师看过来的时候，你看起来很认真。' }
+];
+
+/* ============ 事件 ============ */
+const EVENTS = [
+  { id:'phone_raid', weight:3, cond:()=>S.suspicion>=20, run(){
+      if(S.lastOptId==='phone' && !S.phoneConfiscated){
+        S.phoneConfiscated = true;
+        S.suspicion = clamp(S.suspicion+25,0,100);
+        return '🚨 <b>突击检查</b>：班主任突然从后门进来，手里拎着一个收纳箱。「都把手里的东西放进去。」你还没来得及把手机塞进袖子——屏幕的光在桌洞里亮着。手机被收走了。';
+      }
+      S.suspicion = clamp(S.suspicion+8,0,100);
+      return '🚨 <b>突击检查</b>：班主任突然从后门进来查桌洞，全班一片死寂。你抽屉最底下那本书下面什么都没有，勉强蒙混过关。';
+  }},
+  { id:'exam', weight:3, cond:()=>S.day>=5, run(){
+      if(S.knowledge>=45){
+        S.knowledge = clamp(S.knowledge+3,0,100);
+        S.suspicion = clamp(S.suspicion-10,0,100);
+        return '📊 <b>月考成绩公布</b>：你的名字排在了班级前列。班主任念到你的时候，语气难得温和了一点。';
+      }
+      S.suspicion = clamp(S.suspicion+10,0,100);
+      S.energy = clamp(S.energy-8,0,100);
+      return '📊 <b>月考成绩公布</b>：成绩单贴在后墙上，你的名字在中下游。你假装不在意，但还是偷偷看了三遍。';
+  }},
+  { id:'parent', weight:2, cond:()=>S.suspicion>=40, run(){
+      S.energy = clamp(S.energy-15,0,100);
+      S.suspicion = clamp(S.suspicion+5,0,100);
+      return '🏠 <b>家长会</b>：班主任把你妈单独留了下来。回家路上，车里一路沉默，只有雨刷的声音。';
+  }},
+  { id:'talk', weight:2, cond:()=>S.suspicion>=35, run(){
+      S.suspicion = clamp(S.suspicion-28,0,100);
+      S.energy = clamp(S.energy-10,0,100);
+      return '☕ <b>班主任找你谈心</b>：办公室里他给你倒了杯热水，说了很多。你听着，心里有点不是滋味。';
+  }},
+  { id:'praise', weight:2, cond:()=>S.knowledge>=55 && S.suspicion<40, run(){
+      S.suspicion = clamp(S.suspicion-8,0,100);
+      return '👍 <b>被表扬了</b>：班主任路过你座位，停下来翻了翻你的笔记，点点头走了。旁边同学小声说了句「牛啊」。';
+  }},
+  { id:'rain', weight:2, run(){
+      S.energy = clamp(S.energy+10,0,100);
+      return '🌧️ <b>下雨</b>：跑操取消了。多出来的二十分钟，你趴在桌上补了个觉。';
+  }},
+  { id:'cold', weight:2, cond:()=>S.energy<=35, run(){
+      S.energy = clamp(S.energy-10,0,100);
+      S.knowledge = clamp(S.knowledge-2,0,100);
+      return '🤒 <b>感冒了</b>：头疼得厉害，一整天都昏昏沉沉。你趴在桌上，什么也没听进去。';
+  }},
+  { id:'contest', weight:1, cond:()=>S.knowledge>=65, run(){
+      S.knowledge = clamp(S.knowledge+5,0,100);
+      S.energy = clamp(S.energy-10,0,100);
+      return '🎖 <b>竞赛通知</b>：学校推荐你参加学科竞赛培训。虽然累，但那些题目确实有意思。';
+  }}
+];
+
+function rollEvent(){
+  if(Math.random() > 0.45) return null;
+  const pool = EVENTS.filter(e => !S.usedEvents.includes(e.id) && (!e.cond || e.cond()));
+  if(!pool.length) return null;
+  const total = pool.reduce((a,b)=>a+(b.weight||1),0);
+  let r = Math.random()*total;
+  for(const e of pool){ r -= (e.weight||1); if(r<=0) return e; }
+  return pool[pool.length-1];
+}
+
+/* ============ 渲染 ============ */
+function updateStats(){
+  const set = (key,val)=>{
+    document.getElementById('bar-'+key).style.width = val + '%';
+    const el = document.getElementById('val-'+key);
+    el.textContent = Math.round(val);
+  };
+  set('knowledge', S.knowledge);
+  set('energy', S.energy);
+  set('suspicion', S.suspicion);
+
+  document.getElementById('val-energy').classList.toggle('danger', S.energy<=25);
+  document.getElementById('val-suspicion').classList.toggle('danger', S.suspicion>=70);
+
+  document.getElementById('dayLabel').textContent = `第 ${S.day} / ${S.totalDays} 天`;
+  document.getElementById('dayBar').style.width = ((S.day-1)/S.totalDays*100)+'%';
+}
+
+function generateOptions(){
+  const slackPool = SLACK.filter(o => !(S.phoneConfiscated && o.id==='phone'));
+  const picks = [
+    ...shuffle(STUDY).slice(0,2),
+    ...shuffle(slackPool).slice(0,2),
+    ...shuffle(REST).slice(0,1)
+  ];
+  return shuffle(picks);
+}
+
+function hint(o){
+  const e = o.effects, p = [];
+  if(e.knowledge) p.push(`知识${e.knowledge>0?'+':''}${e.knowledge}`);
+  if(e.energy)    p.push(`体力${e.energy>0?'+':''}${e.energy}`);
+  if(e.suspicion) p.push(`怀疑${e.suspicion>0?'+':''}${e.suspicion}`);
+  return p.join(' · ');
+}
+
+function renderDay(){
+  updateStats();
+
+  document.getElementById('scene').innerHTML =
+    `<span class="tag">DAY ${S.day}</span><p>${rnd(SCENES)}</p>`;
+
+  const box = document.getElementById('choices');
+  box.innerHTML = '';
+  document.getElementById('result').innerHTML = '';
+
+  generateOptions().forEach(o=>{
+    const btn = document.createElement('button');
+    btn.className = 'choice';
+    btn.innerHTML = `<span class="ct">${o.text}</span><span class="cs">${hint(o)}</span>`;
+    btn.onclick = ()=>pickOption(o);
+    box.appendChild(btn);
+  });
+}
+
+/* ============ 核心流程 ============ */
+function pickOption(o){
+  if(S.over) return;
+
+  const e = o.effects;
+  S.knowledge = clamp(S.knowledge + (e.knowledge||0), 0, 100);
+  S.energy    = clamp(S.energy    + (e.energy||0),    0, 100);
+  S.suspicion = clamp(S.suspicion + (e.suspicion||0), 0, 100);
+
+  S.lastTag = o.tag;
+  S.lastOptId = o.id;
+  if(o.tag==='study') S.studyActions++;
+  if(o.tag==='slack') S.slackActions++;
+
+  const msgs = [o.result];
+
+  // 随机事件
+  const ev = rollEvent();
+  if(ev){ msgs.push(ev.run()); S.usedEvents.push(ev.id); }
+
+  // 体力崩溃
+  if(S.energy <= 0){
+    S.energy = 40;
+    S.knowledge = clamp(S.knowledge-8, 0, 100);
+    msgs.push('💊 <b>你累倒了</b>。在医务室躺了一天，醒来时天花板是白的。你妈来学校送了一保温桶的汤，什么也没说。');
+  }
+
+  // 怀疑爆表
+  if(S.suspicion >= 100){
+    S.suspicion = 35;
+    S.energy = clamp(S.energy-15, 0, 100);
+    S.knowledge = clamp(S.knowledge-5, 0, 100);
+    msgs.push('📞 <b>班主任终于忍无可忍</b>，把你爸妈叫到了学校。回家路上，车里一路沉默。');
+  }
+
+  updateStats();
+  renderMessages(msgs);
+}
+
+function renderMessages(msgs){
+  document.getElementById('choices').innerHTML = '';
+  const res = document.getElementById('result');
+  res.innerHTML = msgs.map(m=>`<div class="msg">${m}</div>`).join('');
+
+  const btn = document.createElement('button');
+  btn.className = 'continue';
+  btn.textContent = S.day >= S.totalDays ? '走进考场 →' : '继续 →';
+  btn.onclick = nextDay;
+  res.appendChild(btn);
+}
+
+function nextDay(){
+  if(S.day >= S.totalDays){ showEnding(); return; }
+  S.day++;
+  renderDay();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ============ 结局 ============ */
+function showEnding(){
+  S.over = true;
+  updateStats();
+
+  const bonus = Math.floor(S.energy/20) - 2;
+  const score = Math.round(S.knowledge + bonus);
+
+  let tier, sub, body;
+
+  if(score >= 92){
+    tier='清华 / 北大'; sub='全省前 0.1%';
+    body='录取通知书寄到那天，你妈在小区门口放了一挂鞭炮。班主任在群里发了张你高一时写的目标卡，配文「他说到做到」。';
+  } else if(score >= 82){
+    tier='顶尖 985'; sub='全班前三';
+    body='分数出来时你盯着屏幕看了很久，确认了三遍。班主任在毕业典礼上拍了拍你的肩膀，说了句「没白熬」。';
+  } else if(score >= 72){
+    tier='985 / 211'; sub='稳稳上岸';
+    body='结果比模考还好一些。你在志愿表上填下了那个想了很久的名字，然后长长地舒了一口气。';
+  } else if(score >= 60){
+    tier='一本'; sub='不好不坏';
+    body='不算惊艳，但也对得起这三十天。你把课本堆成一摞拍了张照，发了条朋友圈，配文是「结束了」。';
+  } else if(score >= 46){
+    tier='二本'; sub='差强人意';
+    body='分数出来那天你有点沉默。但第二天早上还是照常起了床——日子总得过，大学也只是个开始。';
+  } else if(score >= 30){
+    tier='专科'; sub='另辟蹊径';
+    body='你在阳台上坐了很久，抽了人生第一根烟（被你爸发现了）。但后来你想通了：路不止一条，走得动就行。';
+  } else {
+    tier='落榜'; sub='差一点';
+    body='你没到线。复读这个决定，是在一个很普通的晚上做出来的。你妈说「再试一年吧」，你说「好」。';
+  }
+
+  const total = S.studyActions + S.slackActions || 1;
+  const slackRate = S.slackActions / total;
+
+  let epilogue = '';
+  if(slackRate > 0.55){
+    epilogue = '这三十天，你玩得挺开心的。手机藏过、网吧翻过墙、厕所蹲过——多年以后你想起的，可能不是某道题，而是那些提心吊胆的瞬间。';
+  } else if(slackRate > 0.3){
+    epilogue = '你没有变成那种只会学习的机器，也没有彻底放弃自己。在教室和操场之间来回摇摆的这三十天，其实挺真实的。';
+  } else {
+    epilogue = '这三十天你几乎把自己按在了座位上。多年以后你也许会想，如果当时多睡一会儿会怎样——但至少，你没有对不起那个拼命想赢的自己。';
+  }
+
+  if(S.phoneConfiscated) epilogue += ' 顺便一提，那部被没收的手机，毕业那天才拿回来。';
+  if(S.energy <= 15) epilogue += ' 考完最后一科，你在校门口直接发起了烧。';
+
+  document.getElementById('scene').innerHTML = `
+    <div class="ending">
+      <div class="sub">高考成绩</div>
+      <div class="big">${tier}</div>
+      <div class="sub">${sub} ｜ 综合评分 ${score}</div>
+      <hr>
+      <div class="report">
+        <div><b>${S.knowledge}</b>知识</div>
+        <div><b>${S.energy}</b>体力</div>
+        <div><b>${S.suspicion}</b>怀疑</div>
+        <div><b>${S.studyActions}</b>学习次数</div>
+        <div><b>${S.slackActions}</b>摆烂次数</div>
+      </div>
+      <hr>
+      <div class="body">
+        <p>${body}</p>
+        <p>${epilogue}</p>
+      </div>
+    </div>`;
+
+  document.getElementById('choices').innerHTML = '';
+  const res = document.getElementById('result');
+  res.innerHTML = '';
+  const btn = document.createElement('button');
+  btn.className = 'continue';
+  btn.textContent = '↻ 再读一次高三';
+  btn.onclick = ()=>{ window.scrollTo({top:0}); newGame(); };
+  res.appendChild(btn);
+}
+
+/* ============ 启动 ============ */
+newGame();
+</script>
+</body>
+</html>

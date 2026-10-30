@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepSeek Agent · 记忆与计费</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+        }
+        body {
+            background: #f6f8fa;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .app {
+            max-width: 1100px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            background: #ffffff;
+            padding: 16px 20px;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+        }
+        .header h1 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #0b1e3a;
+            margin-right: auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .badge {
+            background: #e9f0ff;
+            color: #1a56db;
+            font-size: 0.75rem;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+        .api-config {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .api-config input {
+            padding: 8px 12px;
+            border: 1px solid #d0d7de;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            min-width: 260px;
+            background: #f9fafb;
+            transition: border 0.15s;
+        }
+        .api-config input:focus {
+            outline: none;
+            border-color: #1a56db;
+            background: #ffffff;
+        }
+        .btn {
+            padding: 8px 18px;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            background: #1a56db;
+            color: white;
+            transition: background 0.15s;
+            white-space: nowrap;
+        }
+        .btn:hover {
+            background: #1545b0;
+        }
+        .btn:disabled {
+            background: #93b4e8;
+            cursor: not-allowed;
+        }
+        .btn-outline {
+            background: transparent;
+            color: #1a56db;
+            border: 1px solid #1a56db;
+        }
+        .btn-outline:hover {
+            background: #e9f0ff;
+        }
+        .btn-sm {
+            padding: 5px 12px;
+            font-size: 0.8rem;
+        }
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 16px;
+            align-items: start;
+        }
+        @media (max-width: 800px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .chat-panel {
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+        }
+        .chat-header {
+            padding: 14px 20px;
+            border-bottom: 1px solid #eaeef2;
+            font-weight: 600;
+            color: #0b1e3a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .chat-header .model-tag {
+            font-size: 0.75rem;
+            background: #e9f0ff;
+            color: #1a56db;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-weight: 400;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .msg {
+            max-width: 85%;
+            padding: 10px 14px;
+            border-radius: 14px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            word-break: break-word;
+            white-space: pre-wrap;
+        }
+        .msg.user {
+            align-self: flex-end;
+            background: #1a56db;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        .msg.assistant {
+            align-self: flex-start;
+            background: #f1f4f9;
+            color: #0b1e3a;
+            border-bottom-left-radius: 4px;
+        }
+        .msg.system {
+            align-self: center;
+            background: #fef9e7;
+            color: #7a5c00;
+            font-size: 0.8rem;
+            padding: 6px 14px;
+            border-radius: 20px;
+            max-width: 95%;
+        }
+        .msg .meta {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+        .chat-input-area {
+            padding: 12px 16px;
+            border-top: 1px solid #eaeef2;
+            display: flex;
+            gap: 8px;
+        }
+        .chat-input-area textarea {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid #d0d7de;
+            border-radius: 10px;
+            resize: none;
+            font-size: 0.9rem;
+            font-family: inherit;
+            min-height: 44px;
+            max-height: 120px;
+            background: #f9fafb;
+        }
+        .chat-input-area textarea:focus {
+            outline: none;
+            border-color: #1a56db;
+            background: #ffffff;
+        }
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .card {
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+            padding: 18px 20px;
+        }
+        .card h2 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #0b1e3a;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .token-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .token-item {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 10px 12px;
+        }
+        .token-item .label {
+            font-size: 0.7rem;
+            color: #656d76;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .token-item .value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #0b1e3a;
+            margin-top: 2px;
+        }
+        .token-item .value.small {
+            font-size: 0.9rem;
+        }
+        .cost-total {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #eaeef2;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .cost-total .label {
+            font-size: 0.85rem;
+            color: #656d76;
+        }
+        .cost-total .amount {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1a56db;
+        }
+        .memory-list {
+            max-height: 200px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .memory-item {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 0.8rem;
+            color: #0b1e3a;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+            border-left: 3px solid #1a56db;
+        }
+        .memory-item .mem-content {
+            flex: 1;
+            word-break: break-word;
+        }
+        .memory-item .mem-meta {
+            font-size: 0.65rem;
+            color: #656d76;
+            white-space: nowrap;
+        }
+        .memory-empty {
+            color: #656d76;
+            font-size: 0.8rem;
+            text-align: center;
+            padding: 12px;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+        .status-dot.ok {
+            background: #22c55e;
+        }
+        .status-dot.err {
+            background: #ef4444;
+        }
+        .status-dot.wait {
+            background: #f59e0b;
+        }
+        .footer-note {
+            font-size: 0.7rem;
+            color: #656d76;
+            text-align: center;
+            padding: 4px 0;
+        }
+        .pricing-note {
+            font-size: 0.7rem;
+            color: #656d76;
+            margin-top: 8px;
+            line-height: 1.5;
+            background: #f8fafc;
+            padding: 8px 10px;
+            border-radius: 8px;
+        }
+        .pricing-note strong {
+            color: #0b1e3a;
+        }
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d0d7de;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- 头部：API Key 配置 -->
+        <div class="header">
+            <h1>🧠 DeepSeek Agent <span class="badge">V4.1 Flash</span></h1>
+            <div class="api-config">
+                <input type="password" id="apiKeyInput" placeholder="填入 DeepSeek API Key (sk-...)" autocomplete="off" />
+                <button class="btn" id="saveKeyBtn">保存</button>
+                <span id="keyStatus" style="font-size:0.8rem;color:#656d76;"></span>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <!-- 左侧：对话面板 -->
+            <div class="chat-panel">
+                <div class="chat-header">
+                    <span>💬 对话</span>
+                    <span class="model-tag" id="modelTag">deepseek-flash</span>
+                </div>
+                <div class="chat-messages" id="chatMessages">
+                    <div class="msg system">Agent 已就绪。记忆功能会在对话中自动提取并存储关键信息。</div>
+                </div>
+                <div class="chat-input-area">
+                    <textarea id="userInput" placeholder="输入消息..." rows="1"></textarea>
+                    <button class="btn" id="sendBtn">发送</button>
+                </div>
+            </div>
+
+            <!-- 右侧：计费与记忆 -->
+            <div class="side-panel">
+                <!-- Token 统计与费用 -->
+                <div class="card">
+                    <h2>📊 Token 消耗 & 费用</h2>
+                    <div class="token-grid">
+                        <div class="token-item">
+                            <div class="label">输入 Tokens</div>
+                            <div class="value" id="inputTokens">0</div>
+                        </div>
+                        <div class="token-item">
+                            <div class="label">输出 Tokens</div>
+                            <div class="value" id="outputTokens">0</div>
+                        </div>
+                        <div class="token-item">
+                            <div class="label">总 Tokens</div>
+                            <div class="value" id="totalTokens">0</div>
+                        </div>
+                        <div class="token-item">
+                            <div class="label">缓存命中</div>
+                            <div class="value" id="cachedTokens">0</div>
+                        </div>
+                    </div>
+                    <div class="cost-total">
+                        <span class="label">预估累计费用</span>
+                        <span class="amount" id="totalCost">¥0.0000</span>
+                    </div>
+                    <div class="pricing-note" id="pricingNote">
+                        <strong>定价参考 (闲时/高峰)：</strong><br/>
+                        输入(缓存命中) ¥0.02 / ¥0.04 · 输入(未命中) ¥1 / ¥2 · 输出 ¥4 / ¥8<br/>
+                        <span style="color:#656d76;">基于官方定价，实际以账单为准。</span>
+                    </div>
+                </div>
+
+                <!-- Agent 记忆 -->
+                <div class="card">
+                    <h2>🗂️ Agent 记忆 <button class="btn btn-outline btn-sm" id="clearMemoryBtn" style="margin-left:auto;">清空</button></h2>
+                    <div id="memoryList" class="memory-list">
+                        <div class="memory-empty">暂无记忆。对话中 Agent 会自动提取关键信息。</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-note">
+            Agent 记忆在本次会话中持久化 · 费用根据 DeepSeek 官方定价估算
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ----- 定价配置 (人民币/百万 tokens) -----
+            // 数据来源: DeepSeek 官方文档 https://api-docs.deepseek.com/zh-cn/quick_start/pricing/
+            const PRICING = {
+                // 闲时 (空闲时段) 单价，单位: 元 / 1M tokens
+                offPeak: {
+                    cacheHit: 0.02,        // 缓存命中输入
+                    cacheMiss: 1.00,       // 缓存未命中输入
+                    output: 4.00           // 输出
+                },
+                // 高峰时段单价 (北京时间周一至周五 9:00-12:00, 14:00-18:00)
+                peak: {
+                    cacheHit: 0.04,
+                    cacheMiss: 2.00,
+                    output: 8.00
+                }
+            };
+
+            // 判断当前是否为高峰时段 (北京时间)
+            function isPeakHour() {
+                const now = new Date();
+                // 转为北京时间 (UTC+8)
+                const bjOffset = 8 * 60; // 分钟
+                const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+                const bjMinutes = (utcMinutes + bjOffset) % (24 * 60);
+                const bjHour = Math.floor(bjMinutes / 60);
+                const bjDay = now.getUTCDay(); // 0=周日, 1=周一 ... 6=周六 (UTC日)
+
+                // 转为北京时间星期几
+                // UTC 日期 + 8小时 可能跨日，简化处理：用 UTC 时间加 8 小时后取星期
+                const bjDate = new Date(now.getTime() + bjOffset * 60 * 1000);
+                const weekday = bjDate.getDay(); // 0=周日, 1=周一 ... 6=周六
+
+                // 高峰时段: 周一至周五 (1-5) 的 9:00-12:00 和 14:00-18:00
+                if (weekday >= 1 && weekday <= 5) {
+                    if ((bjHour >= 9 && bjHour < 12) || (bjHour >= 14 && bjHour < 18)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            // 获取当前生效单价
+            function getCurrentRates() {
+                return isPeakHour() ? PRICING.peak : PRICING.offPeak;
+            }
+
+            // ----- 全局状态 -----
+            const state = {
+                apiKey: localStorage.getItem('deepseek_api_key') || '',
+                messages: [],            // 对话历史 (不含 system 记忆注入)
+                memories: [],            // Agent 记忆条目 { content, timestamp }
+                totalInputTokens: 0,
+                totalOutputTokens: 0,
+                totalCachedTokens: 0,    // 缓存命中输入 tokens
+                totalCacheMissTokens: 0, // 缓存未命中输入 tokens (用于计价)
+                totalCost: 0             // 累计费用 (元)
+            };
+
+            // ----- DOM 引用 -----
+            const apiKeyInput = document.getElementById('apiKeyInput');
+            const saveKeyBtn = document.getElementById('saveKeyBtn');
+            const keyStatus = document.getElementById('keyStatus');
+            const chatMessages = document.getElementById('chatMessages');
+            const userInput = document.getElementById('userInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const modelTag = document.getElementById('modelTag');
+            const inputTokensEl = document.getElementById('inputTokens');
+            const outputTokensEl = document.getElementById('outputTokens');
+            const totalTokensEl = document.getElementById('totalTokens');
+            const cachedTokensEl = document.getElementById('cachedTokens');
+            const totalCostEl = document.getElementById('totalCost');
+            const memoryListEl = document.getElementById('memoryList');
+            const clearMemoryBtn = document.getElementById('clearMemoryBtn');
+            const pricingNote = document.getElementById('pricingNote');
+
+            // ----- 初始化 -----
+            function init() {
+                if (state.apiKey) {
+                    apiKeyInput.value = state.apiKey;
+                    keyStatus.innerHTML = '<span class="status-dot ok"></span>已保存';
+                } else {
+                    keyStatus.innerHTML = '<span class="status-dot err"></span>未设置';
+                }
+                renderTokens();
+                renderMemories();
+                updatePricingNote();
+                // 定时刷新高峰/闲时状态
+                setInterval(updatePricingNote, 60000);
+            }
+
+            function updatePricingNote() {
+                const peak = isPeakHour();
+                const rates = peak ? PRICING.peak : PRICING.offPeak;
+                const label = peak ? '高峰时段' : '空闲时段';
+                pricingNote.innerHTML = `
+                    <strong>当前计费时段：${label}</strong><br/>
+                    输入(缓存命中) ¥${rates.cacheHit} · 输入(未命中) ¥${rates.cacheMiss} · 输出 ¥${rates.output} / 百万 tokens<br/>
+                    <span style="color:#656d76;">高峰：周一至周五 9:00-12:00, 14:00-18:00 (北京时间)</span>
+                `;
+            }
+
+            // ----- 渲染 Token 统计 -----
+            function renderTokens() {
+                const totalIn = state.totalInputTokens;
+                const totalOut = state.totalOutputTokens;
+                inputTokensEl.textContent = totalIn.toLocaleString();
+                outputTokensEl.textContent = totalOut.toLocaleString();
+                totalTokensEl.textContent = (totalIn + totalOut).toLocaleString();
+                cachedTokensEl.textContent = state.totalCachedTokens.toLocaleString();
+
+                // 费用显示保留 4 位小数
+                totalCostEl.textContent = '¥' + state.totalCost.toFixed(4);
+            }
+
+            // ----- 渲染记忆列表 -----
+            function renderMemories() {
+                if (state.memories.length === 0) {
+                    memoryListEl.innerHTML = '<div class="memory-empty">暂无记忆。对话中 Agent 会自动提取关键信息。</div>';
+                    return;
+                }
+                memoryListEl.innerHTML = state.memories.map((m, i) => `
+                    <div class="memory-item">
+                        <div class="mem-content">${escapeHtml(m.content)}</div>
+                        <div class="mem-meta">${m.timestamp}</div>
+                    </div>
+                `).join('');
+            }
+
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            // ----- 添加消息到界面 -----
+            function appendMessage(role, content, meta) {
+                const div = document.createElement('div');
+                div.className = `msg ${role}`;
+                div.textContent = content;
+                if (meta) {
+                    const metaDiv = document.createElement('div');
+                    metaDiv.className = 'meta';
+                    metaDiv.textContent = meta;
+                    div.appendChild(metaDiv);
+                }
+                chatMessages.appendChild(div);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+
+            // ----- 保存 API Key -----
+            saveKeyBtn.addEventListener('click', () => {
+                const key = apiKeyInput.value.trim();
+                if (!key) {
+                    keyStatus.innerHTML = '<span class="status-dot err"></span>请输入 Key';
+                    return;
+                }
+                state.apiKey = key;
+                localStorage.setItem('deepseek_api_key', key);
+                keyStatus.innerHTML = '<span class="status-dot ok"></span>已保存';
+            });
+
+            // ----- 清空记忆 -----
+            clearMemoryBtn.addEventListener('click', () => {
+                state.memories = [];
+                renderMemories();
+                appendMessage('system', '🧹 记忆已清空');
+            });
+
+            // ----- 构建发送给 API 的 messages -----
+            function buildApiMessages(userMessage) {
+                // 系统提示：包含记忆注入
+                let memoryContext = '';
+                if (state.memories.length > 0) {
+                    const memTexts = state.memories.map(m => `- ${m.content}`).join('\n');
+                    memoryContext = `\n\n【已知信息（来自之前的对话记忆）】\n${memTexts}\n请在回答时参考以上信息，如果与当前问题相关。`;
+                }
+
+                const systemPrompt = `你是一个带有记忆能力的 AI Agent。你会从对话中提取并记住用户透露的关键信息（如姓名、偏好、重要事实等）。当前已知记忆将附加在对话中。请基于记忆提供连贯、个性化的回答。${memoryContext}`;
+
+                // 构建消息数组
+                const msgs = [
+                    { role: 'system', content: systemPrompt }
+                ];
+                // 加入历史对话
+                state.messages.forEach(m => msgs.push(m));
+                // 加入当前用户消息
+                msgs.push({ role: 'user', content: userMessage });
+
+                return msgs;
+            }
+
+            // ----- 调用 DeepSeek API (非流式) -----
+            async function callDeepSeek(messages) {
+                const url = 'https://api.deepseek.com/chat/completions';
+                const body = {
+                    model: 'deepseek-flash',  // 实际指向 DeepSeek-V4.1-Flash
+                    messages: messages,
+                    stream: false,
+                    // 非思考模式可降低输出 token 开销 (可选)
+                    // 根据官方文档，可通过 extra_body 控制 thinking
+                    // 此处保持默认
+                };
+
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${state.apiKey}`
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                if (!resp.ok) {
+                    const errText = await resp.text();
+                    throw new Error(`API 请求失败 (${resp.status}): ${errText.slice(0, 300)}`);
+                }
+
+                return await resp.json();
+            }
+
+            // ----- 提取记忆 (简单规则：从用户消息中提取关键信息) -----
+            function extractMemories(userText, assistantReply) {
+                const newMemories = [];
+                const patterns = [
+                    { regex: /(?:我叫|我的名字是|我是)\s*([^\s，。,\.]{1,20})/g, label: '姓名' },
+                    { regex: /(?:我喜欢|我爱|我偏好)\s*([^，。,\n]{1,30})/g, label: '偏好' },
+                    { regex: /(?:我的\s*([^\s]{1,10}是|为)\s*([^，。,\n]{1,30}))/g, label: null },
+                    { regex: /(?:记住|请记住|别忘了|备注)[:：\s]*([^，。\n]{1,60})/g, label: '备注' }
+                ];
+
+                // 从用户输入中提取
+                patterns.forEach(p => {
+                    let match;
+                    while ((match = p.regex.exec(userText)) !== null) {
+                        const content = p.label ? `${p.label}: ${match[1]}` : match[0].trim();
+                        if (content.length > 1 && content.length < 80) {
+                            newMemories.push(content);
+                        }
+                    }
+                });
+
+                // 如果用户明确要求记住某件事
+                const rememberMatch = userText.match(/(?:记住|记一下|保存)[:：\s]*(.+)/i);
+                if (rememberMatch && rememberMatch[1].trim().length > 1) {
+                    newMemories.push(rememberMatch[1].trim().slice(0, 100));
+                }
+
+                // 去重并与已有记忆合并
+                const existingSet = new Set(state.memories.map(m => m.content));
+                const uniqueNew = [];
+                newMemories.forEach(m => {
+                    if (!existingSet.has(m)) {
+                        existingSet.add(m);
+                        uniqueNew.push(m);
+                    }
+                });
+
+                return uniqueNew;
+            }
+
+            // ----- 发送消息主流程 -----
+            async function handleSend() {
+                const userText = userInput.value.trim();
+                if (!userText) return;
+
+                if (!state.apiKey) {
+                    appendMessage('system', '⚠️ 请先在右上角填入并保存 DeepSeek API Key');
+                    return;
+                }
+
+                // 清空输入框
+                userInput.value = '';
+                userInput.style.height = 'auto';
+
+                // 在界面显示用户消息
+                appendMessage('user', userText);
+
+                // 禁用发送按钮
+                sendBtn.disabled = true;
+                sendBtn.textContent = '思考中...';
+
+                try {
+                    // 构建 API 消息 (含记忆)
+                    const apiMessages = buildApiMessages(userText);
+
+                    // 调用 API
+                    const data = await callDeepSeek(apiMessages);
+
+                    // 提取回复
+                    const reply = data.choices?.[0]?.message?.content || '(无回复)';
+                    appendMessage('assistant', reply);
+
+                    // 提取 token 用量
+                    const usage = data.usage || {};
+                    const promptTokens = usage.prompt_tokens || 0;
+                    const completionTokens = usage.completion_tokens || 0;
+                    const totalTokens = usage.total_tokens || (promptTokens + completionTokens);
+
+                    // 缓存命中 tokens (DeepSeek 返回 prompt_cache_hit_tokens / prompt_cache_miss_tokens)
+                    const cachedHit = usage.prompt_cache_hit_tokens || 0;
+                    const cacheMiss = usage.prompt_cache_miss_tokens ?? (promptTokens - cachedHit);
+
+                    // 累计统计
+                    state.totalInputTokens += promptTokens;
+                    state.totalOutputTokens += completionTokens;
+                    state.totalCachedTokens += cachedHit;
+                    state.totalCacheMissTokens += cacheMiss;
+
+                    // 计算本次费用
+                    const rates = getCurrentRates();
+                    const costInputHit = (cachedHit / 1000000) * rates.cacheHit;
+                    const costInputMiss = (cacheMiss / 1000000) * rates.cacheMiss;
+                    const costOutput = (completionTokens / 1000000) * rates.output;
+                    const costThisCall = costInputHit + costInputMiss + costOutput;
+                    state.totalCost += costThisCall;
+
+                    // 更新 UI
+                    renderTokens();
+                    updatePricingNote();
+
+                    // 提取记忆
+                    const newMemories = extractMemories(userText, reply);
+                    newMemories.forEach(m => {
+                        state.memories.push({
+                            content: m,
+                            timestamp: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+                        });
+                    });
+                    if (newMemories.length > 0) {
+                        renderMemories();
+                        appendMessage('system', `💾 已更新记忆 (${newMemories.length} 条)`);
+                    }
+
+                    // 将本轮对话加入历史 (为节省 token，历史只保留最近若干轮)
+                    state.messages.push({ role: 'user', content: userText });
+                    state.messages.push({ role: 'assistant', content: reply });
+                    // 限制历史长度，防止超出上下文 (保留最近 20 条消息)
+                    if (state.messages.length > 20) {
+                        state.messages = state.messages.slice(-20);
+                    }
+
+                } catch (err) {
+                    console.error(err);
+                    appendMessage('system', `❌ 错误: ${err.message}`);
+                } finally {
+                    sendBtn.disabled = false;
+                    sendBtn.textContent = '发送';
+                }
+            }
+
+            // 发送按钮点击
+            sendBtn.addEventListener('click', handleSend);
+
+            // 回车发送 (Shift+Enter 换行)
+            userInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                }
+            });
+
+            // 自动调整 textarea 高度
+            userInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+            });
+
+            // 启动
+            init();
+        })();
+    </script>
+</body>
+</html>

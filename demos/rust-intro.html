@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rust 简介</title>
+<style>
+  :root{
+    --bg:#0a0d12;
+    --text:#e6edf3;
+    --muted:#8b98a9;
+    --accent:#ff6b35;
+    --accent2:#f7c948;
+    --line:rgba(255,255,255,.08);
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    background:
+      radial-gradient(1200px 800px at 82% -12%, #1b2430 0%, transparent 60%),
+      radial-gradient(900px 700px at -8% 112%, #2a160e 0%, transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* 背景网格 */
+  .bg-grid{
+    position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.032) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.032) 1px, transparent 1px);
+    background-size:48px 48px;
+    -webkit-mask-image: radial-gradient(circle at 50% 45%, #000 25%, transparent 78%);
+    mask-image: radial-gradient(circle at 50% 45%, #000 25%, transparent 78%);
+  }
+
+  /* 幻灯片容器 */
+  .deck{position:fixed; inset:0; z-index:1;}
+  .slide{
+    position:absolute; inset:0;
+    display:flex;
+    padding:5vh 6vw 15vh;
+    overflow-y:auto;
+    opacity:0; pointer-events:none;
+    transform:translateY(26px) scale(.99);
+    transition:opacity .45s ease, transform .55s cubic-bezier(.2,.8,.3,1);
+  }
+  .slide.active{opacity:1; pointer-events:auto; transform:none;}
+  .slide-inner{margin:auto; width:100%; max-width:1060px;}
+
+  /* 入场动画 */
+  .anim{opacity:0; transform:translateY(18px);
+        transition:opacity .6s ease, transform .6s cubic-bezier(.2,.8,.3,1);
+        transition-delay:var(--d, 0s);}
+  .slide.active .anim{opacity:1; transform:none;}
+
+  /* 标题 */
+  h1{
+    font-size:clamp(3rem, 9vw, 6rem); font-weight:800; letter-spacing:-.04em; line-height:1.05;
+    background:linear-gradient(120deg,#ffffff 18%, #ff8a4c 62%, #ce422b 100%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  h2{
+    font-size:clamp(1.5rem, 3.4vw, 2.35rem); font-weight:700; letter-spacing:-.02em;
+    margin-bottom:.85em; display:flex; align-items:baseline; gap:.6rem;
+  }
+  h2 .num{
+    font-family:var(--mono); font-size:.5em; font-weight:700; letter-spacing:.08em;
+    color:var(--accent); opacity:.9;
+  }
+  .lead{color:var(--muted); font-size:clamp(1rem,1.6vw,1.2rem); line-height:1.8;}
+  .sub{color:var(--muted); font-size:clamp(.9rem,1.25vw,1.02rem); line-height:1.85;}
+
+  /* 封面 */
+  .cover{text-align:center; display:flex; flex-direction:column; align-items:center;}
+  .logo-wrap{margin-bottom:1.6rem; animation:float 4.5s ease-in-out infinite;}
+  .logo{
+    width:96px; height:96px; border-radius:26px; display:grid; place-items:center;
+    font-size:46px; font-weight:800; color:#160b06;
+    background:linear-gradient(135deg,#ffa15c,#ff6b35 45%,#ce422b);
+    box-shadow:0 18px 50px rgba(255,107,53,.32), inset 0 1px 0 rgba(255,255,255,.45);
+  }
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+  .tags{display:flex; gap:.6rem; flex-wrap:wrap; justify-content:center; margin-top:1.6rem;}
+  .tags span{
+    padding:.42rem .95rem; border-radius:999px; font-size:.85rem; color:#ffd0b8;
+    background:rgba(255,107,53,.10); border:1px solid rgba(255,107,53,.28);
+  }
+  .hint{margin-top:2.4rem; font-size:.8rem; color:#5b6675; letter-spacing:.06em;}
+
+  /* 两栏 */
+  .two{display:grid; grid-template-columns:1fr 1fr; gap:clamp(1rem,3vw,2.6rem); align-items:center;}
+  @media(max-width:840px){ .two{grid-template-columns:1fr;} }
+
+  /* 卡片 */
+  .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:1rem;}
+  .card{
+    background:linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.018));
+    border:1px solid var(--line); border-radius:16px; padding:1.25rem 1.35rem;
+    transition:transform .3s ease, border-color .3s ease, box-shadow .3s ease;
+  }
+  .card:hover{transform:translateY(-4px); border-color:rgba(255,107,53,.4);
+              box-shadow:0 14px 34px rgba(0,0,0,.35);}
+  .card h3{font-size:1.05rem; margin-bottom:.5rem; color:var(--accent);}
+  .card p{color:var(--muted); font-size:.9rem; line-height:1.75;}
+
+  /* 要点列表 */
+  ul.pts{list-style:none; display:flex; flex-direction:column; gap:.75rem;}
+  ul.pts li{
+    position:relative; padding-left:1.6rem; color:var(--muted);
+    font-size:clamp(.9rem,1.2vw,1.02rem); line-height:1.8;
+  }
+  ul.pts li::before{content:'▸'; position:absolute; left:.15rem; color:var(--accent); font-weight:700;}
+  ul.pts li strong{color:var(--text); font-weight:600;}
+  ul.pts li code{
+    font-family:var(--mono); font-size:.9em; color:#ffb08a;
+    background:rgba(255,107,53,.10); padding:.1em .38em; border-radius:5px;
+  }
+
+  /* 代码块 */
+  .code{
+    background:#0d1219; border:1px solid var(--line); border-radius:14px;
+    padding:1.15rem 1.35rem; white-space:pre; overflow-x:auto;
+    font-family:var(--mono); font-size:clamp(12.5px,1.35vw,15.5px); line-height:1.8;
+    color:#c9d3df;
+    box-shadow:0 16px 40px rgba(0,0,0,.35);
+    min-height:3.6em;
+  }
+  .code.typing::after{
+    content:'▌'; color:var(--accent); margin-left:1px;
+    animation:blink .75s steps(1) infinite;
+  }
+  @keyframes blink{50%{opacity:0}}
+
+  .kw{color:#ff7b72;}   /* 关键字 */
+  .ty{color:#79c0ff;}   /* 类型 / 大写标识 */
+  .st{color:#a5d6ff;}   /* 字符串 */
+  .nm{color:#d2a8ff;}   /* 数字 */
+  .cm{color:#6b7787; font-style:italic;} /* 注释 */
+  .op{color:#ff9e64;}   /* 运算符 */
+
+  /* 底部 HUD */
+  .hud{
+    position:fixed; left:0; right:0; bottom:0; z-index:5;
+    padding:0 6vw 2.2vh; display:flex; align-items:center; gap:1rem;
+    pointer-events:none;
+  }
+  .progress{
+    flex:1; height:3px; border-radius:3px; background:rgba(255,255,255,.08);
+    overflow:hidden;
+  }
+  .progress .bar{
+    height:100%; width:0; border-radius:3px;
+    background:linear-gradient(90deg,#ff6b35,#f7c948);
+    transition:width .45s cubic-bezier(.2,.8,.3,1);
+    box-shadow:0 0 14px rgba(255,107,53,.6);
+  }
+  .counter{
+    font-family:var(--mono); font-size:.78rem; color:#66707e;
+    letter-spacing:.08em; white-space:nowrap;
+  }
+  .dots{display:flex; gap:.42rem; pointer-events:auto;}
+  .dot{
+    width:8px; height:8px; border-radius:50%; border:none; cursor:pointer; padding:0;
+    background:rgba(255,255,255,.16); transition:all .3s ease;
+  }
+  .dot:hover{background:rgba(255,255,255,.4);}
+  .dot.on{background:var(--accent); width:22px; border-radius:4px;
+          box-shadow:0 0 12px rgba(255,107,53,.7);}
+  @media(max-width:640px){ .dots{display:none;} }
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+
+<div class="deck">
+
+  <!-- 1 封面 -->
+  <section class="slide">
+    <div class="slide-inner cover">
+      <div class="logo-wrap anim" style="--d:0s"><div class="logo">R</div></div>
+      <h1 class="anim" style="--d:.08s">Rust</h1>
+      <p class="lead anim" style="--d:.18s">安全 · 并发 · 高效 —— 现代系统编程语言</p>
+      <div class="tags anim" style="--d:.3s">
+        <span>无 GC 内存安全</span>
+        <span>零成本抽象</span>
+        <span>编译期并发检查</span>
+      </div>
+      <p class="hint anim" style="--d:.5s">使用 ← → / 空格 翻页</p>
+    </div>
+  </section>
+
+  <!-- 2 什么是 Rust -->
+  <section class="slide">
+    <div class="slide-inner">
+      <h2 class="anim"><span class="num">01</span>什么是 Rust</h2>
+      <div class="two">
+        <div class="anim" style="--d:.1s">
+          <p class="sub">
+            Rust 是一门由 Mozilla 发起、2015 年发布 1.0 的通用系统编程语言，现由 Rust 基金会维护。
+            它最大的特点，是把内存管理的责任从运行时交给编译器：通过所有权、借用和生命周期规则，
+            在编译期就发现悬垂引用与数据竞争，因此不需要垃圾回收也能保证内存安全。
+            同时它拥有零成本抽象、泛型与 trait、模式匹配以及完善的包管理器 Cargo，
+            兼顾了 C 的性能与高级语言的开发体验。
+          </p>
+        </div>
+        <pre class="code anim" data-type style="--d:.2s">fn main() {
+    let msg = "Hello, Rust!";
+    println!("{}", msg);  // 打印到标准输出
+}</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 三大优势 -->
+  <section class="slide">
+    <div class="slide-inner">
+      <h2 class="anim"><span class="num">02</span>三大核心优势</h2>
+      <div class="cards">
+        <div class="card anim" style="--d:.05s">
+          <h3>⚡ 高性能</h3>
+          <p>直接编译为原生机器码，没有虚拟机、没有 GC 停顿，性能与 C / C++ 处于同一量级。</p>
+        </div>
+        <div class="card anim" style="--d:.18s">
+          <h3>🛡 内存安全</h3>
+          <p>所有权与借用检查在编译期消除空指针、缓冲区溢出、悬垂引用与重复释放。</p>
+        </div>
+        <div class="card anim" style="--d:.31s">
+          <h3>🔀 无畏并发</h3>
+          <p>Send / Sync 标记让数据竞争在编译期直接报错，而不是在线上环境随机崩溃。</p>
+        </div>
+      </div>
+      <p class="sub anim" style="--d:.46s; margin-top:1.6rem;">
+        这三者通常互相冲突：安全要加运行时开销，性能要放弃检查。Rust 的答案是——把检查全部前移到编译期。
+      </p>
+    </div>
+  </section>
+
+  <!-- 4 所有权 -->
+  <section class="slide">
+    <div class="slide-inner">
+      <h2 class="anim"><span class="num">03</span>所有权 Ownership</h2>
+      <div class="two">
+        <ul class="pts anim" style="--d:.1s">
+          <li>每个值有且只有<strong>一个所有者</strong>变量。</li>
+          <li>所有者<strong>离开作用域</strong>时，值自动释放（调用 drop）。</li>
+          <li>赋值或传参默认发生<strong>移动（move）</strong>，而不是浅拷贝。</li>
+          <li>需要复制就用 <code>.clone()</code>，需要共享就用引用。</li>
+        </ul>
+        <pre class="code anim" data-type style="--d:.2s">fn main() {
+    let s = String::from("hello");
+    let t = s;              // 所有权从 s 移动到 t
+    println!("{}", t);      // ✅ 正常
+    // println!("{}", s);   // ❌ 编译错误：s 已被移动
+}</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 借用与生命周期 -->
+  <section class="slide">
+    <div class="slide-inner">
+      <h2 class="anim"><span class="num">04</span>借用与生命周期</h2>
+      <div class="two">
+        <pre class="code anim" data-type style="--d:.1s">fn longest&lt;'a&gt;(x: &amp;'a str, y: &amp;'a str) -&gt; &amp;'a str {
+    if x.len() &gt; y.len() { x } else { y }
+}</pre>
+        <ul class="pts anim" style="--d:.2s">
+          <li><code>&amp;T</code> 是不可变借用，<code>&amp;mut T</code> 是可变借用。</li>
+          <li>同一作用域内：要么有<strong>任意多个不可变借用</strong>，要么只有<strong>一个可变借用</strong>。</li>
+          <li>可变借用是独占访问，从规则上杜绝数据竞争。</li>
+          <li>生命周期参数 <code>'a</code> 描述引用的有效范围，借用检查器保证引用不会比数据活得更久。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 错误处理 -->
+  <section class="slide">
+    <div class="slide-inner">
+      <h2 class="anim"><span class="num">05</span>错误处理：没有异常</h2>
+      <div class="two">
+        <div class="anim" style="--d:.1s">
+          <p class="sub">
+            Rust 没有 try / catch。可恢复的错误用 <code style="font-family:var(--mono);color:#ffb08a">Result&lt;T, E&gt;</code> 表示，
+            可能为空的值用 <code style="font-family:var(--mono);color:#ffb08a">Option&lt;T&gt;</code> 表示。
+            两者都是普通枚举，必须显式处理。
+            <br><br>
+            <code style="font-family:var(--mono);color:#ffb08a">?</code> 运算符会把错误自动向上传播，
+            让“正常路径”和“错误路径”在代码里同样清晰可读。
+          </p>
+        </div>
+        <pre class="code anim" data-type style="--d:.2s">fn read_config() -&gt; Result&lt;String, std::io::Error&gt; {
+    let s = std::fs::read_to_string("config.toml")?;
+    Ok(s)
+}</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 枚举与匹配 -->
+  <section class="slide">
+    <div class="slide-inner">
+      <h2 class="anim"><span class="num">06</span>枚举与模式匹配</h2>
+      <pre class="code anim" data-type style="--d:.1s">enum Shape {
+    Circle(f64),
+    Rect(f64, f64),
+}
+
+fn area(s: &amp;Shape) -&gt; f64 {
+    match s {
+        Shape::Circle(r) =&gt; 3.14159 * r * r,
+        Shape::Rect(w, h) =&gt; w * h,
+    }
+}</pre>
+      <p class="sub anim" style="--d:.3s; margin-top:1.2rem;">
+        match 必须穷尽所有分支——漏掉任何一种情况，编译器就会直接报错。这让“忘记处理某个状态”这类 bug 在编译期就消失。
+      </p>
+    </div>
+  </section>
+
+  <!-- 8 Cargo -->
+  <section class="slide">
+    <div class="slide-inner">
+      <h2 class="anim"><span class="num">07</span>Cargo 与工具链</h2>
+      <div class="two">
+        <pre class="code anim" data-type="plain" style="--d:.1s">$ cargo new hello
+     Created binary (application) `hello` package
+$ cd hello &amp;&amp; cargo run
+   Compiling hello v0.1.0
+    Finished `dev` profile in 0.42s
+     Running `target/debug/hello`
+Hello, Rust!</pre>
+        <ul class="pts anim" style="--d:.2s">
+          <li><strong>Cargo</strong>：统一的构建、依赖管理、测试与发布工具。</li>
+          <li><strong>rustfmt</strong>：官方代码格式化，团队风格零争论。</li>
+          <li><strong>clippy</strong>：静态检查，给出更地道的写法建议。</li>
+          <li><strong>rust-analyzer</strong>：IDE 补全与内联错误提示。</li>
+          <li><strong>rustup</strong>：一条命令切换稳定版 / 测试版工具链。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9 应用场景 -->
+  <section class="slide">
+    <div class="slide-inner">
+      <h2 class="anim"><span class="num">08</span>它被用在哪里</h2>
+      <div class="cards">
+        <div class="card anim" style="--d:.05s">
+          <h3>系统与内核</h3>
+          <p>Linux 内核、Windows、Android 均已引入 Rust 组件；Firefox 的渲染引擎大量使用。</p>
+        </div>
+        <div class="card anim" style="--d:.16s">
+          <h3>云原生与后端</h3>
+          <p>Tokio 异步运行时、高性能网关、数据库与分布式存储的常见选择。</p>
+        </div>
+        <div class="card anim" style="--d:.27s">
+          <h3>WebAssembly</h3>
+          <p>wasm-bindgen、SWC、Turbopack 等前端工具链，把原生性能带进浏览器。</p>
+        </div>
+        <div class="card anim" style="--d:.38s">
+          <h3>嵌入式与更多</h3>
+          <p>嵌入式 / 物联网、区块链、命令行工具、游戏引擎与科学计算。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 总结 -->
+  <section class="slide">
+    <div class="slide-inner">
+      <h2 class="anim"><span class="num">09</span>总结</h2>
+      <p class="sub anim" style="--d:.1s">
+        Rust 用编译期的严格检查，换取运行时的安全与性能。
+        上手曲线确实较陡——所有权、借用、生命周期需要一些时间适应；
+        但一旦跨过这道坎，你会得到一门可以安心重构、放心并发的语言。
+      </p>
+      <p class="anim" style="--d:.25s; margin:2rem 0 1.6rem; padding-left:1.1rem;
+         border-left:3px solid var(--accent); font-size:clamp(1rem,1.7vw,1.25rem);
+         line-height:1.9; color:#ffd9c6;">
+        把痛苦留在编译期，而不是留在凌晨三点的线上事故里。
+      </p>
+      <div class="tags anim" style="--d:.4s; justify-content:flex-start;">
+        <span>rust-lang.org</span>
+        <span>《Rust 程序设计语言》</span>
+        <span>Rustlings 练习</span>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- 底部 HUD -->
+<div class="hud">
+  <div class="progress"><div class="bar" id="bar"></div></div>
+  <div class="dots" id="dots"></div>
+  <div class="counter" id="counter">01 / 10</div>
+</div>
+
+<script>
+/* ============================================================
+   1. 极简 Rust 词法高亮
+   ============================================================ */
+const KEYWORDS = [
+  'fn','let','mut','const','static','struct','enum','impl','trait','for','in',
+  'if','else','match','return','pub','use','crate','mod','where','while','loop',
+  'move','ref','as','dyn','async','await','unsafe','type','self','Self','super'
+];
+
+const RE = new RegExp(
+  '(\\/\\/[^\\n]*)' +                       // 1 注释
+  '|("(?:\\\\.|[^"\\\\])*")' +              // 2 字符串
+  '|\\b(' + KEYWORDS.join('|') + ')\\b' +   // 3 关键字
+  '|\\b([A-Z][A-Za-z0-9_]*)\\b' +           // 4 类型 / 大写标识
+  '|\\b(\\d[\\d_]*(?:\\.\\d+)?)\\b' +       // 5 数字
+  '|(->|=>|::|&|\\*)',                      // 6 运算符
+  'g'
+);
+
+function tokenize(code) {
+  const tokens = [];
+  let last = 0, m;
+  RE.lastIndex = 0;
+  while ((m = RE.exec(code)) !== null) {
+    if (m.index > last) tokens.push({ t: code.slice(last, m.index), c: '' });
+    const cls = m[1] ? 'cm' : m[2] ? 'st' : m[3] ? 'kw'
+              : m[4] ? 'ty' : m[5] ? 'nm' : 'op';
+    tokens.push({ t: m[0], c: cls });
+    last = RE.lastIndex;
+  }
+  if (last < code.length) tokens.push({ t: code.slice(last), c: '' });
+  return tokens;
+}
+
+/* ============================================================
+   2. 打字机
+   ============================================================ */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+let runId = 0;                 // 每次切页 +1，用于取消进行中的打字
+
+async function typeTokens(el, tokens, speed, id) {
+  el.textContent = '';
+  el.classList.add('typing');
+  let span = null;
+
+  for (let i = 0; i < tokens.length; i++) {
+    const tok = tokens[i];
+    if (!span) {
+      span = document.createElement('span');
+      if (tok.c) span.className = tok.c;
+      el.appendChild(span);
+    }
+    for (let j = 0; j < tok.t.length; j++) {
+      if (id !== runId) { el.classList.remove('typing'); return; }
+      span.textContent += tok.t[j];
+      await sleep(speed);
+    }
+    span = null;
+  }
+  el.classList.remove('typing');
+}
+
+/* ============================================================
+   3. 幻灯片控制
+   ============================================================ */
+const slides = Array.from(document.querySelectorAll('.slide'));
+const bar     = document.getElementById('bar');
+const counter = document.getElementById('counter');
+const dotsEl  = document.getElementById('dots');
+let cur = -1;
+
+/* 保存原始代码文本，清空等待打字 */
+document.querySelectorAll('[data-type]').forEach(el => {
+  el.dataset.raw = el.textContent.trim();
+  el.textContent = '';
+});
+
+/* 生成导航圆点 */
+slides.forEach((_, i) => {
+  const d = document.createElement('button');
+  d.className = 'dot';
+  d.setAttribute('aria-label', '第 ' + (i + 1) + ' 页');
+  d.addEventListener('click', () => go(i));
+  dotsEl.appendChild(d);
+});
+
+async function playSlide(i) {
+  runId++;
+  const id = runId;
+  const blocks = Array.from(slides[i].querySelectorAll('[data-type]'));
+  blocks.forEach(el => { el.textContent = ''; });
+  if (!blocks.length) return;
+
+  await sleep(420);                       // 等页面切换动画走完
+  if (id !== runId) return;
+
+  for (const el of blocks) {
+    const raw   = el.dataset.raw || '';
+    const plain = el.dataset.type === 'plain';
+    const tokens = plain ? [{ t: raw, c: '' }] : tokenize(raw);
+    await typeTokens(el, tokens, plain ? 12 : 10, id);
+    if (id !== runId) return;
+    await sleep(260);
+    if (id !== runId) return;
+  }
+}
+
+function updateHud() {
+  bar.style.width = ((cur + 1) / slides.length * 100) + '%';
+  counter.textContent =
+    String(cur + 1).padStart(2, '0') + ' / ' + String(slides.length).padStart(2, '0');
+  Array.from(dotsEl.children).forEach((d, i) => d.classList.toggle('on', i === cur));
+}
+
+function go(n) {
+  n = Math.max(0, Math.min(slides.length - 1, n));
+  if (n === cur) return;
+  if (cur >= 0) slides[cur].classList.remove('active');
+  cur = n;
+  slides[cur].classList.add('active');
+  updateHud();
+  playSlide(cur);
+}
+
+/* ============================================================
+   4. 交互
+   ============================================================ */
+window.addEventListener('keydown', e => {
+  if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].includes(e.key)) {
+    e.preventDefault(); go(cur + 1);
+  } else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) {
+    e.preventDefault(); go(cur - 1);
+  } else if (e.key === 'Home') {
+    e.preventDefault(); go(0);
+  } else if (e.key === 'End') {
+    e.preventDefault(); go(slides.length - 1);
+  }
+});
+
+/* 触摸滑动 */
+let tx = 0, ty = 0;
+window.addEventListener('touchstart', e => {
+  tx = e.touches[0].clientX; ty = e.touches[0].clientY;
+}, { passive: true });
+window.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - tx;
+  const dy = e.changedTouches[0].clientY - ty;
+  if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) {
+    go(cur + (dx < 0 ? 1 : -1));
+  }
+}, { passive: true });
+
+/* 启动 */
+go(0);
+</script>
+</body>
+</html>

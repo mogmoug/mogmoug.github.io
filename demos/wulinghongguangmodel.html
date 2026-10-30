@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>五菱宏光 · 3D 模型</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:100%;height:100%;overflow:hidden;background:#080a0f;}
+  canvas{display:block;}
+
+  #hud{
+    position:fixed;inset:0;pointer-events:none;
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    color:#fff;
+  }
+  .brand{
+    position:absolute;left:32px;bottom:32px;
+    display:flex;align-items:center;gap:14px;
+  }
+  .badge{
+    width:52px;height:52px;border-radius:14px;
+    background:linear-gradient(145deg,#e63946,#b3121f);
+    display:grid;place-items:center;
+    font-size:15px;font-weight:800;letter-spacing:1px;
+    box-shadow:0 8px 24px rgba(230,57,70,.35), inset 0 1px 0 rgba(255,255,255,.35);
+  }
+  .meta h1{
+    font-size:19px;font-weight:700;letter-spacing:3px;
+    text-shadow:0 2px 12px rgba(0,0,0,.6);
+  }
+  .meta p{
+    font-size:10px;letter-spacing:2.4px;opacity:.42;margin-top:4px;font-weight:500;
+  }
+  .tip{
+    position:absolute;right:32px;bottom:36px;
+    font-size:11px;letter-spacing:1.6px;opacity:.35;
+    text-align:right;line-height:1.9;
+  }
+  @media (max-width:640px){
+    .brand{left:18px;bottom:20px;}
+    .badge{width:42px;height:42px;font-size:12px;border-radius:11px;}
+    .meta h1{font-size:15px;letter-spacing:2px;}
+    .meta p{font-size:8px;letter-spacing:1.6px;}
+    .tip{right:18px;bottom:22px;font-size:9px;}
+  }
+
+  #loader{
+    position:fixed;inset:0;background:#080a0f;
+    display:grid;place-items:center;
+    font-family:sans-serif;color:#5b6472;font-size:12px;letter-spacing:4px;
+    transition:opacity .8s ease;z-index:10;
+  }
+  #loader.hide{opacity:0;pointer-events:none;}
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <div class="brand">
+    <div class="badge">五菱</div>
+    <div class="meta">
+      <h1>五菱宏光</h1>
+      <p>WULING HONGGUANG · 3D VIEWER</p>
+    </div>
+  </div>
+  <div class="tip">拖动旋转 · 滚轮缩放<br>右键平移 · 自动环绕</div>
+</div>
+
+<div id="loader">L O A D I N G</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+/* ============================================================
+   渲染器
+============================================================ */
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+/* ============================================================
+   场景 & 相机
+============================================================ */
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080a0f);
+scene.fog = new THREE.Fog(0x080a0f, 17, 44);
+
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 300);
+camera.position.set(6.0, 3.0, 6.4);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0.95, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.07;
+controls.rotateSpeed = 0.85;
+controls.minDistance = 4.2;
+controls.maxDistance = 22;
+controls.maxPolarAngle = Math.PI * 0.495;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.7;
+controls.update();
+
+/* ============================================================
+   环境光照（PMREM + RoomEnvironment）
+============================================================ */
+const pmrem = new THREE.PMREMGenerator(renderer);
+pmrem.compileEquirectangularShader();
+const envTexture = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environment = envTexture;
+
+scene.add(new THREE.HemisphereLight(0x9fc0ff, 0x141820, 0.55));
+
+const keyLight = new THREE.DirectionalLight(0xffffff, 3.0);
+keyLight.position.set(6, 11, 7);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.camera.near = 1;
+keyLight.shadow.camera.far = 42;
+keyLight.shadow.camera.left = -7;
+keyLight.shadow.camera.right = 7;
+keyLight.shadow.camera.top = 7;
+keyLight.shadow.camera.bottom = -7;
+keyLight.shadow.bias = -0.0008;
+keyLight.shadow.normalBias = 0.022;
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0x5599ff, 1.7);
+fillLight.position.set(-8, 5, -7);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0xff8a4a, 0.85);
+rimLight.position.set(-3, 2.4, 9);
+scene.add(rimLight);
+
+/* ============================================================
+   地面
+============================================================ */
+const ground = new THREE.Mesh(
+  new THREE.CircleGeometry(32, 72),
+  new THREE.MeshStandardMaterial({ color: 0x11151c, roughness: 0.86, metalness: 0.35 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+/* 柔和接触阴影 */
+(function addContactShadow() {
+  const size = 256;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = size;
+  const ctx = cv.getContext('2d');
+  const grd = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  grd.addColorStop(0.0, 'rgba(0,0,0,0.80)');
+  grd.addColorStop(0.45, 'rgba(0,0,0,0.38)');
+  grd.addColorStop(1.0, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 0, size, size);
+
+  const tex = new THREE.CanvasTexture(cv);
+  const plane = new THREE.Mesh(
+    new THREE.PlaneGeometry(6.4, 3.2),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0.85 })
+  );
+  plane.rotation.x = -Math.PI / 2;
+  plane.position.y = 0.008;
+  scene.add(plane);
+})();
+
+/* ============================================================
+   材质库
+============================================================ */
+const MAT = {
+  paint: new THREE.MeshPhysicalMaterial({
+    color: 0xd9dee5,
+    metalness: 0.5,
+    roughness: 0.26,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.07,
+    envMapIntensity: 1.2
+  }),
+  glass: new THREE.MeshPhysicalMaterial({
+    color: 0x0b1119,
+    metalness: 0.55,
+    roughness: 0.05,
+    clearcoat: 1.0,
+    transparent: true,
+    opacity: 0.93,
+    side: THREE.DoubleSide,
+    envMapIntensity: 2.2
+  }),
+  black: new THREE.MeshStandardMaterial({ color: 0x101317, roughness: 0.6, metalness: 0.3 }),
+  gray: new THREE.MeshStandardMaterial({ color: 0x2b3138, roughness: 0.75, metalness: 0.25 }),
+  chrome: new THREE.MeshStandardMaterial({ color: 0xe6ebf0, roughness: 0.14, metalness: 1.0, envMapIntensity: 1.5 }),
+  tire: new THREE.MeshStandardMaterial({ color: 0x0d0f12, roughness: 0.95, metalness: 0.05 }),
+  head: new THREE.MeshPhysicalMaterial({
+    color: 0xf4f8ff, roughness: 0.08, metalness: 0.2,
+    emissive: 0x9dc4ff, emissiveIntensity: 0.65, clearcoat: 1
+  }),
+  tail: new THREE.MeshStandardMaterial({
+    color: 0xc41414, roughness: 0.3, metalness: 0.15,
+    emissive: 0xff1a1a, emissiveIntensity: 1.15
+  }),
+  plate: new THREE.MeshStandardMaterial({ color: 0x1a4f9c, roughness: 0.45, metalness: 0.2 }),
+  logo: new THREE.MeshStandardMaterial({ color: 0xd81f2c, roughness: 0.35, metalness: 0.3, emissive: 0x4a0006, emissiveIntensity: 0.6 })
+};
+
+/* ============================================================
+   车辆总组
+============================================================ */
+const car = new THREE.Group();
+scene.add(car);
+
+/* ---------- 工具：加个方块 ---------- */
+function addBox(parent, w, h, d, x, y, z, mat, rx = 0, ry = 0, rz = 0) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(x, y, z);
+  m.rotation.set(rx, ry, rz);
+  m.castShadow = true;
+  m.receiveShadow = true;
+  parent.add(m);
+  return m;
+}
+
+/* ============================================================
+   车身 —— 侧面轮廓挤出
+============================================================ */
+const bodyShape = new THREE.Shape();
+bodyShape.moveTo(2.16, 0.26);          // 车头下沿
+bodyShape.lineTo(2.19, 0.60);          // 前脸
+bodyShape.lineTo(2.18, 0.94);          // 前脸上沿
+bodyShape.lineTo(2.04, 1.02);          // 引擎盖前缘
+bodyShape.lineTo(1.52, 1.06);          // 引擎盖后缘（风挡下沿）
+bodyShape.lineTo(1.06, 1.86);          // 风挡上沿（车顶前缘）
+bodyShape.lineTo(-1.92, 1.88);         // 车顶后缘
+bodyShape.lineTo(-2.10, 1.74);         // 车尾上倒角
+bodyShape.lineTo(-2.16, 1.32);         // 车尾
+bodyShape.lineTo(-2.16, 0.26);         // 车尾下沿
+// —— 底部返回，中间挖出前后轮拱 ——
+bodyShape.lineTo(-1.76, 0.26);
+bodyShape.absarc(-1.32, 0.26, 0.44, Math.PI, 0, true);  // 后轮拱
+bodyShape.lineTo(0.86, 0.26);
+bodyShape.absarc(1.30, 0.26, 0.44, Math.PI, 0, true);   // 前轮拱
+bodyShape.lineTo(2.16, 0.26);
+
+const bodyGeo = new THREE.ExtrudeGeometry(bodyShape, {
+  depth: 1.62,
+  bevelEnabled: true,
+  bevelThickness: 0.03,
+  bevelSize: 0.03,
+  bevelSegments: 3,
+  curveSegments: 18,
+  steps: 1
+});
+bodyGeo.translate(0, 0, -0.81);
+
+const bodyMesh = new THREE.Mesh(bodyGeo, MAT.paint);
+bodyMesh.castShadow = true;
+bodyMesh.receiveShadow = true;
+car.add(bodyMesh);
+
+/* ============================================================
+   玻璃
+============================================================ */
+/* --- 前风挡 --- */
+(function windshield() {
+  const p1 = { x: 1.52, y: 1.06 };
+  const p2 = { x: 1.06, y: 1.86 };
+  const dx = p2.x - p1.x, dy = p2.y - p1.y;
+  const len = Math.hypot(dx, dy);
+  const angle = Math.atan2(dy, dx);
+  const nx = dy / len, ny = -dx / len;      // 外法线
+  const cx = (p1.x + p2.x) / 2 - nx * 0.018;
+  const cy = (p1.y + p2.y) / 2 - ny * 0.018;
+
+  const geo = new THREE.BoxGeometry(len * 1.0, 0.05, 1.46);
+  const mesh = new THREE.Mesh(geo, MAT.glass);
+  mesh.position.set(cx, cy, 0);
+  mesh.rotation.z = angle;
+  car.add(mesh);
+})();
+
+/* --- 侧窗 --- */
+(function sideWindows() {
+  const s = new THREE.Shape();
+  s.moveTo(1.38, 1.16);
+  s.lineTo(1.03, 1.78);
+  s.lineTo(-1.86, 1.80);
+  s.lineTo(-1.90, 1.16);
+  s.closePath();
+
+  const geo = new THREE.ShapeGeometry(s, 6);
+
+  const left = new THREE.Mesh(geo, MAT.glass);
+  left.position.z = 0.827;
+  car.add(left);
+
+  const right = new THREE.Mesh(geo, MAT.glass);
+  right.position.z = -0.827;
+  car.add(right);
+})();
+
+/* --- 后窗 --- */
+addBox(car, 0.05, 0.52, 1.36, -2.165, 1.45, 0, MAT.glass);
+
+/* --- B 柱 --- */
+[-1, 1].forEach(s => {
+  addBox(car, 0.085, 0.68, 0.045, -0.16, 1.48, s * 0.828, MAT.paint);
+});
+
+/* ============================================================
+   前脸
+============================================================ */
+addBox(car, 0.05, 0.34, 0.86, 2.185, 0.78, 0, MAT.black);          // 中网
+addBox(car, 0.045, 0.045, 0.86, 2.212, 0.885, 0, MAT.chrome);      // 镀铬上条
+addBox(car, 0.045, 0.045, 0.86, 2.212, 0.675, 0, MAT.chrome);      // 镀铬下条
+addBox(car, 0.035, 0.13, 0.16, 2.222, 0.78, 0, MAT.logo);          // 车标
+
+[-1, 1].forEach(s => {
+  addBox(car, 0.10, 0.22, 0.34, 2.17, 0.82, s * 0.56, MAT.head);   // 大灯
+  addBox(car, 0.05, 0.10, 0.16, 2.205, 0.44, s * 0.56, MAT.head);  // 雾灯
+});
+
+/* 前保险杠 */
+addBox(car, 0.16, 0.30, 1.62, 2.14, 0.40, 0, MAT.gray);
+addBox(car, 0.05, 0.13, 0.92, 2.215, 0.40, 0, MAT.black);          // 下进气口
+
+/* ============================================================
+   车尾
+============================================================ */
+[-1, 1].forEach(s => {
+  addBox(car, 0.06, 0.46, 0.16, -2.18, 1.02, s * 0.66, MAT.tail);  // 尾灯
+});
+addBox(car, 0.12, 0.26, 1.62, -2.16, 0.40, 0, MAT.gray);           // 后保险杠
+addBox(car, 0.02, 0.15, 0.42, -2.228, 0.72, 0, MAT.plate);         // 车牌
+
+/* ============================================================
+   后视镜
+============================================================ */
+[-1, 1].forEach(s => {
+  addBox(car, 0.10, 0.035, 0.13, 1.36, 1.20, s * 0.855, MAT.black);   // 支架
+  addBox(car, 0.10, 0.155, 0.10, 1.33, 1.225, s * 0.935, MAT.paint);  // 镜壳
+});
+
+/* ============================================================
+   车顶行李架
+============================================================ */
+[-1, 1].forEach(s => {
+  addBox(car, 1.80, 0.055, 0.07, -0.70, 1.915, s * 0.50, MAT.gray);
+});
+
+/* ============================================================
+   门把手
+============================================================ */
+[-1, 1].forEach(s => {
+  addBox(car, 0.16, 0.045, 0.022, 0.42, 1.22, s * 0.822, MAT.chrome);
+  addBox(car, 0.16, 0.045, 0.022, -0.95, 1.22, s * 0.822, MAT.chrome);
+});
+
+/* ============================================================
+   轮毂贴图
+============================================================ */
+function createRimTexture() {
+  const S = 256, C = S / 2;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = S;
+  const ctx = cv.getContext('2d');
+
+  // 轮辋底色
+  ctx.fillStyle = '#b9c0c8';
+  ctx.beginPath();
+  ctx.arc(C, C, C, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 5 条辐条
+  ctx.save();
+  ctx.translate(C, C);
+  for (let i = 0; i < 5; i++) {
+    ctx.rotate((Math.PI * 2) / 5);
+    ctx.fillStyle = '#5a6169';
+    ctx.beginPath();
+    ctx.moveTo(-17, -20);
+    ctx.lineTo(17, -20);
+    ctx.lineTo(11, -106);
+    ctx.lineTo(-11, -106);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // 中心盖
+  const g = ctx.createRadialGradient(C - 8, C - 8, 2, C, C, 32);
+  g.addColorStop(0, '#eef3f8');
+  g.addColorStop(1, '#8f969e');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(C, C, 30, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 外圈
+  ctx.strokeStyle = '#8d949c';
+  ctx.lineWidth = 11;
+  ctx.beginPath();
+  ctx.arc(C, C, C - 6, 0, Math.PI * 2);
+  ctx.stroke();
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  return tex;
+}
+
+const rimFaceMat = new THREE.MeshStandardMaterial({
+  map: createRimTexture(), roughness: 0.28, metalness: 0.7, envMapIntensity: 1.2
+});
+const rimSideMat = new THREE.MeshStandardMaterial({
+  color: 0xa8b0b8, roughness: 0.3, metalness: 0.9, envMapIntensity: 1.2
+});
+
+/* ============================================================
+   车轮
+============================================================ */
+function createWheel() {
+  const g = new THREE.Group();
+
+  const tire = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.33, 0.22, 32), MAT.tire);
+  tire.rotation.x = Math.PI / 2;
+  tire.castShadow = true;
+  g.add(tire);
+
+  const rim = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.225, 0.225, 0.185, 32),
+    [rimSideMat, rimFaceMat, rimFaceMat]
+  );
+  rim.rotation.x = Math.PI / 2;
+  rim.castShadow = true;
+  g.add(rim);
+
+  return g;
+}
+
+[
+  [ 1.30, 0.33,  0.70],
+  [ 1.30, 0.33, -0.70],
+  [-1.32, 0.33,  0.70],
+  [-1.32, 0.33, -0.70]
+].forEach(([x, y, z]) => {
+  const w = createWheel();
+  w.position.set(x, y, z);
+  car.add(w);
+});
+
+/* ============================================================
+   动画循环
+============================================================ */
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  controls.update(dt);
+  renderer.render(scene, camera);
+}
+animate();
+
+/* ============================================================
+   自适应
+============================================================ */
+let resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  }, 80);
+});
+
+/* 用户交互 3 秒后恢复自动旋转 */
+let idleTimer = null;
+renderer.domElement.addEventListener('pointerdown', () => {
+  controls.autoRotate = false;
+  clearTimeout(idleTimer);
+});
+window.addEventListener('pointerup', () => {
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => { controls.autoRotate = true; }, 3000);
+});
+
+/* 隐藏加载遮罩 */
+requestAnimationFrame(() => {
+  setTimeout(() => {
+    const el = document.getElementById('loader');
+    el.classList.add('hide');
+    setTimeout(() => el.remove(), 900);
+  }, 350);
+});
+</script>
+</body>
+</html>

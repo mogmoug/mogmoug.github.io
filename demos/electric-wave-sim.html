@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>电磁波的产生与接收 · 交互仿真</title>
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#12161f; --panel2:#0e1219; --line:#232a38;
+    --txt:#dbe4f0; --dim:#8b98ad; --cyan:#22d3ee; --green:#4ade80; --amber:#fbbf24;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:radial-gradient(1200px 600px at 50% -100px,#13233f 0%,var(--bg) 55%);
+    color:var(--txt); font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+    padding:16px; min-width:1180px;
+  }
+  .wrap{max-width:1160px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+  header{display:flex;align-items:baseline;gap:14px}
+  header h1{font-size:22px;letter-spacing:1px}
+  header h1 b{color:var(--cyan)}
+  header p{color:var(--dim);font-size:13px}
+  .panel{background:linear-gradient(180deg,var(--panel),var(--panel2));
+    border:1px solid var(--line);border-radius:12px;padding:12px}
+  .panel h2{font-size:13px;color:var(--dim);font-weight:600;margin-bottom:8px;
+    display:flex;gap:8px;align-items:center}
+  .panel h2 .dot{width:8px;height:8px;border-radius:50%;background:var(--cyan);
+    box-shadow:0 0 8px var(--cyan)}
+  canvas{display:block;border-radius:8px}
+  .row{display:grid;grid-template-columns:1fr 340px;gap:12px}
+  /* ---- 示波器控制条 ---- */
+  .scope-ctrl{display:flex;gap:18px;align-items:center;margin-top:10px;flex-wrap:wrap}
+  .sgroup{display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--dim)}
+  .sgroup b{color:var(--cyan);font-family:Consolas,monospace;font-weight:600}
+  .sgroup input{width:130px;accent-color:var(--cyan)}
+  .pill{font-size:12px;display:flex;gap:6px;align-items:center;color:var(--dim);
+    background:#0d1219;border:1px solid var(--line);padding:6px 10px;border-radius:999px;cursor:pointer}
+  .pill input{accent-color:var(--green)}
+  /* ---- 控制台 ---- */
+  .ctl{margin-bottom:14px}
+  .ctl label{display:flex;justify-content:space-between;font-size:12px;color:var(--dim);margin-bottom:4px}
+  .ctl label span{color:var(--cyan);font-family:Consolas,monospace}
+  .ctl input[type=range]{width:100%;accent-color:var(--cyan)}
+  .power{width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);
+    background:#182030;color:#94a3b8;font-size:14px;cursor:pointer;letter-spacing:2px}
+  .power.on{color:var(--green);border-color:#14532d;
+    box-shadow:inset 0 0 14px rgba(74,222,128,.18),0 0 10px rgba(74,222,128,.15)}
+  .resbar{height:8px;background:#1e293b;border-radius:4px;overflow:hidden;margin-top:6px;position:relative}
+  .resbar i{display:block;height:100%;width:100%;border-radius:4px;
+    background:linear-gradient(90deg,#166534,var(--green));transition:width .15s}
+  .resbar em{position:absolute;right:6px;top:-16px;font-size:10px;font-style:normal;color:var(--green)}
+  .btns{display:flex;gap:8px;margin-top:8px}
+  .btns button{flex:1;padding:6px;font-size:12px;border-radius:6px;cursor:pointer;
+    background:#101826;border:1px solid var(--line);color:var(--txt)}
+  .btns button:hover{border-color:var(--cyan)}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0 10px}
+  .stat{background:#0d1219;border:1px solid var(--line);border-radius:8px;padding:7px 8px}
+  .stat b{display:block;font-size:14px;color:var(--cyan);font-family:Consolas,monospace}
+  .stat span{font-size:10px;color:var(--dim)}
+  .layers{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--dim)}
+  .layers label{display:flex;gap:5px;align-items:center;cursor:pointer}
+  .layers input{accent-color:var(--cyan)}
+  hr{border:none;border-top:1px dashed var(--line);margin:12px 0}
+  /* ---- 说明卡片 ---- */
+  .notes{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .note{background:#0d1219;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .note h3{font-size:13px;color:var(--cyan);margin-bottom:6px}
+  .note p{font-size:11.5px;color:var(--dim);line-height:1.7}
+  footer{text-align:center;color:#4b5a72;font-size:11px;padding:4px 0 10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>⚡ 电磁波的<b>产生与接收</b> · 交互仿真</h1>
+    <p>赫兹实验可视化 ｜ 纯 Canvas 手绘 ｜ MVC 架构 ｜ 时间放慢 1×10⁸ 倍</p>
+  </header>
+
+  <!-- 实验场景 -->
+  <section class="panel">
+    <h2><span class="dot"></span>实验场景 —— 发射电路 · 空间传播 · 接收电路</h2>
+    <canvas id="scene"></canvas>
+  </section>
+
+  <div class="row">
+    <!-- 示波器 -->
+    <section class="panel">
+      <h2><span class="dot" style="background:var(--green);box-shadow:0 0 8px var(--green)"></span>
+        双踪示波器 —— CH1 发射电流监测 / CH2 接收信号</h2>
+      <canvas id="scope"></canvas>
+      <div class="scope-ctrl">
+        <div class="sgroup"><label>时基 <b id="tdivVal"></b></label>
+          <input type="range" id="tdiv" min="0" max="4" step="1" value="2"></div>
+        <div class="sgroup"><label>CH1 幅度 <b id="v1Val"></b></label>
+          <input type="range" id="v1" min="0" max="5" step="1" value="2"></div>
+        <div class="sgroup"><label>CH2 幅度 <b id="v2Val"></b></label>
+          <input type="range" id="v2" min="0" max="5" step="1" value="2"></div>
+        <label class="pill"><input type="checkbox" id="ch1" checked> CH1</label>
+        <label class="pill"><input type="checkbox" id="ch2" checked> CH2</label>
+      </div>
+    </section>
+
+    <!-- 控制台 -->
+    <aside class="panel">
+      <h2><span class="dot" style="background:var(--amber);box-shadow:0 0 8px var(--amber)"></span>控制台</h2>
+      <button id="powerBtn" class="power on">⏻ 发射电源 · 开</button>
+      <hr>
+      <div class="ctl"><label>振荡频率 f <span id="freqVal"></span></label>
+        <input type="range" id="freq" min="0.5" max="5" step="0.05" value="2"></div>
+      <div class="ctl"><label>发射强度 <span id="ampVal"></span></label>
+        <input type="range" id="amp" min="0" max="1" step="0.01" value="0.85"></div>
+      <div class="ctl"><label>收发距离 d <span id="distVal"></span></label>
+        <input type="range" id="dist" min="2.5" max="8.5" step="0.1" value="6.5"></div>
+      <div class="ctl"><label>接收调谐频率 f₀ <span id="tuneVal"></span></label>
+        <input type="range" id="tune" min="0.5" max="5" step="0.05" value="2">
+        <div class="resbar"><i id="resFill"></i><em id="resTxt"></em></div>
+        <div class="btns"><button id="btnRes">一键谐振</button><button id="btnDet">失谐演示</button></div>
+      </div>
+      <div class="stats">
+        <div class="stat"><b id="stFreq">—</b><span>等效频率</span></div>
+        <div class="stat"><b id="stLam">—</b><span>波长 λ = c/f</span></div>
+        <div class="stat"><b>3.0×10⁸</b><span>波速 m/s</span></div>
+        <div class="stat"><b id="stVpp">—</b><span>接收 Vpp</span></div>
+        <div class="stat"><b id="stRes">—</b><span>谐振系数</span></div>
+        <div class="stat"><b id="stSig">—</b><span>信号强度</span></div>
+      </div>
+      <div class="layers">
+        <label><input type="checkbox" id="lyFronts" checked>波前</label>
+        <label><input type="checkbox" id="lyField" checked>电场分量</label>
+        <label><input type="checkbox" id="lyCharges" checked>电荷运动</label>
+      </div>
+    </aside>
+  </div>
+
+  <!-- 原理说明 -->
+  <section class="notes">
+    <div class="note"><h3>① 电磁波的产生</h3><p>LC 振荡电路驱动天线，电荷加速往复运动，交变的电场与磁场脱离波源、以电磁波形式向空间辐射。频率由振荡电路决定（麦克斯韦预言，赫兹证实）。</p></div>
+    <div class="note"><h3>② 电磁波的传播</h3><p>电磁波以光速 c 传播，E、B 与传播方向两两垂直（横波），远区场强按 1/r 衰减。画面比例：50 px = 1 m，时间放慢 1 亿倍以便观察。</p></div>
+    <div class="note"><h3>③ 接收与谐振</h3><p>来波电场推动接收天线中的自由电子，感应出同频交变电动势。当接收回路调谐频率与来波频率一致（谐振）时信号最强——这正是收音机"选台"的原理。</p></div>
+    <div class="note"><h3>④ 试一试</h3><p>❶ 关闭电源：已发出的波继续向前传播；❷ 改变频率：观察波长与波前疏密变化；❸ 增大距离：CH2 幅度按 1/r 减小；❹ 微调"接收调谐"：感受谐振选台。</p></div>
+  </section>
+
+  <footer>纯原生 HTML5 Canvas 实现 · Model（物理）/ View（绘制）/ Controller（交互）· 无任何外部依赖</footer>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+ *  M —— Model：物理模型
+ *  换算约定：50 px = 1 m；仿真波速 150 px/s 代表光速 c；
+ *  仿真频率 f ×100 即为等效真实频率 (MHz)，故 λ 在画面中与真实一致。
+ * ===================================================================== */
+class Model{
+  constructor(){
+    this.PX_PER_M = 50;            // 比例尺
+    this.V = 150;                  // 仿真波速 (px/s)
+    this.freq = 2.0;               // 仿真振荡频率 (Hz) ≙ 200 MHz
+    this.amp  = 0.85;              // 发射强度 0~1
+    this.distM = 6.5;              // 收发距离 (m)
+    this.tune  = 2.0;              // 接收调谐频率
+    this.power = true;
+    this.show = {fronts:true, field:true, charges:true};
+    this.scope = {v1:0.2, v2:0.2, td:0.2, ch1:true, ch2:true};
+    this.t = 0; this.phase = 0; this.env = 1;
+    this.hist = [];                // 历史 {t,phase,env} —— 用于计算推迟效应
+  }
+  get lambda(){ return this.V/this.freq; }        // 仿真波长 px
+  get lambdaM(){ return 3/this.freq; }            // 真实波长 m (c/f)
+  get distPx(){ return this.distM*this.PX_PER_M; }
+  resonance(){ const x=(this.freq-this.tune)/this.freq; return 1/(1+(8*x)**2); } // Q=8
+  attenu(){ return Math.min(1, this.PX_PER_M/Math.max(this.distPx,30)); }        // 远场 1/r
+  step(dt){
+    this.t += dt;
+    this.phase += 2*Math.PI*this.freq*dt;
+    this.env += ((this.power?1:0)-this.env)*Math.min(1, dt*6);   // 开关包络
+    this.hist.push({t:this.t, phase:this.phase, env:this.env});
+    while(this.hist.length>2 && this.hist[0].t < this.t-12) this.hist.shift();
+  }
+  past(tq){                        // 查询历史时刻的相位与包络（推迟势思想）
+    const h=this.hist;
+    if(!h.length) return {phase:0,env:0};
+    if(tq>=this.t) return {phase:this.phase,env:this.env};
+    if(tq<=h[0].t) return {phase:0,env:0};
+    let lo=0,hi=h.length-1;
+    while(hi-lo>1){const md=(lo+hi)>>1; (h[md].t<tq)?lo=md:hi=md;}
+    return h[hi];
+  }
+  txNow(){ return this.amp*this.env*Math.sin(this.phase); }       // 发射电流(归一)
+  rxAt(tt){                        // 接收信号（含传播延迟、衰减、谐振）
+    const p=this.past(tt-this.distPx/this.V);
+    return this.amp*this.attenu()*this.resonance()*p.env*Math.sin(p.phase);
+  }
+  rxAmpEnv(){ return this.amp*this.attenu()*this.resonance()*this.past(this.t-this.distPx/this.V).env; }
+}
+
+/* =====================================================================
+ *  绘图小工具（全部手绘，无外部素材）
+ * ===================================================================== */
+function fit(cv,w,h){
+  const d=window.devicePixelRatio||1;
+  cv.width=w*d; cv.height=h*d; cv.style.width=w+'px'; cv.style.height=h+'px';
+  const c=cv.getContext('2d'); c.setTransform(d,0,0,d,0,0); return c;
+}
+function rr(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+}
+function wire(ctx,pts){
+  ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]);
+  for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]);
+  ctx.stroke();
+}
+function coil(ctx,x1,x2,y,n){                 // 电感符号（半圆凸包）
+  const seg=(x2-x1)/n;
+  ctx.beginPath(); ctx.moveTo(x1,y);
+  for(let i=0;i<n;i++) ctx.arc(x1+seg*i+seg/2, y, seg/2-0.5, Math.PI, 0, false);
+  ctx.lineTo(x2,y); ctx.stroke();
+}
+function varCap(ctx,x,y,s){                   // 可变电容符号（带斜箭头）
+  ctx.beginPath();
+  ctx.moveTo(x-5*s,y-11*s); ctx.lineTo(x-5*s,y+11*s);
+  ctx.moveTo(x+5*s,y-11*s); ctx.lineTo(x+5*s,y+11*s);
+  ctx.moveTo(x-13*s,y+14*s); ctx.lineTo(x+11*s,y-12*s);
+  ctx.moveTo(x+11*s,y-12*s); ctx.lineTo(x+4*s,y-10*s);
+  ctx.moveTo(x+11*s,y-12*s); ctx.lineTo(x+9*s,y-5*s);
+  ctx.stroke();
+}
+function glowDot(ctx,x,y,r,color){
+  ctx.save(); ctx.shadowColor=color; ctx.shadowBlur=14;
+  const g=ctx.createRadialGradient(x,y,0,x,y,r*2.4);
+  g.addColorStop(0,'#ffffff'); g.addColorStop(.4,color); g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,r*2.4,0,7); ctx.fill(); ctx.restore();
+}
+function label(ctx,txt,x,y,align='center',color='#8b98ad',font='11px "Microsoft YaHei"'){
+  ctx.font=font; ctx.fillStyle=color; ctx.textAlign=align; ctx.textBaseline='middle';
+  ctx.fillText(txt,x,y);
+}
+
+/* =====================================================================
+ *  V1 —— SceneView：发射电路 + 电磁波 + 接收电路
+ * ===================================================================== */
+class SceneView{
+  constructor(cv,m){ this.m=m; this.W=1120; this.H=470; this.ctx=fit(cv,this.W,this.H); }
+
+  draw(){
+    const {ctx,W,H,m}=this;
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='#0c1018'; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='rgba(148,163,184,.05)'; ctx.lineWidth=1;      // 背景网格
+    for(let x=0;x<=W;x+=50){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(let y=0;y<=H;y+=50){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+    const cy=205, txX=205, rxX=txX+m.distPx;
+    if(m.show.fronts) this.wavefronts(txX,cy);
+    if(m.show.field)  this.ewave(txX,cy,rxX);
+    this.transmitter(txX,cy);
+    this.receiver(rxX,cy);
+    this.annotations(txX,rxX,cy);
+    this.legend();
+  }
+
+  /* --- 波前（扩散的圆环，透明度随距离与发射包络衰减） --- */
+  wavefronts(cx,cy){
+    const {ctx,m}=this, lam=m.lambda, maxR=m.distPx+130;
+    let r=(m.V*m.t)%lam; if(r<2) r+=lam;
+    ctx.lineWidth=1.5;
+    for(; r<maxR; r+=lam){
+      const p=m.past(m.t-r/m.V);
+      if(p.env<0.02) continue;
+      const a=0.32*p.env*(0.3+0.7*m.amp)*Math.max(0,1-r/(maxR+160));
+      ctx.strokeStyle=`rgba(56,189,248,${a})`;
+      ctx.beginPath(); ctx.arc(cx,cy,r,-1.2,1.2); ctx.stroke();
+    }
+  }
+
+  /* --- 沿传播轴的电场分量正弦波（推迟相位 + 1/r 包络） --- */
+  ewave(txX,cy,rxX){
+    const {ctx,m}=this, TAU=2*Math.PI;
+    ctx.save();
+    ctx.setLineDash([3,5]); ctx.strokeStyle='rgba(148,163,184,.2)';   // 传播轴
+    ctx.beginPath(); ctx.moveTo(txX,cy); ctx.lineTo(rxX,cy); ctx.stroke();
+    ctx.setLineDash([]);
+    const grad=ctx.createLinearGradient(txX,0,rxX,0);
+    grad.addColorStop(0,'rgba(34,211,238,.95)'); grad.addColorStop(1,'rgba(34,211,238,.12)');
+    ctx.strokeStyle=grad; ctx.lineWidth=2;
+    ctx.shadowColor='rgba(34,211,238,.8)'; ctx.shadowBlur=6;
+    ctx.beginPath();
+    let first=true;
+    for(let x=txX+14;x<=rxX-14;x+=2){
+      const r=x-txX, p=m.past(m.t-r/m.V);
+      const A=m.amp*Math.min(1,60/r);
+      const y=cy + A*p.env*Math.sin(p.phase)*75;
+      first?ctx.moveTo(x,y):ctx.lineTo(x,y); first=false;
+    }
+    ctx.stroke(); ctx.restore();
+    ctx.fillStyle='rgba(56,189,248,.9)';                              // 传播方向箭头
+    ctx.beginPath(); ctx.moveTo(rxX-22,cy); ctx.lineTo(rxX-34,cy-5); ctx.lineTo(rxX-34,cy+5);
+    ctx.closePath(); ctx.fill();
+  }
+
+  /* --- 发射电路：振荡器盒 + L、C + 偶极天线 + 振荡电荷 --- */
+  transmitter(txX,cy){
+    const {ctx,m}=this;
+    // 机盒
+    rr(ctx,34,150,86,110,8); ctx.fillStyle='#161c26'; ctx.fill();
+    ctx.strokeStyle='#2c3648'; ctx.lineWidth=1.5; ctx.stroke();
+    label(ctx,'高频振荡器',77,166,'#9fb2c8','center','12px "Microsoft YaHei"');
+    // 盒内 LC 示意
+    ctx.strokeStyle='#5b6b82'; ctx.lineWidth=1.5;
+    wire(ctx,[[48,200],[48,234],[106,234],[106,200],[48,200]]);
+    coil(ctx,52,102,200,3);
+    wire(ctx,[[48,234],[70,234]]); wire(ctx,[[86,234],[106,234]]);
+    ctx.beginPath(); ctx.moveTo(74,224); ctx.lineTo(74,244);
+    ctx.moveTo(82,224); ctx.lineTo(82,244); ctx.stroke();
+    label(ctx,'L',62,192,'#64748b'); label(ctx,'C',78,254,'#64748b');
+    // 电源指示灯
+    if(m.env>0.05){ glowDot(ctx,104,158,3.2,'#4ade80'); }
+    else{ ctx.fillStyle='#334155'; ctx.beginPath(); ctx.arc(104,158,3.2,0,7); ctx.fill(); }
+    // 连线（上支路串 L，下支路串 C）
+    ctx.strokeStyle='#9fb2c8'; ctx.lineWidth=2;
+    wire(ctx,[[120,170],[txX,170],[txX,cy-15]]);
+    coil(ctx,132,197,170,4);
+    wire(ctx,[[120,240],[152,240]]); wire(ctx,[[160,240],[txX,240],[txX,cy+15]]);
+    ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.moveTo(152,228); ctx.lineTo(152,252);
+    ctx.moveTo(160,228); ctx.lineTo(160,252); ctx.stroke();
+    label(ctx,'L',165,153,'#8b98ad'); label(ctx,'C',156,266,'#8b98ad');
+    // 馈电点辉光
+    const g=Math.abs(m.txNow());
+    if(g>0.02){ ctx.save(); ctx.globalAlpha=Math.min(1,g*1.4);
+      glowDot(ctx,txX,cy,5,'#22d3ee'); ctx.restore(); }
+    // 偶极天线
+    this.dipole(txX,cy);
+    // 振荡电荷
+    if(m.show.charges){
+      const sn=m.env*Math.sin(m.phase)*Math.sign(m.amp||1);
+      glowDot(ctx,txX, cy-57-38*sn, 3, '#67e8f9');
+      glowDot(ctx,txX, cy+57+38*sn, 3, '#67e8f9');
+      if(Math.abs(sn)>0.2){
+        label(ctx, sn>0?'−':'+', txX+14, cy-96, 'center', `rgba(103,232,249,${Math.abs(sn)})`,'13px Consolas');
+        label(ctx, sn>0?'+':'−', txX+14, cy+96, 'center', `rgba(103,232,249,${Math.abs(sn)})`,'13px Consolas');
+      }
+    }
+    label(ctx,'发射天线',txX,96,'#9fb2c8');
+    label(ctx,'LC 振荡 → 辐射',77,278,'#5b6b82');
+    // CH1 监测电缆
+    ctx.strokeStyle='#9fb2c8'; ctx.lineWidth=2;
+    wire(ctx,[[77,260],[77,430]]);
+    ctx.beginPath(); ctx.arc(77,436,4,0,7); ctx.strokeStyle='#67e8f9'; ctx.stroke();
+    label(ctx,'CH1 监测 →',77,452,'#5b6b82');
+  }
+
+  /* --- 接收电路：偶极天线 + 调谐(可变电容) + 接收盒 + CH2 电缆 --- */
+  receiver(rxX,cy){
+    const {ctx,m}=this;
+    ctx.strokeStyle='#9fb2c8'; ctx.lineWidth=2;
+    wire(ctx,[[rxX,cy-15],[rxX,170],[rxX+56,170]]);
+    coil(ctx,rxX+6,rxX+52,170,4);
+    wire(ctx,[[rxX,cy+15],[rxX,240],[rxX+17,240]]);
+    wire(ctx,[[rxX+31,240],[rxX+56,240]]);
+    ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.moveTo(rxX+20,229); ctx.lineTo(rxX+20,251);
+    ctx.moveTo(rxX+28,229); ctx.lineTo(rxX+28,251); ctx.stroke();
+    ctx.lineWidth=1.5; varCap(ctx,rxX+24,240,0.9);
+    label(ctx,'L',rxX+29,153,'#8b98ad');
+    label(ctx,'可变电容(调谐)',rxX+24,268,'#8b98ad','center','10px "Microsoft YaHei"');
+    // 接收盒
+    rr(ctx,rxX+56,150,86,110,8); ctx.fillStyle='#161c26'; ctx.fill();
+    ctx.strokeStyle='#2c3648'; ctx.lineWidth=1.5; ctx.stroke();
+    label(ctx,'调谐接收器',rxX+99,166,'#9fb2c8','center','12px "Microsoft YaHei"');
+    ctx.strokeStyle='#5b6b82'; ctx.lineWidth=1.5; varCap(ctx,rxX+99,208,1.6);
+    label(ctx,'谐振选台',rxX+99,246,'#64748b','center','10px "Microsoft YaHei"');
+    const a=m.rxAmpEnv();
+    if(a>0.02){ ctx.save(); ctx.globalAlpha=Math.min(1,a*2.5);
+      glowDot(ctx,rxX+128,158,3,'#4ade80'); ctx.restore(); }
+    else{ ctx.fillStyle='#334155'; ctx.beginPath(); ctx.arc(rxX+128,158,3,0,7); ctx.fill(); }
+    // 天线与感应电荷（位移放大 4 倍以便观察）
+    this.dipole(rxX,cy);
+    if(m.show.charges){
+      const s2=Math.max(-1,Math.min(1,m.rxAt(m.t)*4));
+      if(Math.abs(s2)>0.01){
+        glowDot(ctx,rxX, cy-57-38*s2, 2.6, '#86efac');
+        glowDot(ctx,rxX, cy+57+38*s2, 2.6, '#86efac');
+      }
+    }
+    label(ctx,'接收天线',rxX,96,'#9fb2c8');
+    // 信号强度条
+    label(ctx,'接收强度',rxX,62,'#5b6b82','center','10px "Microsoft YaHei"');
+    rr(ctx,rxX-45,70,90,10,5); ctx.fillStyle='#101826'; ctx.fill();
+    ctx.strokeStyle='#2c3648'; ctx.stroke();
+    const wv=86*Math.min(1,a);
+    if(wv>1){ rr(ctx,rxX-43,72,wv,6,3);
+      ctx.fillStyle='#4ade80'; ctx.save(); ctx.shadowColor='#4ade80'; ctx.shadowBlur=8;
+      ctx.fill(); ctx.restore(); }
+    // CH2 电缆
+    ctx.strokeStyle='#9fb2c8'; ctx.lineWidth=2;
+    wire(ctx,[[rxX+99,260],[rxX+99,430]]);
+    ctx.beginPath(); ctx.arc(rxX+99,436,4,0,7); ctx.strokeStyle='#4ade80'; ctx.stroke();
+    label(ctx,'CH2 → 示波器',rxX+99,452,'#5b6b82');
+  }
+
+  dipole(x,cy){
+    const {ctx}=this;
+    const g=ctx.createLinearGradient(0,cy-100,0,cy+100);
+    g.addColorStop(0,'#e2e8f0'); g.addColorStop(1,'#64748b');
+    ctx.strokeStyle=g; ctx.lineWidth=5; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(x,cy-100); ctx.lineTo(x,cy-15);
+    ctx.moveTo(x,cy+15); ctx.lineTo(x,cy+100); ctx.stroke();
+    ctx.fillStyle='#cbd5e1';
+    [[x,cy-100],[x,cy+100],[x,cy-15],[x,cy+15]].forEach(p=>{
+      ctx.beginPath(); ctx.arc(p[0],p[1],3.6,0,7); ctx.fill(); });
+    ctx.lineCap='butt';
+  }
+
+  /* --- 标注：距离尺寸线、波长标尺、比例说明 --- */
+  annotations(txX,rxX,cy){
+    const {ctx,m}=this, TAU=2*Math.PI, lam=m.lambda;
+    // 距离尺寸线
+    ctx.strokeStyle='rgba(139,152,173,.55)'; ctx.lineWidth=1;
+    wire(ctx,[[txX,352],[rxX,352]]);
+    wire(ctx,[[txX,346],[txX,358]]); wire(ctx,[[rxX,346],[rxX,358]]);
+    label(ctx,`d = ${m.distM.toFixed(1)} m`,(txX+rxX)/2,342,'#9fb2c8');
+    label(ctx,'电磁波以光速 c 向接收端传播',(txX+rxX)/2,372,'#4b5a72','center','10px "Microsoft YaHei"');
+    // 波长标尺 λ（取两个相邻波峰）
+    let r1=((((m.phase-Math.PI/2)/TAU)%1)+1)%1*lam;
+    while(r1<40) r1+=lam;
+    const r2=r1+lam;
+    if(r2<m.distPx-30){
+      const x1=txX+r1,x2=txX+r2,y=104;
+      ctx.strokeStyle='rgba(251,191,36,.8)'; ctx.lineWidth=1.2;
+      wire(ctx,[[x1,y],[x2,y]]); wire(ctx,[[x1,y-5],[x1,y+5]]); wire(ctx,[[x2,y-5],[x2,y+5]]);
+      ctx.fillStyle='rgba(251,191,36,.85)';
+      ctx.beginPath(); ctx.moveTo(x1,y);ctx.lineTo(x1+7,y-3);ctx.lineTo(x1+7,y+3);ctx.closePath();ctx.fill();
+      ctx.beginPath(); ctx.moveTo(x2,y);ctx.lineTo(x2-7,y-3);ctx.lineTo(x2-7,y+3);ctx.closePath();ctx.fill();
+      label(ctx,`λ = ${m.lambdaM.toFixed(2)} m`,(x1+x2)/2,90,'#fbbf24','center','11px Consolas');
+    }
+    label(ctx,'比例尺：50 px = 1 m ｜ 仿真波速代表光速 c',12,this.H-12,'left','#4b5a72','10px "Microsoft YaHei"');
+  }
+
+  legend(){
+    const {ctx,W}=this;
+    const items=[['rgba(56,189,248,.85)','波前'],['#22d3ee','电场分量'],['#67e8f9','振荡电荷']];
+    let x=W-235;
+    items.forEach(([c,t])=>{
+      ctx.fillStyle=c; ctx.fillRect(x,20,12,12);
+      label(ctx,t,x+18,26,'left','#8b98ad','11px "Microsoft YaHei"');
+      x+=ctx.measureText(t).width+46;
+    });
+  }
+}
+
+/* =====================================================================
+ *  V2 —— ScopeView：双踪示波器（网格/辉光轨迹/触发/读数）
+ * ===================================================================== */
+class ScopeView{
+  constructor(cv,m){ this.m=m; this.W=700; this.H=380; this.ctx=fit(cv,this.W,this.H);
+    this.scr={x:78,y:44,w:560,h:288}; }
+  draw(){
+    const {ctx,W,H,m,scr}=this, TAU=2*Math.PI;
+    ctx.clearRect(0,0,W,H);
+    rr(ctx,12,8,W-24,326,12); ctx.fillStyle='#141a24'; ctx.fill();   // 机身
+    ctx.strokeStyle='#2a3342'; ctx.lineWidth=1.5; ctx.stroke();
+    label(ctx,'EMW-2000 · 数字存储示波器',26,27,'left','#7c8aa0','12px "Microsoft YaHei"');
+    ctx.fillStyle=m.power?'#4ade80':'#475569';                        // RUN 灯
+    ctx.save(); if(m.power){ctx.shadowColor='#4ade80';ctx.shadowBlur=8;}
+    ctx.beginPath(); ctx.arc(W-38,26,4.5,0,7); ctx.fill(); ctx.restore();
+    label(ctx,m.power?'RUN':'STBY',W-70,26,'left',m.power?'#4ade80':'#64748b','10px Consolas');
+
+    // 屏幕
+    ctx.fillStyle='#04120b'; ctx.fillRect(scr.x,scr.y,scr.w,scr.h);
+    const vg=ctx.createRadialGradient(scr.x+scr.w/2,scr.y+scr.h/2,50,scr.x+scr.w/2,scr.y+scr.h/2,360);
+    vg.addColorStop(0,'rgba(30,90,60,.30)'); vg.addColorStop(1,'rgba(0,0,0,.5)');
+    ctx.fillStyle=vg; ctx.fillRect(scr.x,scr.y,scr.w,scr.h);
+    const dw=scr.w/10, dh=scr.h/8;
+    ctx.strokeStyle='rgba(74,222,128,.15)'; ctx.lineWidth=1;          // 网格
+    for(let i=0;i<=10;i++){ctx.beginPath();ctx.moveTo(scr.x+i*dw,scr.y);ctx.lineTo(scr.x+i*dw,scr.y+scr.h);ctx.stroke();}
+    for(let j=0;j<=8;j++){ctx.beginPath();ctx.moveTo(scr.x,scr.y+j*dh);ctx.lineTo(scr.x+scr.w,scr.y+j*dh);ctx.stroke();}
+    ctx.strokeStyle='rgba(74,222,128,.4)';
+    ctx.beginPath();ctx.moveTo(scr.x,scr.y+4*dh);ctx.lineTo(scr.x+scr.w,scr.y+4*dh);
+    ctx.moveTo(scr.x+5*dw,scr.y);ctx.lineTo(scr.x+5*dw,scr.y+scr.h);ctx.stroke();
+    ctx.strokeStyle='#1f2a38'; ctx.lineWidth=3; ctx.strokeRect(scr.x-2,scr.y-2,scr.w+4,scr.h+4);
+
+    // 触发：以 CH1 上升沿过零点为窗口起点 → 波形稳定
+    const s=m.scope, Tw=10*s.td;
+    let t0 = (m.power && m.amp>0.01)
+      ? m.t - (((m.phase%TAU)+TAU)%TAU)/(TAU*m.freq)
+      : m.t - Tw;
+
+    if(s.ch1) this.trace('#fbbf24', s.v1, t0, Tw, tt=>{               // CH1 发射监测
+      const p=m.past(tt); return m.amp*p.env*Math.sin(p.phase);
+    });
+    if(s.ch2) this.trace('#4ade80', s.v2, t0, Tw, tt=>{               // CH2 接收信号
+      return 6*m.rxAt(tt) + (Math.random()-0.5)*0.05;                 // ×6 接收增益 + 噪声
+    });
+    // 通道接地参考标记
+    if(s.ch1){ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.moveTo(scr.x-2,scr.y+4*dh);ctx.lineTo(scr.x-10,scr.y+4*dh-5);ctx.lineTo(scr.x-10,scr.y+4*dh+5);ctx.closePath();ctx.fill();}
+    if(s.ch2){ctx.fillStyle='#4ade80';ctx.beginPath();ctx.moveTo(scr.x+scr.w+2,scr.y+4*dh);ctx.lineTo(scr.x+scr.w+10,scr.y+4*dh-5);ctx.lineTo(scr.x+scr.w+10,scr.y+4*dh+5);ctx.closePath();ctx.fill();}
+
+    // 屏内读数
+    label(ctx,`CH1 ${s.v1} V/div    CH2 ${s.v2} V/div    T ${s.td} s/div`,
+      scr.x+10,scr.y+14,'left','#7dd3a0','11px Consolas');
+    const vpp=12*m.rxAmpEnv();
+    label(ctx,`f = ${(m.freq*100).toFixed(0)} MHz    Vpp(CH2) = ${vpp.toFixed(2)} V`,
+      scr.x+scr.w-10,scr.y+scr.h-12,'right','#7dd3a0','11px Consolas');
+    label(ctx,'TRIG: CH1 上升沿 · AUTO',26,352,'left','#5b6b82','11px "Microsoft YaHei"');
+    label(ctx,'接收增益 ×6 · 带宽 500 MHz',W-26,352,'right','#5b6b82','11px "Microsoft YaHei"');
+  }
+  trace(color,vDiv,t0,Tw,fn){
+    const {ctx,scr}=this;
+    ctx.save(); ctx.beginPath(); ctx.rect(scr.x,scr.y,scr.w,scr.h); ctx.clip();
+    ctx.strokeStyle=color; ctx.lineWidth=2;
+    ctx.shadowColor=color; ctx.shadowBlur=8;
+    ctx.beginPath();
+    for(let px=0;px<=scr.w;px++){
+      const v=fn(t0+px/scr.w*Tw);
+      const y=scr.y+scr.h/2 - v/vDiv*(scr.h/8);
+      px===0?ctx.moveTo(scr.x+px,y):ctx.lineTo(scr.x+px,y);
+    }
+    ctx.stroke(); ctx.restore();
+  }
+}
+
+/* =====================================================================
+ *  C —— Controller：绑定 UI → 修改 Model；驱动主循环 → View 重绘
+ * ===================================================================== */
+const model = new Model();
+const scene = new SceneView(document.getElementById('scene'), model);
+const scope = new ScopeView(document.getElementById('scope'), model);
+const $ = id=>document.getElementById(id);
+const VD=[0.05,0.1,0.2,0.5,1,2], TD=[0.05,0.1,0.2,0.5,1];
+
+function bind(){
+  $('powerBtn').onclick=()=>{
+    model.power=!model.power;
+    $('powerBtn').className='power'+(model.power?' on':'');
+    $('powerBtn').textContent=model.power?'⏻ 发射电源 · 开':'⏻ 发射电源 · 关';
+  };
+  $('freq').oninput=e=>{ model.freq=+e.target.value; };
+  $('amp').oninput =e=>{ model.amp =+e.target.value; };
+  $('dist').oninput=e=>{ model.distM=+e.target.value; };
+  $('tune').oninput=e=>{ model.tune=+e.target.value; };
+  $('btnRes').onclick=()=>{ model.tune=model.freq; $('tune').value=model.freq; };
+  $('btnDet').onclick=()=>{ model.tune=Math.min(5,Math.max(0.5,model.freq+1.5)); $('tune').value=model.tune; };
+  $('lyFronts').onchange=e=>model.show.fronts=e.target.checked;
+  $('lyField').onchange =e=>model.show.field =e.target.checked;
+  $('lyCharges').onchange=e=>model.show.charges=e.target.checked;
+  $('tdiv').oninput=e=>{ model.scope.td=TD[+e.target.value]; };
+  $('v1').oninput  =e=>{ model.scope.v1=VD[+e.target.value]; };
+  $('v2').oninput  =e=>{ model.scope.v2=VD[+e.target.value]; };
+  $('ch1').onchange=e=>model.scope.ch1=e.target.checked;
+  $('ch2').onchange=e=>model.scope.ch2=e.target.checked;
+}
+function refreshText(){
+  const m=model;
+  $('freqVal').textContent=`${m.freq.toFixed(2)} Hz ≙ ${(m.freq*100).toFixed(0)} MHz`;
+  $('ampVal').textContent=`${(m.amp*100).toFixed(0)} %`;
+  $('distVal').textContent=`${m.distM.toFixed(1)} m`;
+  $('tuneVal').textContent=`${m.tune.toFixed(2)} Hz ≙ ${(m.tune*100).toFixed(0)} MHz`;
+  $('tdivVal').textContent=model.scope.td+' s/div';
+  $('v1Val').textContent=model.scope.v1+' V';
+  $('v2Val').textContent=model.scope.v2+' V';
+  $('stFreq').textContent=(m.freq*100).toFixed(0)+' MHz';
+  $('stLam').textContent=m.lambdaM.toFixed(2)+' m';
+  $('stVpp').textContent=(12*m.rxAmpEnv()).toFixed(2)+' V';
+  const res=m.resonance();
+  $('stRes').textContent=(res*100).toFixed(0)+' %';
+  $('stSig').textContent=(m.rxAmpEnv()*100).toFixed(0)+' %';
+  $('resFill').style.width=(res*100)+'%';
+  $('resTxt').textContent=Math.abs(m.freq-m.tune)<0.08?'已谐振 ✓':`Δf=${(m.tune-m.freq).toFixed(2)} Hz`;
+}
+let last=0, frame=0;
+function loop(ts){
+  const dt=Math.min(0.05,(ts-last)/1000||0.016); last=ts;
+  model.step(dt);
+  scene.draw();
+  scope.draw();
+  if(frame++%8===0) refreshText();
+  requestAnimationFrame(loop);
+}
+bind(); refreshText(); requestAnimationFrame(loop);
+</script>
+</body>
+</html>

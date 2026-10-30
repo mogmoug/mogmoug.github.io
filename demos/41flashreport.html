@@ -1,0 +1,1741 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeepSeek-V4.1-Flash 问题引导式精读</title>
+<style>
+:root{
+  --bg:#060911;--line:rgba(255,255,255,.10);--txt:#e8eefb;--dim:#8fa0bd;--dim2:#5f6f8c;
+  --c1:#38bdf8;--c2:#a78bfa;--c3:#34d399;--c4:#fbbf24;--c5:#f472b6;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  color:var(--txt);
+  background:
+    radial-gradient(1100px 780px at 12% 0%, rgba(56,189,248,.14), transparent 62%),
+    radial-gradient(950px 720px at 88% 100%, rgba(167,139,250,.13), transparent 62%),
+    var(--bg);
+  overflow:hidden;-webkit-font-smoothing:antialiased;
+}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.13);border-radius:8px}
+
+.slide{
+  position:fixed;inset:0;display:flex;flex-direction:column;
+  padding:clamp(36px,5vh,64px) clamp(24px,5vw,76px) clamp(70px,9vh,104px);
+  overflow-y:auto;opacity:0;visibility:hidden;pointer-events:none;
+  transform:translateY(28px) scale(.987);
+  transition:opacity .42s ease, transform .58s cubic-bezier(.22,1,.36,1), visibility .42s;
+}
+.slide.active{opacity:1;visibility:visible;pointer-events:auto;transform:none}
+.slide .inner{width:100%;max-width:1160px;margin:auto}
+@keyframes rise{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+.anim{opacity:0}
+.slide.active .anim{animation:rise .68s cubic-bezier(.22,1,.36,1) both;animation-delay:var(--d,0s)}
+
+/* 问题头部 */
+.q-head{display:flex;gap:16px;align-items:flex-start;margin-bottom:6px}
+.q-num{
+  flex:none;font-size:12.5px;font-weight:900;letter-spacing:.04em;
+  color:#04121e;background:linear-gradient(135deg,var(--c1),var(--c3));
+  padding:7px 12px;border-radius:9px;margin-top:5px;
+  box-shadow:0 0 22px rgba(56,189,248,.35);
+}
+.q-num.p{background:linear-gradient(135deg,var(--c2),var(--c5));box-shadow:0 0 22px rgba(167,139,250,.35)}
+.q-num.y{background:linear-gradient(135deg,var(--c4),var(--c5));box-shadow:0 0 22px rgba(251,191,36,.3)}
+.q-num.g{background:linear-gradient(135deg,var(--c3),var(--c1));box-shadow:0 0 22px rgba(52,211,153,.3)}
+.q-title{
+  font-size:clamp(21px,2.7vw,33px);font-weight:800;letter-spacing:-.02em;line-height:1.3;
+}
+.q-title .accent{background:linear-gradient(92deg,var(--c1),var(--c2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.q-sub{color:var(--dim);font-size:14px;line-height:1.7;margin-top:10px;max-width:880px}
+
+/* 思考框 */
+.think{
+  border:1px dashed rgba(251,191,36,.4);border-radius:13px;
+  background:rgba(251,191,36,.055);padding:14px 18px;margin-top:16px;
+  font-size:13.2px;line-height:1.75;color:#e4cf9a;
+  display:flex;gap:11px;align-items:flex-start;
+}
+.think .ti{flex:none;font-size:15px;margin-top:1px}
+
+/* 答案区 */
+.ans-label{
+  display:inline-flex;align-items:center;gap:7px;
+  font-size:11.5px;font-weight:800;letter-spacing:.13em;color:var(--c3);
+  text-transform:uppercase;margin-bottom:12px;
+}
+.ans-label::before{content:'';width:16px;height:2px;background:var(--c3);border-radius:2px}
+
+/* 承上启下 */
+.bridge{
+  margin-top:18px;padding:12px 18px;border-radius:11px;
+  background:linear-gradient(90deg,rgba(56,189,248,.10),transparent);
+  border-left:3px solid var(--c1);
+  font-size:13px;color:var(--dim);line-height:1.7;
+}
+.bridge b{color:var(--txt)}
+
+/* 卡片 */
+.card{
+  background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.018));
+  border:1px solid var(--line);border-radius:15px;padding:18px 20px;position:relative;overflow:hidden;
+}
+.card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--c1),var(--c2));opacity:.85}
+.card.g::before{background:linear-gradient(180deg,var(--c3),var(--c1))}
+.card.y::before{background:linear-gradient(180deg,var(--c4),var(--c5))}
+.card.p::before{background:linear-gradient(180deg,var(--c2),var(--c5))}
+.card h4{font-size:15px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.card p{font-size:13px;line-height:1.75;color:var(--dim)}
+.card .ico{width:21px;height:21px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;background:rgba(56,189,248,.16);color:var(--c1);flex:none}
+.card.g .ico{background:rgba(52,211,153,.16);color:var(--c3)}
+.card.y .ico{background:rgba(251,191,36,.16);color:var(--c4)}
+.card.p .ico{background:rgba(167,139,250,.16);color:var(--c2)}
+
+.grid{display:grid;gap:13px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:900px){.g2,.g3,.g4{grid-template-columns:1fr}}
+
+.tag{display:inline-block;padding:4px 11px;border-radius:999px;font-size:11.5px;border:1px solid var(--line);background:rgba(255,255,255,.045);color:var(--dim);margin:0 6px 6px 0}
+.tag.on{color:var(--c1);border-color:rgba(56,189,248,.35);background:rgba(56,189,248,.10)}
+.tag.gr{color:var(--c3);border-color:rgba(52,211,153,.32);background:rgba(52,211,153,.10)}
+.tag.yl{color:var(--c4);border-color:rgba(251,191,36,.32);background:rgba(251,191,36,.10)}
+.tag.pk{color:var(--c5);border-color:rgba(244,114,182,.32);background:rgba(244,114,182,.10)}
+
+.spec-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:11px}
+@media(max-width:900px){.spec-grid{grid-template-columns:repeat(3,1fr)}}
+.spec{border:1px solid var(--line);border-radius:12px;padding:14px 12px;text-align:center;background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.012))}
+.spec span{display:block;font-size:10.5px;color:var(--dim2);letter-spacing:.06em;margin-bottom:6px}
+.spec b{font-size:18px;font-weight:800;color:#fff}
+
+.bars{display:flex;flex-direction:column;gap:14px}
+.bar-row{display:grid;grid-template-columns:150px 1fr 112px;gap:14px;align-items:center}
+@media(max-width:760px){.bar-row{grid-template-columns:1fr;gap:6px}}
+.bar-name{font-size:12.5px;font-weight:700;line-height:1.35}
+.bar-name em{display:block;font-style:normal;font-size:10px;color:var(--dim2);font-weight:500;margin-top:2px}
+.bar-track{height:24px;border-radius:7px;background:rgba(255,255,255,.045);overflow:hidden}
+.bar{height:100%;width:0;border-radius:7px;background:linear-gradient(90deg,rgba(56,189,248,.85),rgba(167,139,250,.85));transition:width 1.1s cubic-bezier(.22,1,.36,1) .3s}
+.slide.active .bar{width:var(--wd)}
+.bar.hi{background:linear-gradient(90deg,var(--c3),var(--c1));box-shadow:0 0 20px rgba(52,211,153,.35)}
+.bar-val{font-size:14px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums;color:#fff}
+.bar-val small{display:block;font-size:10px;font-weight:500;color:var(--dim2)}
+
+.tbl-wrap{border:1px solid var(--line);border-radius:13px;overflow:hidden;background:rgba(255,255,255,.02)}
+table{width:100%;border-collapse:collapse;font-size:12.6px}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid rgba(255,255,255,.055)}
+th{color:var(--dim2);font-weight:700;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;background:rgba(255,255,255,.025)}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:rgba(255,255,255,.028)}
+td.num{font-variant-numeric:tabular-nums;font-weight:600}
+td.best{color:var(--c3);font-weight:800}
+td.hl{background:rgba(52,211,153,.07)}
+
+.flow{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.flow-node{padding:11px 16px;border-radius:11px;border:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.018));font-size:12.6px;font-weight:700;white-space:nowrap}
+.flow-arrow{color:var(--dim2);font-size:15px}
+
+.formula{
+  font-family:"SFMono-Regular",Consolas,Menlo,monospace;font-size:13px;line-height:1.9;color:var(--c1);
+  background:rgba(56,189,248,.055);border:1px solid rgba(56,189,248,.18);
+  border-radius:11px;padding:14px 18px;overflow-x:auto;
+}
+.formula .v{color:var(--c2)}
+
+.stack{display:flex;flex-direction:column;gap:8px}
+.layer-group{border:1px solid var(--line);border-radius:12px;padding:13px 17px;display:flex;justify-content:space-between;align-items:center;gap:12px;background:linear-gradient(90deg,rgba(56,189,248,.10),rgba(56,189,248,.02))}
+.layer-group.dec{background:linear-gradient(90deg,rgba(167,139,250,.12),rgba(167,139,250,.02))}
+.layer-group b{font-size:13.5px}
+.layer-group small{color:var(--dim);font-size:11.5px;display:block;margin-top:3px;font-weight:400}
+.layer-badge{font-size:11px;padding:4px 11px;border-radius:999px;font-weight:700;white-space:nowrap;background:rgba(255,255,255,.07);border:1px solid var(--line);color:var(--dim)}
+
+/* HUD */
+#progress{position:fixed;top:0;left:0;height:2.5px;width:100%;background:rgba(255,255,255,.06);z-index:50}
+#progressBar{height:100%;width:0;background:linear-gradient(90deg,var(--c1),var(--c2));transition:width .42s cubic-bezier(.22,1,.36,1);box-shadow:0 0 12px rgba(56,189,248,.55)}
+.hud{position:fixed;right:clamp(16px,3vw,38px);bottom:clamp(16px,3vh,30px);display:flex;align-items:center;gap:9px;z-index:60}
+.nav-btn{width:38px;height:38px;border-radius:11px;border:1px solid var(--line);background:rgba(255,255,255,.055);color:var(--txt);font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.22s;backdrop-filter:blur(10px)}
+.nav-btn:hover{background:rgba(56,189,248,.18);border-color:rgba(56,189,248,.5);transform:translateY(-2px)}
+.nav-btn:active{transform:scale(.94)}
+.counter{font-size:12px;color:var(--dim2);font-variant-numeric:tabular-nums;padding:0 9px;letter-spacing:.05em}
+.counter b{color:var(--c1);font-weight:700}
+.hint{position:fixed;left:clamp(16px,3vw,38px);bottom:clamp(18px,3vh,32px);font-size:11px;color:var(--dim2);letter-spacing:.05em;z-index:60}
+@media(max-width:700px){.hint{display:none}}
+
+.mt-s{margin-top:9px}.mt-m{margin-top:16px}.mt-l{margin-top:24px}
+.muted{color:var(--dim2);font-size:12.3px;line-height:1.7}
+.hi-txt{color:var(--c1);font-weight:700}.hi-g{color:var(--c3);font-weight:700}
+.hi-y{color:var(--c4);font-weight:700}.hi-p{color:var(--c2);font-weight:700}
+ul.dot{list-style:none}
+ul.dot li{position:relative;padding-left:16px;font-size:12.8px;line-height:1.85;color:var(--dim)}
+ul.dot li::before{content:'';position:absolute;left:0;top:9px;width:5px;height:5px;border-radius:50%;background:var(--c1);opacity:.75}
+ul.dot li b{color:var(--txt);font-weight:600}
+
+/* 封面 */
+.cover-wrap{text-align:center}
+.pill{display:inline-block;padding:7px 17px;border-radius:999px;border:1px solid rgba(56,189,248,.32);background:rgba(56,189,248,.09);color:var(--c1);font-size:12px;font-weight:600;letter-spacing:.05em;margin-bottom:24px}
+.cover-title{font-size:clamp(34px,5.8vw,74px);font-weight:900;letter-spacing:-.035em;line-height:1.06;background:linear-gradient(100deg,#fff 8%,var(--c1) 45%,var(--c2) 82%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.cover-sub{font-size:clamp(16px,2.1vw,25px);font-weight:700;margin-top:15px}
+.cover-en{font-size:12.5px;color:var(--dim2);margin-top:9px;letter-spacing:.07em;font-style:italic}
+.stat-row{display:flex;justify-content:center;gap:clamp(14px,3.6vw,48px);flex-wrap:wrap;margin-top:clamp(26px,5vh,52px)}
+.stat{text-align:center;min-width:90px}
+.stat b{display:block;font-size:clamp(22px,3vw,35px);font-weight:800;background:linear-gradient(180deg,#fff,var(--c1));-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat span{font-size:11.5px;color:var(--dim2);letter-spacing:.05em}
+
+.toc-item{display:flex;gap:15px;align-items:flex-start;padding:15px 17px;border:1px solid var(--line);border-radius:13px;background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.014));transition:transform .3s,border-color .3s,background .3s}
+.toc-item:hover{transform:translateY(-3px);border-color:rgba(56,189,248,.4);background:rgba(56,189,248,.06)}
+.toc-num{font-size:21px;font-weight:900;line-height:1;background:linear-gradient(180deg,var(--c1),var(--c2));-webkit-background-clip:text;background-clip:text;color:transparent;flex:none;width:36px}
+.toc-item h5{font-size:14px;font-weight:700;margin-bottom:4px}
+.toc-item p{font-size:12px;color:var(--dim2);line-height:1.6}
+</style>
+</head>
+<body>
+
+<div id="progress"><div id="progressBar"></div></div>
+
+<!-- ============ 1 封面 ============ -->
+<section class="slide active">
+  <div class="inner cover-wrap">
+    <div class="pill anim">问题引导式精读 · 38 页</div>
+    <h1 class="cover-title anim" style="--d:.08s">DeepSeek-V4.1-Flash</h1>
+    <p class="cover-sub anim" style="--d:.15s">用 38 个问题，读懂一份技术报告</p>
+    <p class="cover-en anim" style="--d:.21s">A Question-Guided Reading of the Tech Report</p>
+    <div class="stat-row anim" style="--d:.32s">
+      <div class="stat"><b>552B</b><span>骨干参数</span></div>
+      <div class="stat"><b>1M</b><span>上下文窗口</span></div>
+      <div class="stat"><b>8B/16B</b><span>Prefill / Decode</span></div>
+      <div class="stat"><b>890</b><span>Bytes / Token</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2 如何使用 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num g">START</span>
+      <h2 class="q-title">这份 PPT 怎么用？</h2>
+    </div>
+    <p class="q-sub anim" style="--d:.06s">每一页都从一个问题出发。建议先读「思考提示」，自己尝试回答，再看解析——带着问题阅读，信息留存率会高得多。</p>
+    <div class="grid g2 mt-m">
+      <div class="card anim" style="--d:.12s">
+        <h4><span class="ico">◈</span>四幕结构</h4>
+        <ul class="dot">
+          <li><b>第一幕 Q01–Q05：为什么做</b> —— 问题定义与压缩维度</li>
+          <li><b>第二幕 Q06–Q20：怎么做</b> —— CED、CSA2、FP4、重放、扩展件</li>
+          <li><b>第三幕 Q21–Q27：怎么训</b> —— 预训练、后训练、异步 RL、努力度</li>
+          <li><b>第四幕 Q28–Q32：效果与局限</b> —— 压缩、性能、鲁棒性、边界</li>
+        </ul>
+      </div>
+      <div class="card g anim" style="--d:.18s">
+        <h4><span class="ico">▤</span>页面结构约定</h4>
+        <ul class="dot">
+          <li><b>黄框 = 思考提示</b>：先别急着往下看</li>
+          <li><b>绿标 = 解析</b>：问题对应的答案与数据</li>
+          <li><b>底部蓝条 = 承上启下</b>：这一问如何引出下一问</li>
+          <li>数据均来自原报告，图表为示意性可视化</li>
+        </ul>
+      </div>
+    </div>
+    <div class="bridge anim" style="--d:.26s">
+      <b>准备好了吗？</b> 我们从最根本的问题开始：为什么长上下文模型越来越难部署？
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3 Q01 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q01</span>
+      <h2 class="q-title">为什么长上下文模型<span class="accent">越来越难部署</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>模型参数没变，序列变长了，成本会等比例上升吗？如果不是，瓶颈最先出现在哪里——算力、显存，还是别的地方？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="grid g3">
+      <div class="card anim" style="--d:.14s">
+        <h4><span class="ico">∑</span>计算</h4>
+        <p>稀疏注意力已大幅降低长序列计算成本，但每次 KV Cache 未命中仍需重新 Prefill。Agent 频繁工具调用持续产生新 Prefill 请求。</p>
+      </div>
+      <div class="card g anim" style="--d:.20s">
+        <h4><span class="ico">▣</span>存储</h4>
+        <p>Global KV 常驻 HBM，受显存约束；为前缀复用而持久化的 KV 受 SSD 与主机内存约束。</p>
+      </div>
+      <div class="card y anim" style="--d:.26s">
+        <h4><span class="ico">⇄</span>带宽</h4>
+        <p>I/O 与互连带宽限制缓存的迁移与加载。容量够用但搬运不及时，同样拖垮吞吐。</p>
+      </div>
+    </div>
+    <div class="bridge anim" style="--d:.34s">
+      三者叠加 → <b>限制吞吐、推高成本、阻碍 Agent 向更长任务跨度扩展</b>。既然瓶颈在缓存，那就要先搞清楚：<b>KV Cache 到底是什么？</b>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 4 Q02 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q02</span>
+      <h2 class="q-title">KV Cache 到底是什么？<span class="accent">为什么它这么大？</span></h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>自回归生成时，每生成一个新 token，都要和前面所有 token 做注意力。如果每次都重新计算前面 token 的 K 和 V，会浪费什么？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="grid g2">
+      <div class="card anim" style="--d:.14s">
+        <h4><span class="ico">◧</span>缓存的本质</h4>
+        <p>把历史 token 的 Key 和 Value 缓存下来，生成新 token 时直接复用，避免重复计算。这是自回归生成的标准优化。</p>
+        <p class="mt-s">但缓存大小 <b>随序列长度线性增长</b>，且要在每层、每个注意力头都存一份。</p>
+      </div>
+      <div class="card p anim" style="--d:.20s">
+        <h4><span class="ico">◈</span>两类 KV 的不同命运</h4>
+        <ul class="dot">
+          <li><b>Global KV</b>：覆盖全上下文，序列越长越大，常驻 HBM</li>
+          <li><b>SWA KV</b>：滑动窗口局部注意力，窗口固定则大小有界</li>
+          <li>足够长的序列下，<b>Global KV 主导运行期 KV 占用</b></li>
+          <li>持久化 KV 则受 SSD 与主机内存约束</li>
+        </ul>
+      </div>
+    </div>
+    <div class="bridge anim" style="--d:.28s">
+      所以压缩的关键在 Global KV。但为什么<b>已有的稀疏注意力还不够</b>？下一问揭晓。
+    </div>
+  </div>
+</section>
+
+<!-- ============ 5 Q03 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q03</span>
+      <h2 class="q-title">为什么稀疏注意力<span class="accent">还不够</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>稀疏注意力减少了「算多少」，但它减少了「存多少」吗？两者是一回事吗？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="grid g2">
+      <div class="card y anim" style="--d:.14s">
+        <h4><span class="ico">✕</span>算得少 ≠ 存得少</h4>
+        <p>稀疏注意力让每个 query 只关注部分 KV，<b>降低了注意力计算量</b>。但被跳过的 KV 仍然需要被存储、被索引、被搬运。</p>
+        <p class="mt-s">当计算不再是瓶颈，<b>持久化存储与数据移动就浮出水面</b>。</p>
+      </div>
+      <div class="card anim" style="--d:.20s">
+        <h4><span class="ico">▤</span>DeepSeek-V4 的混合结构</h4>
+        <ul class="dot">
+          <li>全局注意力分支 + 局部 SWA 分支</li>
+          <li>全局分支维护 main KV 与 indexer K</li>
+          <li>SWA 维护局部 KV，固定窗口下有界</li>
+          <li>长序列下全局 KV 主导运行期占用</li>
+        </ul>
+      </div>
+    </div>
+    <div class="bridge anim" style="--d:.28s">
+      既然要压缩，就得先知道<b>能从哪里压</b>。KV Cache 的压缩空间有三个乘性维度。
+    </div>
+  </div>
+</section>
+
+<!-- ============ 6 Q04 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q04</span>
+      <h2 class="q-title">压缩 KV Cache，有哪<span class="accent">三个乘性维度</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>一个 KV 缓存条目，可以从「每个条目多大」「多少个条目」「多少层各存一份」三个方向压缩。三者是相加还是相乘？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="grid g3">
+      <div class="card anim" style="--d:.14s">
+        <h4><span class="ico">①</span>条目大小</h4>
+        <p>GQA 减少 KV 头数量；MLA 让所有头共享一个小型 latent 表示。</p>
+        <p class="mt-s"><span class="tag on">头维度</span></p>
+      </div>
+      <div class="card g anim" style="--d:.20s">
+        <h4><span class="ico">②</span>序列维度</h4>
+        <p>每 m 个 token 压缩成一个条目，如 DeepSeek-V4 中的 CSA 与 HCA。</p>
+        <p class="mt-s"><span class="tag gr">长度维度</span></p>
+      </div>
+      <div class="card p anim" style="--d:.26s">
+        <h4><span class="ico">③</span>层维度</h4>
+        <p>某些层复用其他层的缓存与选择结果，或干脆被更高效的层替代。</p>
+        <p class="mt-s"><span class="tag pk">深度维度</span></p>
+      </div>
+    </div>
+    <div class="bridge anim" style="--d:.34s">
+      三者<b>相乘</b>，才是真正的压缩空间。那么问题来了：之前的工作覆盖了哪几个维度？
+    </div>
+  </div>
+</section>
+
+<!-- ============ 7 Q05 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q05</span>
+      <h2 class="q-title">之前的工作，<span class="accent">缺了哪一块</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>IndexCache 复用索引、YOIO 共享路由、HySparse 复用稠密层 KV。它们各自解决了什么？有没有共同缺口？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="tbl-wrap anim" style="--d:.14s">
+      <table>
+        <thead><tr><th>方法</th><th>做法</th><th>局限</th></tr></thead>
+        <tbody>
+          <tr><td>IndexCache</td><td>跨层复用 Top-K 索引</td><td>不节省主 KV 存储</td></tr>
+          <tr><td>YOIO</td><td>全局共享一次稀疏路由</td><td>限制性能上限</td></tr>
+          <tr><td>HySparse</td><td>稀疏层复用稠密层 KV</td><td>仍保留完整注意力层</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card g mt-m anim" style="--d:.24s">
+      <h4><span class="ico">★</span>共同缺口</h4>
+      <p>它们<b>都没有同时覆盖三个维度</b>。索引复用不省主 KV 存储；路由共享限制性能；混合设计仍保留全注意力层。</p>
+    </div>
+    <div class="bridge anim" style="--d:.32s">
+      这正是 CSA2 要解决的问题。但在讲 CSA2 之前，先看一个更反直觉的设计：<b>为什么 552B 的模型 Prefill 只激活 8B？</b>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 8 Q06 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q06</span>
+      <h2 class="q-title">552B 的模型，为什么 Prefill <span class="accent">只激活 8B</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>Decode 激活 16B，Prefill 却只要 8B。少掉的那一半计算，被什么架构省掉了？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="grid g2" style="align-items:start">
+      <div class="anim" style="--d:.14s">
+        <div class="stack">
+          <div class="layer-group dec">
+            <div><b>解码器 · 20 层</b><small>全局 KV 由 H<sub>L/2</sub> 投影得到</small></div>
+            <div class="layer-badge">CSA2 · m = 1</div>
+          </div>
+          <div style="text-align:center;color:var(--dim2);font-size:17px;padding:2px 0">↑ 投影 ↑</div>
+          <div class="layer-group">
+            <div><b>因果编码器 · 20 层</b><small>CSA2 (m = 2) + 前 2 层 SWA</small></div>
+            <div class="layer-badge">H<sub>L/2</sub> 输出</div>
+          </div>
+        </div>
+      </div>
+      <div class="anim" style="--d:.20s">
+        <div class="card g">
+          <h4><span class="ico">★</span>CED 的核心思想</h4>
+          <p>把 Transformer 分成上下两半：下半是因果编码器，上半是解码器。解码器的全局 KV <b>不再由自己的隐藏状态生成</b>，而是直接从编码器最后一层 <b>H<sub>L/2</sub></b> 用各层独立的投影权重投影而来。</p>
+        </div>
+        <div class="card mt-m">
+          <h4><span class="ico">∑</span>收益</h4>
+          <p>Prefill 阶段<b>只需计算前一半层</b>，就能获得上层的全局 KV Cache。</p>
+        </div>
+      </div>
+    </div>
+    <div class="bridge anim" style="--d:.30s">
+      这个设计省了计算，但 SWA 仍逐层计算——<b>代价是什么？</b> 我们稍后回答。先看公式。
+    </div>
+  </div>
+</section>
+
+<!-- ============ 9 Q07 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q07</span>
+      <h2 class="q-title">CED 的公式，<span class="accent">怎么理解</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>解码器第 l 层的 KV，不是从第 l 层的隐藏状态算的，而是从第 L/2 层投影的。这意味着什么？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="formula anim" style="--d:.14s">
+      C<sub>l</sub> = H<sub>L/2</sub> · W<sub>l</sub><sup>KV</sup><br>
+      Z<sub>l</sub> = H<sub>L/2</sub> · W<sub>l</sub><sup>Z</sup> &nbsp;&nbsp; <span class="v">( l &gt; L/2 )</span>
+    </div>
+    <div class="grid g3 mt-m">
+      <div class="card anim" style="--d:.22s">
+        <h4><span class="ico">◧</span>C<sub>l</sub> 与 Z<sub>l</sub></h4>
+        <p>C 是 KV 条目，Z 是对应的压缩权重。两者都由同一个 H<sub>L/2</sub> 投影，只是投影矩阵逐层不同。</p>
+      </div>
+      <div class="card g anim" style="--d:.28s">
+        <h4><span class="ico">∑</span>复杂度变化</h4>
+        <p>序列长度 N ≫ n<sub>win</sub> 时，Prefill 从 <b>O(NL)</b> 降到 <b>O(NL/2 + n<sub>win</sub>·L/2) ≈ O(NL/2)</b>，<b>整体计算近乎减半</b>。</p>
+      </div>
+      <div class="card y anim" style="--d:.34s">
+        <h4><span class="ico">⚠</span>SWA 保持逐层</h4>
+        <p>SWA 的局部 KV 仍由每层自己的隐藏状态生成，以维持局部 KV 的<b>生成深度</b>。这带来了重放需求。</p>
+      </div>
+    </div>
+    <div class="bridge anim" style="--d:.42s">
+      省了计算，但 SWA 逐层计算意味着解码器需要额外处理 <b>n<sub>win</sub> × L/2</b> 个 token。这个代价怎么消化？
+    </div>
+  </div>
+</section>
+
+<!-- ============ 10 Q08 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q08</span>
+      <h2 class="q-title">CED 省了计算，<span class="accent">代价是什么</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>解码器 SWA KV 需要由各层自己的隐藏状态生成，但 Prefill 只算到编码器结束。缺失的 SWA KV 从哪来？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="grid g2">
+      <div class="card y anim" style="--d:.14s">
+        <h4><span class="ico">✕</span>精确重建的代价</h4>
+        <p>SWA 依赖跨层累积。精确重建 L 层的 SWA KV，需要重放 <b>L × n<sub>win</sub></b> 个 token，在生产环境中成本不可接受。</p>
+      </div>
+      <div class="card g anim" style="--d:.20s">
+        <h4><span class="ico">✓</span>但先验知识救了它</h4>
+        <p>已有工作表明，SWA 的<b>实际有效感受野远小于理论值</b> n<sub>win</sub> × L/2。这为近似重建提供了依据。</p>
+        <p class="mt-s">于是引出 <b>SWA Bounded Replay</b>——只重放最近 n<sub>win</sub> 个 token。</p>
+      </div>
+    </div>
+    <div class="bridge anim" style="--d:.28s">
+      这个策略同时用于编码器和解码器，效果不同，我们后面专门讲。现在先转向另一个核心：<b>CSA2 的三种模式</b>。
+    </div>
+  </div>
+</section>
+
+<!-- ============ 11 Q09 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q09</span>
+      <h2 class="q-title">CSA2 的三种模式，<span class="accent">分别解决什么问题</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>三种模式都计算自己的 main Q 和 SWA KV。区别在于：main KV、indexer K、Top-K 索引，这三样东西各自是「自己算」还是「复用别人」？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="grid g3">
+      <div class="card g anim" style="--d:.14s">
+        <h4><span class="ico">F</span>Full 模式</h4>
+        <p>自算 main KV 与 indexer Q，从 main KV 投影 indexer K，运行索引器产生<b>全新 Top-K</b>。执行完整 CSA2 路径。</p>
+        <div class="mt-s"><span class="tag gr">缓存新建</span><span class="tag gr">索引新建</span></div>
+      </div>
+      <div class="card y anim" style="--d:.20s">
+        <h4><span class="ico">R</span>Reindex 模式</h4>
+        <p>复用最近可用的 main KV 与其 indexer K，但用自己的 indexer Q <b>重新打分</b>，产生新 Top-K。</p>
+        <div class="mt-s"><span class="tag yl">缓存复用</span><span class="tag yl">索引新建</span></div>
+      </div>
+      <div class="card p anim" style="--d:.26s">
+        <h4><span class="ico">↺</span>Reuse 模式</h4>
+        <p>同时复用 main KV 与最近一次 Full/Reindex 算出的 Top-K，直接做稀疏注意力，<b>不计算 indexer Q，不评估索引分数</b>。</p>
+        <div class="mt-s"><span class="tag pk">缓存复用</span><span class="tag pk">索引复用</span></div>
+      </div>
+    </div>
+    <div class="bridge anim" style="--d:.34s">
+      共享 main KV 与 indexer K 减少缓存存储；复用 Top-K 索引避免额外索引计算。Reindex 则在共享缓存的前提下，<b>让选择仍能跨层变化</b>。
+    </div>
+  </div>
+</section>
+
+<!-- ============ 12 Q10 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q10</span>
+      <h2 class="q-title">三种模式怎么分配到 <span class="accent">40 层</span>里？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>如果每层都是 Full，就没有共享收益；如果每层都 Reuse，选择就无法变化。怎么分组最合理？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="grid g2">
+      <div class="card anim" style="--d:.14s">
+        <h4><span class="ico">▤</span>编码器：3 组 × 6 层</h4>
+        <ul class="dot">
+          <li>前 2 层用纯 SWA（窗口 128）</li>
+          <li>其余 18 层 CSA2，压缩率 <b>m = 2</b></li>
+          <li>每组第 1 层 <b>Full</b>，其余 5 层 <b>Reuse</b></li>
+          <li>即每组只有 1 层产生新缓存与新索引</li>
+        </ul>
+      </div>
+      <div class="card p anim" style="--d:.20s">
+        <h4><span class="ico">▤</span>解码器：5 组 × 4 层</h4>
+        <ul class="dot">
+          <li>20 层 CSA2，压缩率 <b>m = 1</b></li>
+          <li>首组：1 <b>Full</b> + 3 <b>Reuse</b></li>
+          <li>其余 4 组：1 <b>Reindex</b> + 3 <b>Reuse</b></li>
+          <li>解码器首个 Full 层的全局 KV 直接由编码器末层投影</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card g mt-m anim" style="--d:.28s">
+      <h4><span class="ico">★</span>统一配置</h4>
+      <p>所有 CSA2 层：indexer query 头数 <b>32</b>，indexer 头维度 <b>128</b>，稀疏注意力 Top-K = <b>512</b>；query 头数 64，头维度 512，query 压缩维度 1280；输出投影 8 组，中间维度 1024。</p>
+    </div>
+    <div class="bridge anim" style="--d:.36s">
+      但即使 Reuse 层不做索引，<b>剩下的索引器仍要扫描全上下文</b>。超长上下文下这依然是瓶颈。
+    </div>
+  </div>
+</section>
+
+<!-- ============ 13 Q11 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q11</span>
+      <h2 class="q-title">分层稀疏索引器：如何让深层索引成本<span class="accent">与长度无关</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>如果每个 Reindex 层都要给每个 query 扫描全部因果可见的 KV 位置，上下文越长，索引成本越高。有没有办法让浅层的选择结果帮到深层？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="flow anim" style="--d:.14s;margin-bottom:16px">
+      <div class="flow-node" style="border-color:rgba(52,211,153,.4);color:var(--c3)">首个 Full 层</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">扫描全部可见 KV</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">选自身 Top-512</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:rgba(251,191,36,.4);color:var(--c4)">构建 block 候选池</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">后续层只在池内搜索</div>
+    </div>
+    <div class="grid g3">
+      <div class="card anim" style="--d:.22s">
+        <h4><span class="ico">▦</span>候选池怎么来</h4>
+        <p>每个 block 取块内最大索引分数，选出得分最高的若干 block，再把这些 block 覆盖的位置收集成候选池。</p>
+        <p class="mt-s"><b style="color:var(--txt)">2048 blocks × 8 位置 = 16,384 候选位置</b></p>
+      </div>
+      <div class="card g anim" style="--d:.28s">
+        <h4><span class="ico">◎</span>池共享，选择独立</h4>
+        <p>候选池在所有索引层间共享，但每层最终 Top-K 选择仍可不同。Reuse 层完全不做新索引，沿用最近一次 Top-K。</p>
+      </div>
+      <div class="card p anim" style="--d:.34s">
+        <h4><span class="ico">∑</span>复杂度收益</h4>
+        <p>对固定候选池大小，后续每个索引器每 query 打分位置数<b>与上下文长度无关</b>。首个 Full 层仍需全量扫描一次。</p>
+      </div>
+    </div>
+    <div class="bridge anim" style="--d:.42s">
+      这里有个容易混淆的点：<b>候选池和最终 Top-K 是两个不同的东西</b>。下一问专门辨析。
+    </div>
+  </div>
+</section>
+
+<!-- ============ 14 Q12 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q12</span>
+      <h2 class="q-title">候选池和最终 Top-K，<span class="accent">有什么区别</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>如果候选池直接就是最终选择，那深层索引器还有什么用？为什么要设两层？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="grid g2">
+      <div class="card g anim" style="--d:.14s">
+        <h4><span class="ico">①</span>候选池 = 搜索范围</h4>
+        <ul class="dot">
+          <li>由首个 Full 层构建，粒度是 <b>block</b></li>
+          <li>作用是<b>限制后续索引器在哪里搜索</b></li>
+          <li>池子比最终选择大，留出选择余地</li>
+          <li>例：16,384 个候选位置</li>
+        </ul>
+      </div>
+      <div class="card p anim" style="--d:.20s">
+        <h4><span class="ico">②</span>最终 Top-K = 实际读取</h4>
+        <ul class="dot">
+          <li>由每层索引器在池内打分后选出，粒度是 <b>token</b></li>
+          <li>决定该层<b>实际读取哪些 main KV 条目</b></li>
+          <li>不同层可以选择不同的 Top-K</li>
+          <li>每层 Top-K = 512</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card mt-m anim" style="--d:.28s">
+      <h4><span class="ico">★</span>为什么要这样设计</h4>
+      <p>池共享降低了搜索成本，选择独立保留了层间表达能力。训练与推理时，候选限制的应用方式<b>完全一致</b>——深层索引器是在与推理相同的搜索域下被优化的，而不是事后打补丁。</p>
+    </div>
+    <div class="bridge anim" style="--d:.36s">
+      架构讲完了，接下来是精度：<b>FP4 真的能用在 KV 缓存上吗？</b>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 15 Q13 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q13</span>
+      <h2 class="q-title">FP4 用在 KV 缓存上，<span class="accent">不会掉精度吗</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>4-bit 听起来很激进。但如果 FP4 只用来省存储、不用来加速矩阵乘，是否就不需要硬件原生支持？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="grid g2">
+      <div class="card anim" style="--d:.14s">
+        <h4><span class="ico">▣</span>用途不同，要求不同</h4>
+        <p>这里 FP4 的目标是<b>压缩存储体积</b>，不是加速矩阵乘法。缓存值在注意力计算前先反量化，因此可以使用更精确的格式，而不需要硬件原生支持该格式的矩阵乘。</p>
+      </div>
+      <div class="card g anim" style="--d:.20s">
+        <h4><span class="ico">✓</span>训练侧配合</h4>
+        <p>在后训练阶段引入 <b>量化感知训练（QAT）</b>，让模型在训练时就适应 FP4 缓存。非 RoPE 与 RoPE 分量使用相同量化格式。</p>
+        <p class="mt-s">DeepSeek-V4 已对 FP4 indexer Q/K 使用 QAT，这次扩展到 main KV。</p>
+      </div>
+    </div>
+    <div class="card y mt-m anim" style="--d:.28s">
+      <h4><span class="ico">◑</span>SWA KV 保持 FP8</h4>
+      <p>滑动窗口 KV 对量化更敏感，因此保留 FP8 精度，不参与 FP4 压缩。</p>
+    </div>
+    <div class="bridge anim" style="--d:.36s">
+      选哪种 4-bit 格式？为什么可以省略全局 scale？下一问用数值说话。
+    </div>
+  </div>
+</section>
+
+<!-- ============ 16 Q14 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q14</span>
+      <h2 class="q-title">为什么可以<span class="accent">省略全局 scale</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>NVFP4 有二级全局 scale，这里省掉了。省略的前提是数值范围足够——KV 缓存的数值到底有多大？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="grid g2" style="align-items:start">
+      <div class="anim" style="--d:.14s">
+        <div class="card g">
+          <h4><span class="ico">▣</span>格式选择</h4>
+          <ul class="dot">
+            <li>采用 OCP 标准 <b>MXFP4</b>，最大化硬件兼容性</li>
+            <li>选定 <b>E2M1</b>，每 16 通道配一个 <b>E4M3</b> scale</li>
+            <li>参照 NVFP4 但<b>省略二级全局 scale</b></li>
+          </ul>
+        </div>
+        <div class="card mt-m">
+          <h4><span class="ico">◷</span>量化位置</h4>
+          <p>在 <b>RoPE 之后</b>量化。实验显示 RoPE 前量化只带来边际精度提升，却会在解码时引入额外开销。</p>
+        </div>
+      </div>
+      <div class="anim" style="--d:.22s">
+        <div class="card y">
+          <h4><span class="ico">∑</span>数值范围论证</h4>
+          <ul class="dot">
+            <li>格式可表示幅值上限约 <b>448 × 6 = 2688</b></li>
+            <li>训练中最大 RMSNorm 权重幅值约 <b>1</b></li>
+            <li>RMS 归一化后 512 通道 KV latent 的 L2 范数至多约 <b>√512 ≈ 22.6</b></li>
+            <li>RoPE 保持范数不变，训练观测最大幅值约 <b>10</b></li>
+            <li>结论：省略全局 scale <b>不造成可测精度下降</b></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="bridge anim" style="--d:.32s">
+      精度问题解决，存储几乎减半。接下来是部署层的关键一问：<b>SWA KV 为什么不该持久化？</b>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 17 Q15 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q15</span>
+      <h2 class="q-title">SWA KV 为什么<span class="accent">不该持久化</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>持久化缓存的设计寿命是 72 小时，但 SWA KV 实际被复用的时间窗口有多长？这两者匹配吗？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="grid g2">
+      <div class="card y anim" style="--d:.14s">
+        <h4><span class="ico">✕</span>访问模式不匹配</h4>
+        <ul class="dot">
+          <li>全局 KV 有<b>长尾复用</b>特征，值得长期保留</li>
+          <li>SWA KV 只在活跃会话内的<b>分钟级窄窗口</b>被复用</li>
+          <li>会话结束或下一轮开始后，SWA KV 即失效</li>
+          <li>为它配置 72 小时持久化，容量浪费严重</li>
+        </ul>
+      </div>
+      <div class="card g anim" style="--d:.20s">
+        <h4><span class="ico">✓</span>新方案</h4>
+        <ul class="dot">
+          <li>SWA KV 不再进入持久化缓存</li>
+          <li>改放每台机器 <b>10% 主机 DRAM</b> 组成的分布式内存池</li>
+          <li>池容量小，但 <b>TTL 只有分钟级</b>，过期立即回收</li>
+          <li>全局 KV 仍在持久化缓存中，保证至少 <b>72 小时</b>生命周期</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card p mt-m anim" style="--d:.28s">
+      <h4><span class="ico">↺</span>代价与兜底</h4>
+      <p>驱逐 SWA KV 必然带来 miss。但凭借轻量级兜底——<b>Encoder SWA Bounded Replay</b>——把灾难性 miss 转化为优雅降级：只重算 n<sub>win</sub> 个 token，而非完整的 L × n<sub>win</sub> 前向。</p>
+    </div>
+    <div class="bridge anim" style="--d:.36s">
+      那么，<b>「有界」到底界在哪里？</b>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 18 Q16 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q16</span>
+      <h2 class="q-title">有界重放，<span class="accent">「界」在哪里</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>精确重建需要重放 L × n<sub>win</sub> 个 token，有界重放只重放 n<sub>win</sub> 个。少了 L 倍，近似程度如何？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="grid g3">
+      <div class="card anim" style="--d:.14s">
+        <h4><span class="ico">✕</span>精确重建</h4>
+        <p>SWA 依赖跨层累积，精确重建 L 层 SWA KV 需要重放 <b>L × n<sub>win</sub></b> 个 token。</p>
+      </div>
+      <div class="card g anim" style="--d:.20s">
+        <h4><span class="ico">✓</span>有界重放</h4>
+        <p>只重放最近 <b>n<sub>win</sub></b> 个 token，并把 SWA 截断到重放片段内。</p>
+        <p class="mt-s">对从位置 s 开始的重放，位置 i 的 query 只关注 <b>[max(s, i−W+1), i]</b> 内的 SWA key。</p>
+      </div>
+      <div class="card p anim" style="--d:.26s">
+        <h4><span class="ico">★</span>效果</h4>
+        <p>重放前缀状态是<b>近似</b>的，后续计算得到的全局 KV 与 SWA KV 依赖命中位置，不严格等价。</p>
+        <p class="mt-s">但实验证实：<b>对响应质量影响几乎可忽略</b>。</p>
+      </div>
+    </div>
+    <div class="card y mt-m anim" style="--d:.34s">
+      <h4><span class="ico">⚠</span>训练感知适配</h4>
+      <p>为稳妥起见，后训练阶段会<b>模拟同样的重放过程</b>，让模型提前适应这种近似状态。</p>
+    </div>
+    <div class="bridge anim" style="--d:.42s">
+      有界重放在编码器和解码器上的作用不同，下一问分别拆解。
+    </div>
+  </div>
+</section>
+
+<!-- ============ 19 Q17 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q17</span>
+      <h2 class="q-title">编码器重放和解码器重放，<span class="accent">有什么不同</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>同一个「有界重放」策略，用在编码器和解码器上，目标分别是解决什么？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="grid g2">
+      <div class="card g anim" style="--d:.14s">
+        <h4><span class="ico">E</span>编码器侧重放</h4>
+        <p><b>目标：让前缀缓存只依赖全局 KV。</b></p>
+        <p class="mt-s">编码器 SWA KV 缺失时，重放已缓存前缀的最后 n<sub>win</sub> 个 token，与未缓存后缀一起处理。重放 token 只重建 SWA KV，<b>复用已缓存的全局 KV，不重算也不覆写</b>。这让 SWA KV 得以从持久化缓存中移除。</p>
+      </div>
+      <div class="card p anim" style="--d:.20s">
+        <h4><span class="ico">D</span>解码器侧重放</h4>
+        <p><b>目标：让 prefill 在编码器处结束。</b></p>
+        <p class="mt-s">CED 下解码器全局 KV 由编码器末层投影而来，唯一阻碍 prefill 在编码器结束的就是解码器 SWA KV。有界重放让 prefill 只处理最后 n<sub>win</sub> 个 token，<b>使总 prefill 计算近乎减半</b>。重建的 SWA KV 只用于解码，不用于前缀缓存。</p>
+      </div>
+    </div>
+    <div class="card y mt-m anim" style="--d:.28s">
+      <h4><span class="ico">★</span>共同结果</h4>
+      <p>持久化 KV Cache 占用进一步降到 DeepSeek-V4-Flash 的约 <b>1/8</b>，同时大幅缓解 HBM 与 SSD 容量压力。</p>
+    </div>
+    <div class="bridge anim" style="--d:.36s">
+      架构层面还有三个扩展件。先看最基础的：<b>mHC 为什么要 Single-Pass？</b>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 20 Q18 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q18</span>
+      <h2 class="q-title">mHC 为什么要 <span class="accent">Single-Pass</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>mHC 维护 n 条残差流。原实现有多个 kernel 串行执行，各自读写一遍残差。激活内存流量的理论下界是多少？实际又是多少？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="grid g2">
+      <div class="card y anim" style="--d:.14s">
+        <h4><span class="ico">✕</span>原版多 kernel 的问题</h4>
+        <ul class="dot">
+          <li>残差更新、系数预测、输入混合三个 kernel 因数据依赖串行</li>
+          <li>总激活内存流量 <b>(4n + 4)d</b></li>
+          <li>理论下界只有 <b>(2n + 2)d</b></li>
+          <li>实际是下界的<b>两倍</b></li>
+        </ul>
+      </div>
+      <div class="card g anim" style="--d:.20s">
+        <h4><span class="ico">✓</span>Single-Pass 的关键改动</h4>
+        <p>把输入混合系数整体<b>后移一个 block</b>：每个 block 使用上一个 block 产生的系数。</p>
+        <p class="mt-s">依赖消失后，每个 tile 可以立即同时用于输入混合与系数预测，无需等待全量归约完成。</p>
+      </div>
+    </div>
+    <div class="card p mt-m anim" style="--d:.28s">
+      <h4><span class="ico">⚡</span>Mega-mHC 部署 kernel</h4>
+      <p>把残差更新、输入混合、系数预测融合为<b>单个 kernel</b>，同时包含输入 pre-norm 与 FP8 转换。残差只读一次写一次，激活内存流量从 <b>(4n+4)d 降到 (2n+2)d</b>，<b>减半并逼近理论下界</b>。预训练阶段仍保留多 kernel 实现，因为该改动只影响每个 block 应用哪组系数。</p>
+    </div>
+    <div class="bridge anim" style="--d:.36s">
+      第二个扩展件：<b>Engram 解决的是什么问题？</b>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 21 Q19 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q19</span>
+      <h2 class="q-title">Engram 解决的是<span class="accent">什么问题</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>模型里的「记忆」和「计算」一定要绑在一起吗？能不能把记忆做成稀疏查找，用查表代替一部分计算？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="grid g2">
+      <div class="card g anim" style="--d:.14s">
+        <h4><span class="ico">◫</span>条件记忆模块</h4>
+        <p>把「记忆」与「计算」解耦的稀疏条件记忆模块，共 <b>196B</b> 参数，均分到两个模块。</p>
+        <ul class="dot mt-s">
+          <li>N-gram 阶数 <b>{2, 3, 4}</b></li>
+          <li>每阶 8 个 hash head，嵌入维度 2048</li>
+          <li>每张表约 <b>1600 万条目</b>，表长取不同素数</li>
+          <li>嵌入表与投影均为 <b>FP8</b></li>
+          <li>放置在第 <b>1 与第 14 层</b>，平衡流水线显存</li>
+        </ul>
+      </div>
+      <div class="card anim" style="--d:.20s">
+        <h4><span class="ico">⚙</span>推理侧优化</h4>
+        <ul class="dot">
+          <li>确定性寻址，嵌入可<b>从主机内存通过后台 RDMA 预取</b></li>
+          <li>第一个模块的预取与第一个 Transformer block 的计算重叠</li>
+          <li>RL rollout 期间嵌入表<b>常驻 GPU 显存</b>，减少主机内存压力</li>
+          <li>嵌入以 FP8 存储与获取，检索值直接送入后续 GEMM</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card y mt-m anim" style="--d:.28s">
+      <h4><span class="ico">◈</span>优化器配合</h4>
+      <p>嵌入表、token embedding、预测头使用<b>动量 + Sinkhorn 平衡</b>更新替代 Adam，只需一份动量缓冲，大幅降低优化器状态显存。</p>
+    </div>
+    <div class="bridge anim" style="--d:.36s">
+      第三个扩展件，也是解码效率的关键：<b>DSpark 如何加速解码？</b>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 22 Q20 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q20</span>
+      <h2 class="q-title">DSpark 如何<span class="accent">加速解码</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>投机解码的关键是什么？草稿要准，验证要快，但验证多长才划算？这个长度是固定的吗？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="grid g3">
+      <div class="card anim" style="--d:.14s">
+        <h4><span class="ico">①</span>半自回归草稿</h4>
+        <p>3 个 Transformer block，滑动窗口 128。一次前向<b>并行计算 5 个草稿位置</b>的基础 logits，轻量 Markov 头建模草稿间依赖。</p>
+      </div>
+      <div class="card g anim" style="--d:.20s">
+        <h4><span class="ico">②</span>置信度调度验证</h4>
+        <p>置信度头预测逐位置条件接受概率，估计前缀存活概率。调度器结合引擎吞吐曲线，<b>动态选择每个请求的验证长度</b>。</p>
+      </div>
+      <div class="card p anim" style="--d:.26s">
+        <h4><span class="ico">③</span>训练时机</h4>
+        <p>与 V3 的 MTP 不同，DSpark <b>在预训练之后单独训练</b>，此时主干冻结。后训练阶段与主干联合训练，但<b>不回传梯度到主干</b>，保持与策略对齐。</p>
+      </div>
+    </div>
+    <div class="bridge anim" style="--d:.34s">
+      架构部分到此结束。接下来进入训练：<b>为什么从零训练稀疏注意力，不用预热？</b>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 23 Q21 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q21</span>
+      <h2 class="q-title">为什么从零训练稀疏注意力，<span class="accent">不用预热</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>通常稠密注意力预热是为了稳定训练。但如果训练时的稀疏选择机制和推理时完全一致，还需要预热吗？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="grid g2">
+      <div class="card g anim" style="--d:.14s">
+        <h4><span class="ico">✓</span>直接稀疏训练</h4>
+        <ul class="dot">
+          <li>在 <b>64K 序列长度</b>上从零训练稀疏注意力</li>
+          <li><b>无任何稠密注意力预热阶段</b></li>
+          <li>在 <b>34T token</b> 处扩展到 1M 序列长度</li>
+          <li>训练全程无不稳定现象</li>
+        </ul>
+      </div>
+      <div class="card p anim" style="--d:.20s">
+        <h4><span class="ico">★</span>训练感知是关键</h4>
+        <p>分层稀疏索引器的候选限制，在<b>训练与推理时应用方式完全一致</b>。深层索引器从一开始就在与推理相同的搜索域下被优化，不存在「训练用稠密、推理用稀疏」的错配。</p>
+      </div>
+    </div>
+    <div class="grid g4 mt-m anim" style="--d:.28s">
+      <div class="spec"><span>训练语料</span><b>45T</b></div>
+      <div class="spec"><span>文本:多模态</span><b>7:1</b></div>
+      <div class="spec"><span>批大小</span><b>100.6M</b></div>
+      <div class="spec"><span>初始序列</span><b>64K</b></div>
+    </div>
+    <div class="bridge anim" style="--d:.36s">
+      预训练数据构建强调过滤「隐式重复」、多模态不做大规模合成。接下来看后训练：<b>没有算法创新，为什么还能提升？</b>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 24 Q22 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q22</span>
+      <h2 class="q-title">后训练没有算法创新，<span class="accent">收益从哪来</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>流程就是标准的 SFT → RL → OPD。如果优化算法没变，那提升一定来自别的地方——是哪里？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="flow anim" style="--d:.14s;margin-bottom:16px">
+      <div class="flow-node">SFT</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">RL（合成任务）</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">OPD（40+ 教师）</div>
+    </div>
+    <div class="grid g3">
+      <div class="card anim" style="--d:.22s">
+        <h4><span class="ico">①</span>数据合成</h4>
+        <p>合成多样化、可验证的训练任务，连同参考解与奖励信号。任务形式化为 <b>(问题, 环境, 验证系统)</b> 三元组。</p>
+      </div>
+      <div class="card g anim" style="--d:.28s">
+        <h4><span class="ico">②</span>环境构建</h4>
+        <p>程序化构建并扩展交互式 Agent 环境，让轨迹可以被低成本收集与评估。</p>
+      </div>
+      <div class="card p anim" style="--d:.34s">
+        <h4><span class="ico">③</span>严格过滤</h4>
+        <p>过滤、去重、难度校准，确保数据质量与课程平衡。</p>
+      </div>
+    </div>
+    <div class="card y mt-m anim" style="--d:.42s">
+      <h4><span class="ico">★</span>核心结论</h4>
+      <p>在固定且不花哨的优化流程下，<b>合成数据与环境在规模、多样性、可验证性上的系统性提升，几乎解释了全部收益</b>。当前阶段，数据与环境管线的工程回报，显著超过后训练算法的创新回报。</p>
+    </div>
+    <div class="bridge anim" style="--d:.50s">
+      那么，<b>怎么让模型自己造出高质量任务？</b>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 25 Q23 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q23</span>
+      <h2 class="q-title">如何让模型<span class="accent">自己造训练任务</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>人工构造任务成本高。模型能不能自己出题、自己验证？用什么信号来评判任务质量？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="grid g2">
+      <div class="card anim" style="--d:.14s">
+        <h4><span class="ico">◫</span>任务三元组与双维评估</h4>
+        <p>每个任务形式化为 <b>(问题, 环境, 验证系统)</b>，沿两个维度评估：</p>
+        <ul class="dot mt-s">
+          <li><b>难度</b>：确保任务非平凡</li>
+          <li><b>正确性</b>：确保三部分无关键缺陷</li>
+        </ul>
+        <p class="mt-s">以难度与正确性作为奖励信号，<b>迭代训练模型构造更好的任务</b>。</p>
+      </div>
+      <div class="card g anim" style="--d:.20s">
+        <h4><span class="ico">⚙</span>编码 Agent 环境构建</h4>
+        <ul class="dot">
+          <li>来源：内部/外部编码会话（保留高复杂或表现差的任务）＋ 高 star 公开仓库</li>
+          <li>多个专用 Agent 协作：判断可构建性 → 选起点 → 设计评估点（fail-to-pass 与 pass-to-pass）</li>
+          <li>独立 Agent 在容器中搭依赖、写测试、自测、<b>去除答案痕迹</b>并打包镜像层</li>
+          <li>多个 Agent 尝试任务，质检 Agent 复查环境与轨迹，修复 Agent 修正后重新验证</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card p mt-m anim" style="--d:.28s">
+      <h4><span class="ico">★</span>全生命周期监控</h4>
+      <p>任务在每次新 RL 运行中被使用时，产生的轨迹都会为质量再审计提供新证据，形成持续校准闭环。</p>
+    </div>
+    <div class="bridge anim" style="--d:.36s">
+      这些任务要在哪里跑？答案是百万级并发的沙箱平台。下一问：<b>Kubernetes 为什么不够用？</b>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 26 Q24 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q24</span>
+      <h2 class="q-title">百万级并发沙箱，<span class="accent">如何管理</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>Kubernetes 依赖中心化的强一致性调度。当容器数量达到百万级，中心协调会不会成为瓶颈？能不能用「最终一致性」换扩展性？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="grid g2">
+      <div class="card anim" style="--d:.14s">
+        <h4><span class="ico">▤</span>DSec 的设计取舍</h4>
+        <ul class="dot">
+          <li><b>分片</b>：计算节点划分为多个 scale unit，隔离不同实验，缩小爆炸半径</li>
+          <li><b>自定义放置引擎</b>：多副本独立运行，不做同步协调，各副本根据近期测量预测资源并做「足够好」的决策</li>
+          <li><b>节点兜底</b>：每个节点验证最终放置决策，超过本地警戒阈值就拒绝新放置</li>
+          <li>用<b>最终一致性 + 本地硬约束</b>替代全局强一致性</li>
+        </ul>
+      </div>
+      <div class="card g anim" style="--d:.20s">
+        <h4><span class="ico">⚙</span>高密度与干扰控制</h4>
+        <ul class="dot">
+          <li>硬件支持的 sub-NUMA 分区，每个 worker VM 绑定独立 NUMA 域</li>
+          <li>单机容器密度从约 <b>1000 提升到 2500+</b></li>
+          <li>引入<b>延迟敏感（LS）执行类</b>，非 LS 任务用 SCHED_IDLE 降低优先级</li>
+          <li>核心调度确保同优先级任务才在兄弟超线程上同时执行</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card y mt-m anim" style="--d:.28s">
+      <h4><span class="ico">⚠</span>遏制越界行为</h4>
+      <p>RL 训练中常见 Agent 尝试奖励黑客或意外崩溃环境，甚至利用已披露漏洞、删除关键二进制或文件系统。DSec 用<b>每沙箱 AppArmor 配置</b>与<b>细粒度 eBPF 网络策略</b>拦截；若 Agent 崩溃环境，视为失败轨迹并向 RL 框架上报「反噬」信号。</p>
+    </div>
+    <div class="bridge anim" style="--d:.36s">
+      环境有了，训练怎么跑？异步 RL 有什么副作用？
+    </div>
+  </div>
+</section>
+
+<!-- ============ 27 Q25 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q25</span>
+      <h2 class="q-title">异步 RL 有什么<span class="accent">副作用</span>？怎么缓解？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>异步生成提高了 rollout 效率，但样本可能由旧 checkpoint 生成，且短序列先完成。这两件事分别会带来什么问题？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="grid g2">
+      <div class="card y anim" style="--d:.14s">
+        <h4><span class="ico">⚠</span>副作用一：长度偏置</h4>
+        <p>短序列先完成，在训练早期主导初始批次。</p>
+        <ul class="dot mt-s">
+          <li><b>数据集级并发限制</b>：调节各数据集在稳态批次中的比例，间接缓解长度偏斜</li>
+          <li><b>丢弃过早返回的短样本</b>：平滑过渡到稳态长度分布，防止过拟合短序列</li>
+        </ul>
+      </div>
+      <div class="card p anim" style="--d:.20s">
+        <h4><span class="ico">⚠</span>副作用二：Off-policy</h4>
+        <p>样本的 token 部分或全部由更早的 checkpoint 生成。</p>
+        <ul class="dot mt-s">
+          <li><b>限制最大 off-policy 比例</b>：通过派发逻辑与等待条件控制</li>
+          <li><b>损失掩码</b>：消除过时 token 的贡献，减轻陈旧样本对梯度更新的影响</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card g mt-m anim" style="--d:.28s">
+      <h4><span class="ico">★</span>无缝中断与恢复</h4>
+      <p>支持 <b>token 级中断</b>；KV Cache 与专家路由按 token 粒度持久化，切换 checkpoint 后直接复用，免除重新 prefill。同一机制也让训练任务迅速响应集群抢占信号而不丢进度。</p>
+    </div>
+    <div class="bridge anim" style="--d:.36s">
+      训练之外，用户还能控制推理成本。下一问：<b>如何用一个标量控制推理努力度？</b>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 28 Q26 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q26</span>
+      <h2 class="q-title">如何用一个标量 <span class="accent">b ∈ [1, 100]</span> 控制推理努力度？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>输出 token 数是服务成本的关键变量。能不能不改模型权重，只用一个 conditioning 信号就控制推理长度？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="grid g2" style="align-items:start">
+      <div class="anim" style="--d:.14s">
+        <div class="formula">
+          Reasoning Effort: {effort}<br>
+          <span class="v">(range 1-100; higher = more thorough)</span>
+        </div>
+        <ul class="dot mt-m">
+          <li>在系统提示前加上这一行，即可启用</li>
+          <li>同一 (x, b) 下的回复构成子组，<b>组内做奖励均值中心化</b></li>
+          <li>不同努力度之间<b>不直接比较</b>，努力度相关行为在子组内通过长度惩罚诱导</li>
+        </ul>
+      </div>
+      <div class="grid anim" style="--d:.22s;gap:12px">
+        <div class="card p">
+          <h4><span class="ico">☰</span>API 三档预设</h4>
+          <div class="mt-s">
+            <span class="tag pk">max → b = 100</span>
+            <span class="tag yl">high → b = 75</span>
+            <span class="tag on">low → b = 50</span>
+          </div>
+          <p class="mt-s">训练只覆盖有限档位，部署时可用中间值得到插值行为。</p>
+        </div>
+        <div class="card g">
+          <h4><span class="ico">↗</span>effort 25 → 100 的收益</h4>
+          <ul class="dot">
+            <li>8 项推理基准平均 Pass@1：<b>67.1% → 76.3%</b></li>
+            <li>DeepSWE v1.1：<b>66.0% → 74.2%</b></li>
+            <li>Terminal-Bench 2.1：<b>82.4% → 90.6%</b></li>
+            <li>代价约 <b>2.5×</b> 输出 token</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="bridge anim" style="--d:.34s">
+      收益前置：60–80 档已能拿回大部分精度，token 预算不到一半。背后的惩罚系数为什么要<b>指数衰减</b>？
+    </div>
+  </div>
+</section>
+
+<!-- ============ 29 Q27 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q27</span>
+      <h2 class="q-title">为什么惩罚系数要<span class="accent">指数衰减</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>如果推理的边际收益随长度递减，那么最优长度和努力度之间应该是什么关系？线性？指数？还是别的？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="grid g2" style="align-items:start">
+      <div class="anim" style="--d:.14s">
+        <div class="formula">
+          r<sup>len</sup><sub>b,j</sub> = −min{ C<sub>max</sub> , k(b) · ℓ<sub>b,j</sub> / L<sub>norm</sub> }<br><br>
+          k(b) = k<sub>0</sub> · exp( −(b − b<sub>min</sub>) / τ )<br>
+          τ = λ · Δb̄
+        </div>
+        <ul class="dot mt-m">
+          <li><b>k₀</b>：最低努力度下的惩罚系数，控制整体收缩压力</li>
+          <li><b>τ</b>：惩罚衰减速率，控制对努力度的敏感度</li>
+          <li>努力度增加 τ，惩罚系数乘以 <b>e⁻¹</b></li>
+        </ul>
+      </div>
+      <div class="anim" style="--d:.22s">
+        <div class="card p">
+          <h4><span class="ico">∑</span>推导直觉</h4>
+          <p>假设解题概率的<b>边际收益随长度近似指数衰减</b>：</p>
+          <div class="formula mt-s" style="font-size:12px">
+            p'(ℓ) ≈ a<sub>x</sub> · exp(−ℓ/s<sub>x</sub>)
+          </div>
+          <p class="mt-s">在内部最优解处，边际收益等于边际惩罚，可得最优长度与努力度呈<b>一阶仿射关系</b>：</p>
+          <div class="formula mt-s" style="font-size:12px">
+            ℓ*(b) ≈ C<sub>x</sub> − s<sub>x</sub>·log k<sub>0</sub> + (s<sub>x</sub>/τ)·(b − b<sub>min</sub>)
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card y mt-m anim" style="--d:.34s">
+      <h4><span class="ico">⚠</span>这是局部近似</h4>
+      <p>真实行为可能偏离：努力度指令会改变推理策略、生成具有随机性、Agent 轨迹包含不同轮数、子组奖励归一化改变优化强度。该分析假设惩罚上限未激活；一旦触顶，边际惩罚为零，需单独考虑。</p>
+    </div>
+    <div class="bridge anim" style="--d:.42s">
+      训练讲完了，最后看效果：<b>KV Cache 到底压缩了多少？</b>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 30 Q28 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q28</span>
+      <h2 class="q-title">KV Cache 到底<span class="accent">压缩了多少</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>全局 KV 与持久化 KV 是两个不同的指标。它们分别降到了 V4-Flash 的多少？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="bars anim" style="--d:.14s">
+      <div class="bar-row">
+        <div class="bar-name">DeepSeek-V1<em>2023.11</em></div>
+        <div class="bar-track"><div class="bar" style="--wd:100%"></div></div>
+        <div class="bar-val">389,120<small>bytes</small></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-name">DeepSeek-V3.2<em>2025.12</em></div>
+        <div class="bar-track"><div class="bar" style="--wd:70.6%"></div></div>
+        <div class="bar-val">48,068<small>bytes</small></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-name">DeepSeek-V4-Flash<em>2026.04</em></div>
+        <div class="bar-track"><div class="bar" style="--wd:34%"></div></div>
+        <div class="bar-val">3,514<small>bytes</small></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-name">DeepSeek-V4.1-Flash<em>2026.09</em></div>
+        <div class="bar-track"><div class="bar hi" style="--wd:14.6%"></div></div>
+        <div class="bar-val" style="color:var(--c3)">890<small>bytes</small></div>
+      </div>
+    </div>
+    <div class="grid g3 mt-m">
+      <div class="card g anim" style="--d:.30s">
+        <h4><span class="ico">↓</span>全局 KV 为 V4 的 1/4</h4>
+        <p>常驻 HBM 的全局 KV 从 3,514 降至 <b>890 bytes/token</b>，由 CSA2 跨层复用与 FP4 共同贡献。</p>
+      </div>
+      <div class="card anim" style="--d:.36s">
+        <h4><span class="ico">↓</span>持久化 KV 约为 1/8</h4>
+        <p>位于 SSD 或主机内存的持久化 KV，通过 SWA Bounded Replay 进一步压缩到约 <b>1/8</b>。</p>
+      </div>
+      <div class="card p anim" style="--d:.42s">
+        <h4><span class="ico">↓</span>相比 V1 缩小约 437 倍</h4>
+        <p>缓存大幅下降的同时，模型整体性能<b>优于</b> DeepSeek-V4-Flash。</p>
+      </div>
+    </div>
+    <div class="bridge anim" style="--d:.50s">
+      压缩不是目的，性能才是。下一问看具体提升了多少。
+    </div>
+  </div>
+</section>
+
+<!-- ============ 31 Q29 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q29</span>
+      <h2 class="q-title">性能<span class="accent">提升了多少</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>一个体量更小、缓存更省的模型，在推理和 Agent 基准上能打到什么位置？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="tbl-wrap anim" style="--d:.14s">
+      <table>
+        <thead>
+          <tr><th>基准</th><th>Opus-5</th><th>GPT-5.6 Sol</th><th>Kimi-K3</th><th>V4-Flash</th><th>V4.1-Flash</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>GPQA Diamond (Pass@1)</td><td class="num">93.4</td><td class="num">94.1</td><td class="num">92.9</td><td class="num">89.9</td><td class="num best hl">90.9</td></tr>
+          <tr><td>Codeforces (Rating)</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">3289</td><td class="num best hl">3471</td></tr>
+          <tr><td>MathArena Apex (Pass@1)</td><td class="num">—</td><td class="num">—</td><td class="num">65.6</td><td class="num">58.6</td><td class="num best hl">65.6</td></tr>
+          <tr><td>Terminal-Bench 2.1 (Pass@1)</td><td class="num">89.1</td><td class="num">88.8</td><td class="num">88.3</td><td class="num">82.7</td><td class="num best hl">90.6</td></tr>
+          <tr><td>DeepSWE v1.1 (Resolved)</td><td class="num">74.0</td><td class="num">73.0</td><td class="num">67.5</td><td class="num">54.4</td><td class="num best hl">74.2</td></tr>
+          <tr><td>Automation-Bench (Pass@1)</td><td class="num">50.3</td><td class="num">45.8</td><td class="num">46.7</td><td class="num">37.7</td><td class="num best hl">54.8</td></tr>
+          <tr><td>Agents' Last Exam (Pass@1)</td><td class="num">28.6</td><td class="num">26.7</td><td class="num">27.6</td><td class="num">25.2</td><td class="num best hl">31.8</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="grid g3 mt-m">
+      <div class="card g anim" style="--d:.28s">
+        <h4><span class="ico">↗</span>Agent 能力跃升</h4>
+        <p>DeepSWE v1.1 从 54.4% 跳到 <b>74.2%</b>，超过 Opus-5 与 GPT-5.6 Sol。</p>
+      </div>
+      <div class="card anim" style="--d:.34s">
+        <h4><span class="ico">◈</span>推理稳步提升</h4>
+        <p>Codeforces 3471，MathArena Apex 65.6%，GPQA Diamond 90.9%。</p>
+      </div>
+      <div class="card p anim" style="--d:.40s">
+        <h4><span class="ico">★</span>Base 模型效率</h4>
+        <p>世界知识、推理、编码与 V4-Pro-Base 相当，留出评测提升 5%–10%，仅用 <b>1/3 总参数、1/4 激活参数</b>。</p>
+      </div>
+    </div>
+    <div class="bridge anim" style="--d:.48s">
+      基准之外，还要看模型在不同脚手架下是否稳定。下一问：<b>跨脚手架鲁棒性说明什么？</b>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 32 Q30 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q30</span>
+      <h2 class="q-title">跨脚手架鲁棒性，<span class="accent">说明什么</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>如果模型只在某一种 harness 下表现好，换一套系统提示、工具 schema、交互协议就崩，这意味着什么？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="tbl-wrap anim" style="--d:.14s">
+      <table>
+        <thead>
+          <tr><th>基准</th><th>Claude Code</th><th>Codex</th><th>OpenCode</th><th>Pi</th><th>mini-SWE</th><th>DSH Minimal</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>DeepSWE v1.1 (Resolved)</td><td class="num">69.8</td><td class="num">65.6</td><td class="num">65.5</td><td class="num">66.2</td><td class="num best">74.2</td><td class="num">72.6</td></tr>
+          <tr><td>Terminal-Bench v2.1 (Pass@1)</td><td class="num">88.0</td><td class="num">84.1</td><td class="num">85.0</td><td class="num">86.1</td><td class="num">90.3</td><td class="num best">90.6</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="grid g2 mt-m">
+      <div class="card g anim" style="--d:.26s">
+        <h4><span class="ico">✓</span>结论</h4>
+        <p>模型智能体能力能<b>跨脚手架族迁移</b>，而非依赖某一 harness 的特定约定。周围交互协议与工具抽象变化时，性能保持稳健。</p>
+      </div>
+      <div class="card p anim" style="--d:.32s">
+        <h4><span class="ico">★</span>原因</h4>
+        <p>这与训练数据中环境、工具 schema、交互格式的<b>多样性</b>一致——数据设计本身就在鼓励跨脚手架泛化。</p>
+      </div>
+    </div>
+    <div class="bridge anim" style="--d:.40s">
+      单个 Agent 之外，多智能体协作能带来多少额外收益？
+    </div>
+  </div>
+</section>
+
+<!-- ============ 33 Q31 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q31</span>
+      <h2 class="q-title">多智能体比单智能体，<span class="accent">强多少</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>给定同样的 wall-clock 截止时间，多个 Agent 协作一定比单个 Agent 好吗？在短时间和长时间下，差距一样吗？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="grid g2">
+      <div class="card anim" style="--d:.14s">
+        <h4><span class="ico">◫</span>协作机制</h4>
+        <ul class="dot">
+          <li>主 Agent 通过 <b>spawn_teammate</b> 异步创建具名、持久的队友</li>
+          <li>分 <b>fresh</b>（无主 Agent 历史）与 <b>fork</b>（一次性快照）两种模式</li>
+          <li>共享同一份仓库检出，编辑立即可见</li>
+          <li>通过持久化对等邮箱通信，消息在队友下一个 step 边界送达</li>
+          <li>任务所有权、依赖、写作用域由共享任务板维护</li>
+        </ul>
+      </div>
+      <div class="card g anim" style="--d:.20s">
+        <h4><span class="ico">∑</span>训练奖励设计</h4>
+        <ul class="dot">
+          <li>RL 奖励 = 任务表现 + 协作加成 − 派生延迟惩罚</li>
+          <li>派生延迟通过把执行事件与协作依赖建成 <b>DAG</b>，按固定 prefill/decode 速率折算 token 成本，取<b>关键路径长度</b></li>
+          <li>鼓励有用的并行，惩罚不必要的串行与同步</li>
+          <li>对服务端 batching 与排队延迟敏感性更低</li>
+        </ul>
+      </div>
+    </div>
+    <div class="grid g2 mt-m">
+      <div class="card p anim" style="--d:.28s">
+        <h4><span class="ico">↗</span>ProgramBench（172 golden 任务）</h4>
+        <p>Almost@1：多智能体从 1 小时的 <b>13.59%</b> 升到 8 小时的 <b>30.04%</b>；单智能体对应为 12.79% → 20.39%。</p>
+      </div>
+      <div class="card y anim" style="--d:.34s">
+        <h4><span class="ico">↗</span>FrontierSWE v2（Mean@5）</h4>
+        <p>多智能体从 1 小时的 <b>13.50%</b> 升到 20 小时的 <b>32.90%</b>；单智能体为 10.50% → 28.20%。<b>每个截止点多智能体都更优。</b></p>
+      </div>
+    </div>
+    <div class="bridge anim" style="--d:.42s">
+      效果亮眼，但报告也坦诚列出了局限。最后一组问题：<b>这个模型还有什么边界？</b>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 34 Q32 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num">Q32</span>
+      <h2 class="q-title">这个模型，<span class="accent">还有什么局限</span>？</h2>
+    </div>
+    <div class="think anim" style="--d:.06s">
+      <span class="ti">💭</span>
+      <div>CSA2 的稀疏选择可能选错，SWA 有界重放是近似重建。这些设计在未经测试的边界条件下会怎样？</div>
+    </div>
+    <div class="ans-label anim" style="--d:.12s">解析</div>
+    <div class="grid g2">
+      <div class="card y anim" style="--d:.14s">
+        <h4><span class="ico">⚠</span>鲁棒性边界尚未完全刻画</h4>
+        <ul class="dot">
+          <li><b>CSA2 的选择误差</b>：稀疏选择可能漏掉重要 KV</li>
+          <li><b>SWA 有界重放的近似</b>：重放前缀状态是近似的，后续计算依赖命中位置</li>
+          <li>内部评测覆盖多样用例与边界条件，<b>未观察到系统性能力退化</b></li>
+          <li>但有限测试集无法覆盖所有极端输入与部署条件</li>
+        </ul>
+      </div>
+      <div class="card p anim" style="--d:.20s">
+        <h4><span class="ico">◈</span>后续方向</h4>
+        <ul class="dot">
+          <li>继续扩展压力测试与评测栈</li>
+          <li>重点关注<b>长上下文稀疏检索</b></li>
+          <li>关注<b>缓存恢复边界处的 SWA 状态重建</b></li>
+          <li>监控真实工作负载，系统刻画潜在失效模式</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card mt-m anim" style="--d:.28s">
+      <h4><span class="ico">◫</span>评测饱和问题</h4>
+      <p>标准评测基准日趋饱和。虽然基准分数差距不大，但<b>这并不意味着模型在最复杂、最高难度的推理与边缘案例上已匹配前沿闭源系统</b>。报告明确表示将持续更新评测协议，严谨评估最先进推理边界。</p>
+    </div>
+    <div class="bridge anim" style="--d:.36s">
+      把 32 个问题连起来，就是这份技术报告的完整逻辑链条。最后一页，我们复盘。
+    </div>
+  </div>
+</section>
+
+<!-- ============ 35 逻辑链复盘 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num g">RECAP</span>
+      <h2 class="q-title">从问题到答案：<span class="accent">完整逻辑链</span></h2>
+    </div>
+    <div class="grid g2 mt-m">
+      <div class="card anim" style="--d:.08s">
+        <h4><span class="ico">①</span>问题层</h4>
+        <ul class="dot">
+          <li>长上下文部署受<b>计算、存储、带宽</b>三重约束</li>
+          <li>稀疏注意力降低了计算，但<b>存储与搬运</b>成为新瓶颈</li>
+          <li>KV 压缩有<b>条目大小、序列、层</b>三个乘性维度，已有工作未同时覆盖</li>
+        </ul>
+      </div>
+      <div class="card g anim" style="--d:.16s">
+        <h4><span class="ico">②</span>架构层</h4>
+        <ul class="dot">
+          <li><b>CED</b>：解码器全局 KV 从编码器末层投影，Prefill 只算一半层</li>
+          <li><b>CSA2</b>：Full/Reindex/Reuse 三模式，跨层共享 main KV 与 indexer K</li>
+          <li><b>分层稀疏索引器</b>：候选池共享，深层索引成本与长度解耦</li>
+          <li><b>FP4 KV</b>：反量化后注意力，省略全局 scale</li>
+        </ul>
+      </div>
+      <div class="card p anim" style="--d:.24s">
+        <h4><span class="ico">③</span>部署层</h4>
+        <ul class="dot">
+          <li><b>SWA Bounded Replay</b>：只重放 n<sub>win</sub> 个 token</li>
+          <li>编码器重放 → 移除 SWA 持久化；解码器重放 → Prefill 减半</li>
+          <li>持久化 KV 降到 V4 的约 <b>1/8</b></li>
+        </ul>
+      </div>
+      <div class="card y anim" style="--d:.32s">
+        <h4><span class="ico">④</span>训练层</h4>
+        <ul class="dot">
+          <li>45T 多模态语料，<b>从零训练稀疏注意力</b>，无稠密预热</li>
+          <li>后训练无算法创新，收益来自<b>数据与环境管线</b></li>
+          <li>DSec 百万级沙箱，异步 RL 的偏置与 off-policy 有对应缓解</li>
+          <li>标量努力度 b 提供可控的成本-质量权衡</li>
+        </ul>
+      </div>
+    </div>
+    <div class="bridge anim" style="--d:.42s">
+      一句话总结：<b>通过架构、精度与部署的联合优化，在压缩 KV Cache 到极限的同时，把性能推到了开源模型前列。</b>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 36 一句话回答 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num g">SUMMARY</span>
+      <h2 class="q-title">如果只能记住<span class="accent">五句话</span></h2>
+    </div>
+    <div class="grid anim" style="--d:.1s;gap:14px">
+      <div class="card g">
+        <h4><span class="ico">1</span>瓶颈转移</h4>
+        <p>稀疏注意力解决「算得少」，但没解决「存得少、搬得快」。长上下文部署的真正瓶颈已转向存储与带宽。</p>
+      </div>
+      <div class="card">
+        <h4><span class="ico">2</span>CED 的非对称激活</h4>
+        <p>解码器全局 KV 由编码器末层投影，Prefill 只需算前一半层，激活 8B；Decode 才需要完整 16B。输入密集型 Agent 负载因此显著受益。</p>
+      </div>
+      <div class="card p">
+        <h4><span class="ico">3</span>CSA2 的三维联合压缩</h4>
+        <p>同时利用条目、序列、层三个维度：跨层共享 main KV 与 indexer K，复用 Top-K 索引，再用分层索引器把深层搜索域限制在候选池内。</p>
+      </div>
+      <div class="card y">
+        <h4><span class="ico">4</span>有界重放的新权衡</h4>
+        <p>用少量 Prefill 重算换取 SWA KV 不再持久化。持久化 KV 降到约 1/8，而重放只处理 n<sub>win</sub> 个 token，性能影响可忽略。</p>
+      </div>
+      <div class="card">
+        <h4><span class="ico">5</span>数据与环境 > 算法创新</h4>
+        <p>后训练流程标准，收益几乎全部来自合成数据与环境的规模、多样性与可验证性。这是当前阶段值得记住的工程结论。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 37 关键数字 ============ -->
+<section class="slide">
+  <div class="inner">
+    <div class="q-head anim" style="--d:0s">
+      <span class="q-num g">DATA</span>
+      <h2 class="q-title">关键数字<span class="accent">速查表</span></h2>
+    </div>
+    <div class="spec-grid anim" style="--d:.1s;margin-bottom:16px">
+      <div class="spec"><span>骨干参数</span><b>552B</b></div>
+      <div class="spec"><span>Engram 参数</span><b>196B</b></div>
+      <div class="spec"><span>Prefill 激活</span><b>8B</b></div>
+      <div class="spec"><span>Decode 激活</span><b>16B</b></div>
+      <div class="spec"><span>上下文</span><b>1M</b></div>
+      <div class="spec"><span>网络层数</span><b>40</b></div>
+    </div>
+    <div class="grid g3">
+      <div class="card anim" style="--d:.2s">
+        <h4><span class="ico">▣</span>KV 与缓存</h4>
+        <ul class="dot">
+          <li>全局 KV：<b>890 bytes/token</b></li>
+          <li>约为 V4-Flash 的 <b>1/4</b></li>
+          <li>持久化 KV：约为 V4-Flash 的 <b>1/8</b></li>
+          <li>相比 V1 缩小约 <b>437 倍</b></li>
+          <li>SWA 窗口 n<sub>win</sub> = <b>128</b></li>
+        </ul>
+      </div>
+      <div class="card g anim" style="--d:.26s">
+        <h4><span class="ico">◈</span>CSA2 配置</h4>
+        <ul class="dot">
+          <li>编码器压缩率 m = <b>2</b>，解码器 m = <b>1</b></li>
+          <li>稀疏注意力 Top-K = <b>512</b></li>
+          <li>候选池：2048 blocks × 8 位置 = <b>16,384</b></li>
+          <li>indexer 头数 32，头维度 128</li>
+          <li>Reuse 层：Prefill <b>15</b> kernel，Decode <b>11</b> kernel</li>
+        </ul>
+      </div>
+      <div class="card p anim" style="--d:.32s">
+        <h4><span class="ico">▤</span>训练与推理</h4>
+        <ul class="dot">
+          <li>训练语料 <b>45T</b>，文本:多模态 = <b>7:1</b></li>
+          <li>初始序列 64K，34T token 处扩展到 1M</li>
+          <li>批大小 <b>100.6M</b> token</li>
+          <li>峰值学习率 <b>2.6×10⁻⁴</b></li>
+          <li>API 努力度：max 100 / high 75 / low 50</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 38 结束 ============ -->
+<section class="slide">
+  <div class="inner cover-wrap">
+    <div class="pill anim" style="--d:0s">问题引导式精读 · 完</div>
+    <h1 class="cover-title anim" style="--d:.08s">32 个问题</h1>
+    <p class="cover-sub anim" style="--d:.15s">读懂 DeepSeek-V4.1-Flash</p>
+    <p class="cover-en anim" style="--d:.21s">Questions First, Understanding Follows</p>
+    <div class="stat-row anim" style="--d:.32s">
+      <div class="stat"><b>1/4</b><span>全局 KV</span></div>
+      <div class="stat"><b>1/8</b><span>持久化 KV</span></div>
+      <div class="stat"><b>437×</b><span>相比 V1</span></div>
+      <div class="stat"><b>90.6%</b><span>Terminal-Bench 2.1</span></div>
+    </div>
+    <p class="muted anim" style="--d:.44s;margin-top:34px">内容依据《DeepSeek-V4.1-Flash: Pushing the Limits of KV Cache Compression》技术报告整理。<br>图表为示意性可视化，具体数值以原报告为准。</p>
+  </div>
+</section>
+
+<!-- ============ HUD ============ -->
+<div class="hint">← → / 空格 翻页 · Home / End 首尾</div>
+<div class="hud">
+  <button class="nav-btn" id="prev" aria-label="上一页">‹</button>
+  <div class="counter"><b id="cur">01</b> / <span id="total">38</span></div>
+  <button class="nav-btn" id="next" aria-label="下一页">›</button>
+</div>
+
+<script>
+(function(){
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const total = slides.length;
+  const bar = document.getElementById('progressBar');
+  const curEl = document.getElementById('cur');
+  const totalEl = document.getElementById('total');
+  let cur = 0;
+  totalEl.textContent = String(total).padStart(2,'0');
+
+  const pad = n => String(n).padStart(2,'0');
+
+  function updateHUD(){
+    curEl.textContent = pad(cur + 1);
+    bar.style.width = ((cur + 1) / total * 100) + '%';
+  }
+
+  function go(n){
+    n = Math.max(0, Math.min(total - 1, n));
+    if(n === cur) return;
+    slides[cur].classList.remove('active');
+    cur = n;
+    slides[cur].classList.add('active');
+    slides[cur].scrollTop = 0;
+    updateHUD();
+  }
+
+  document.getElementById('next').addEventListener('click', () => go(cur + 1));
+  document.getElementById('prev').addEventListener('click', () => go(cur - 1));
+
+  document.addEventListener('keydown', (e) => {
+    if(['ArrowRight','ArrowDown','PageDown',' '].includes(e.key)){ e.preventDefault(); go(cur + 1); }
+    else if(['ArrowLeft','ArrowUp','PageUp'].includes(e.key)){ e.preventDefault(); go(cur - 1); }
+    else if(e.key === 'Home'){ e.preventDefault(); go(0); }
+    else if(e.key === 'End'){ e.preventDefault(); go(total - 1); }
+  });
+
+  let tx = 0, ty = 0;
+  document.addEventListener('touchstart', (e) => {
+    tx = e.changedTouches[0].clientX; ty = e.changedTouches[0].clientY;
+  }, {passive:true});
+  document.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].clientX - tx;
+    const dy = e.changedTouches[0].clientY - ty;
+    if(Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)){
+      dx < 0 ? go(cur + 1) : go(cur - 1);
+    }
+  }, {passive:true});
+
+  updateHUD();
+})();
+</script>
+</body>
+</html>

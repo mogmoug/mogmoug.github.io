@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>高中物理 · 机械波模拟 | 横波与质点振动</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(145deg, #f5f7fa 0%, #e9edf5 100%);
+      font-family: 'Segoe UI', 'Roboto', 'Noto Sans', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      margin: 0;
+    }
+
+    .container {
+      background: rgba(255,255,255,0.7);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 2.5rem;
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255,255,255,0.8);
+      padding: 2rem 2rem 2.2rem;
+      max-width: 950px;
+      width: fit-content;
+      margin: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: all 0.2s ease;
+    }
+
+    h1 {
+      font-weight: 500;
+      font-size: 2.1rem;
+      color: #1e293b;
+      margin-bottom: 0.25rem;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    h1 span {
+      background: #3b82f6;
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 0.2rem 0.9rem;
+      border-radius: 30px;
+      letter-spacing: 0.03em;
+      margin-left: 0.5rem;
+    }
+
+    canvas {
+      display: block;
+      margin: 0.5rem auto 0.8rem;
+      border-radius: 2rem;
+      background: #ffffff;
+      box-shadow: 0 20px 35px rgba(0, 20, 40, 0.12), inset 0 0 0 1px rgba(255,255,255,0.9);
+      width: 100%;
+      height: auto;
+      background: #fbfdff;
+    }
+
+    .control-panel {
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 1.8rem;
+      margin-top: 1.2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      background: rgba(255,255,255,0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 0.45rem 1.2rem;
+      border-radius: 3rem;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+    }
+
+    .slider-group label {
+      font-weight: 600;
+      color: #334155;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .slider-group input[type="range"] {
+      width: 110px;
+      cursor: pointer;
+      height: 6px;
+      background: #d1d9e8;
+      border-radius: 10px;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .slider-group input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      background: #2563eb;
+      border-radius: 50%;
+      box-shadow: 0 4px 10px rgba(37,99,235,0.5);
+      border: 2px solid white;
+      cursor: pointer;
+    }
+
+    .value-display {
+      background: white;
+      padding: 0.25rem 0.9rem;
+      border-radius: 2rem;
+      font-weight: 650;
+      color: #0f172a;
+      font-size: 0.9rem;
+      min-width: 60px;
+      text-align: center;
+      box-shadow: inset 0 1px 4px rgba(0,0,0,0.03);
+    }
+
+    .buttons {
+      display: flex;
+      gap: 0.8rem;
+      align-items: center;
+    }
+
+    .btn {
+      background: white;
+      border: none;
+      padding: 0.55rem 1.5rem;
+      border-radius: 2.5rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #1e293b;
+      background: #ffffff;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.02);
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      letter-spacing: 0.3px;
+    }
+
+    .btn:hover {
+      background: #f1f5ff;
+      box-shadow: 0 10px 22px rgba(37,99,235,0.2);
+      transform: translateY(-1px);
+    }
+
+    .btn.active {
+      background: #2563eb;
+      color: white;
+      box-shadow: 0 12px 22px rgba(37,99,235,0.4);
+      border: none;
+    }
+
+    .legend {
+      display: flex;
+      gap: 1.8rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #475569;
+      margin-left: 0.5rem;
+    }
+    .legend span::before {
+      content: "●";
+      margin-right: 0.4rem;
+      font-size: 1.2rem;
+      vertical-align: middle;
+      display: inline-block;
+    }
+    .legend .wave-color::before { content: "●"; color: #2563eb; }
+    .legend .particle-color::before { content: "●"; color: #d9466c; }
+
+    footer {
+      margin-top: 0.3rem;
+      color: #64748b;
+      font-size: 0.8rem;
+      text-align: center;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>
+    🌊 机械波 · 横波模拟
+    <span>高中物理</span>
+  </h1>
+
+  <!-- Canvas 绘制区域 -->
+  <canvas id="waveCanvas" width="850" height="380" aria-label="机械波动画模拟"></canvas>
+
+  <div class="control-panel">
+    <div class="slider-group">
+      <label>📏 波长 <span style="font-weight:400;">λ</span></label>
+      <input type="range" id="wavelengthSlider" min="80" max="280" value="180" step="1">
+      <span class="value-display" id="wavelengthValue">180 px</span>
+    </div>
+
+    <div class="slider-group">
+      <label>📈 振幅 <span style="font-weight:400;">A</span></label>
+      <input type="range" id="amplitudeSlider" min="20" max="80" value="55" step="1">
+      <span class="value-display" id="amplitudeValue">55 px</span>
+    </div>
+
+    <div class="buttons">
+      <button class="btn" id="playPauseBtn">
+        <span id="playIcon">⏸️</span> <span id="playText">暂停</span>
+      </button>
+      <button class="btn" id="resetBtn">
+        🔄 重置相位
+      </button>
+    </div>
+  </div>
+
+  <div style="display: flex; justify-content: space-between; width: 100%; align-items: center; margin-top: 0.4rem;">
+    <div class="legend">
+      <span class="wave-color">波形曲线</span>
+      <span class="particle-color">质点 (当前位移)</span>
+    </div>
+    <div style="font-size:0.85rem; color:#4b5563;">
+      💡 质点沿Y轴振动 · 波向右传播
+    </div>
+  </div>
+  <footer>
+    ⚡ 拖动滑块调整波长/振幅 · 点击暂停观察瞬时状态
+  </footer>
+</div>
+
+<script>
+  (function() {
+    // ----- 获取 DOM 元素 -----
+    const canvas = document.getElementById('waveCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // 滑块与显示
+    const wavelengthSlider = document.getElementById('wavelengthSlider');
+    const amplitudeSlider = document.getElementById('amplitudeSlider');
+    const wavelengthValue = document.getElementById('wavelengthValue');
+    const amplitudeValue = document.getElementById('amplitudeValue');
+
+    // 按钮
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const playIcon = document.getElementById('playIcon');
+    const playText = document.getElementById('playText');
+    const resetBtn = document.getElementById('resetBtn');
+
+    // ----- 固定参数 -----
+    const canvasWidth = canvas.width = 850;
+    const canvasHeight = canvas.height = 380;
+
+    // 坐标原点：平衡位置 (y 方向居中)
+    const equilibriumY = canvasHeight / 2;  // 190 px
+
+    // 质点数量 (沿X轴均匀分布)
+    const PARTICLE_COUNT = 90;
+
+    // 波速 (像素/秒) —— 控制向右传播速度
+    const WAVE_SPEED = 90;  // 像素/秒
+
+    // ----- 动态变量 -----
+    let wavelength = 180;        // 波长 (像素)
+    let amplitude = 55;         // 振幅 (像素)
+
+    // 动画状态
+    let animationId = null;
+    let isAnimating = true;
+
+    // 时间累积 (用于计算相位偏移)
+    let time = 0.0;            // 单位：秒
+    let lastTimestamp = 0;     // 用于计算 delta time
+
+    // 质点静态X坐标数组 (等间距排列)
+    let particleXPositions = [];
+
+    // ----- 初始化质点X坐标 -----
+    function updateParticlePositions() {
+      particleXPositions = [];
+      // 从左侧边缘留出一些边距，到右侧边缘留边距，使视觉舒适
+      const startX = 40;
+      const endX = canvasWidth - 40;
+      const step = (endX - startX) / (PARTICLE_COUNT - 1);
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        particleXPositions.push(startX + i * step);
+      }
+    }
+    updateParticlePositions();
+
+    // ----- 工具函数：根据质点平衡位置x和时间t计算y位移 (横波) -----
+    function computeDisplacement(x, t) {
+      // 波函数: y(x,t) = A * sin( k*x - ω*t )
+      // 其中 k = 2π / λ ,  ω = 2π * f ，而波速 v = λ * f  => f = v / λ , 所以 ω = 2π * v / λ
+      if (wavelength <= 0) return 0;
+      const k = (2 * Math.PI) / wavelength;          // 波数
+      const omega = (2 * Math.PI * WAVE_SPEED) / wavelength; // 角频率
+      return amplitude * Math.sin(k * x - omega * t);
+    }
+
+    // ----- 绘制整个场景 (波形曲线 + 质点) -----
+    function drawScene() {
+      if (!ctx) return;
+      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+      // 绘制浅色水平中线 (平衡位置)
+      ctx.beginPath();
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([6, 6]);
+      ctx.moveTo(20, equilibriumY);
+      ctx.lineTo(canvasWidth - 20, equilibriumY);
+      ctx.stroke();
+      ctx.setLineDash([]); // 重置为实线
+
+      // ----- 绘制波形曲线 (连续光滑) -----
+      ctx.beginPath();
+      ctx.strokeStyle = '#2563eb';
+      ctx.lineWidth = 2.8;
+      ctx.shadowColor = 'rgba(37, 99, 235, 0.25)';
+      ctx.shadowBlur = 8;
+
+      // 采用足够多的采样点绘制平滑曲线
+      const step = 2; // 像素步长
+      let firstPoint = true;
+
+      for (let xPixel = 0; xPixel <= canvasWidth; xPixel += step) {
+        // 计算该像素位置对应的位移
+        const yDisp = computeDisplacement(xPixel, time);
+        const yCanvas = equilibriumY - yDisp; // Canvas Y轴向下，所以减去位移
+
+        if (firstPoint) {
+          ctx.moveTo(xPixel, yCanvas);
+          firstPoint = false;
+        } else {
+          ctx.lineTo(xPixel, yCanvas);
+        }
+      }
+      ctx.stroke();
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+
+      // ----- 绘制质点 (代表介质中的粒子) -----
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        const xBalance = particleXPositions[i];
+        // 计算该质点当前位移
+        const displacement = computeDisplacement(xBalance, time);
+        const yParticle = equilibriumY - displacement;
+
+        // 绘制质点外圈光晕
+        ctx.beginPath();
+        ctx.arc(xBalance, yParticle, 7, 0, 2 * Math.PI);
+        ctx.fillStyle = 'rgba(217, 70, 108, 0.15)';
+        ctx.fill();
+        
+        // 绘制质点主体
+        ctx.beginPath();
+        ctx.arc(xBalance, yParticle, 5.2, 0, 2 * Math.PI);
+        ctx.fillStyle = '#d9466c';
+        ctx.shadowColor = 'rgba(217, 70, 108, 0.5)';
+        ctx.shadowBlur = 6;
+        ctx.fill();
+        
+        // 添加白色高光
+        ctx.beginPath();
+        ctx.arc(xBalance - 1.2, yParticle - 1.5, 1.8, 0, 2 * Math.PI);
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowBlur = 0;
+        ctx.fill();
+        
+        // 绘制质点中心小点 (表示平衡位置投影，可选)
+        ctx.beginPath();
+        ctx.arc(xBalance, equilibriumY, 1.5, 0, 2 * Math.PI);
+        ctx.fillStyle = '#94a3b8';
+        ctx.fill();
+        
+        // 绘制连接虚线 (质点当前位置到平衡位置)
+        ctx.beginPath();
+        ctx.strokeStyle = '#d9466c';
+        ctx.lineWidth = 0.9;
+        ctx.setLineDash([3, 4]);
+        ctx.moveTo(xBalance, equilibriumY);
+        ctx.lineTo(xBalance, yParticle);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // 重置阴影
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+
+      // 绘制时间标记或说明 (右下角)
+      ctx.font = '500 13px "Segoe UI", Roboto';
+      ctx.fillStyle = '#475569';
+      ctx.fillText(`⏱️ 相位 ωt = ${( (2*Math.PI*WAVE_SPEED/wavelength) * time ).toFixed(2)} rad`, canvasWidth-200, 35);
+    }
+
+    // ----- 动画循环 (基于 requestAnimationFrame 时间差) -----
+    function animationLoop(timestamp) {
+      if (!isAnimating) {
+        // 如果暂停，仍然保持最后一帧，但不更新time
+        animationId = requestAnimationFrame(animationLoop);
+        return;
+      }
+
+      if (lastTimestamp === 0) {
+        lastTimestamp = timestamp;
+        animationId = requestAnimationFrame(animationLoop);
+        drawScene();
+        return;
+      }
+
+      // 计算时间差 (秒)
+      const deltaSec = (timestamp - lastTimestamp) / 1000; 
+      // 限制最大步长，避免切换标签页后突变
+      const clampedDelta = Math.min(deltaSec, 0.05);
+      
+      // 更新时间累积 (波向右传播，相位随时间增加而增加)
+      time += clampedDelta;
+      
+      // 重绘场景
+      drawScene();
+
+      lastTimestamp = timestamp;
+      animationId = requestAnimationFrame(animationLoop);
+    }
+
+    // ----- 重置相位 (时间归零) -----
+    function resetPhase() {
+      time = 0.0;
+      // 如果暂停状态，需要手动重绘一次
+      drawScene();
+    }
+
+    // ----- 更新UI显示的数值 -----
+    function updateSliderDisplays() {
+      wavelengthValue.textContent = wavelength + ' px';
+      amplitudeValue.textContent = amplitude + ' px';
+    }
+
+    // ----- 同步滑块值到变量并重绘 (若暂停则立即绘制) -----
+    function onWavelengthChange(e) {
+      wavelength = parseFloat(e.target.value);
+      updateSliderDisplays();
+      // 当波长改变时，如果不处于动画播放，仍需刷新画面以反映变化
+      if (!isAnimating) {
+        drawScene();
+      }
+    }
+
+    function onAmplitudeChange(e) {
+      amplitude = parseFloat(e.target.value);
+      updateSliderDisplays();
+      if (!isAnimating) {
+        drawScene();
+      }
+    }
+
+    // ----- 播放/暂停切换 -----
+    function togglePlayPause() {
+      isAnimating = !isAnimating;
+      if (isAnimating) {
+        playIcon.textContent = '⏸️';
+        playText.textContent = '暂停';
+        playPauseBtn.classList.add('active');
+        // 重置 lastTimestamp 避免时间跳跃
+        lastTimestamp = 0;
+      } else {
+        playIcon.textContent = '▶️';
+        playText.textContent = '播放';
+        playPauseBtn.classList.remove('active');
+        // 暂停时立即绘制当前帧
+        drawScene();
+      }
+    }
+
+    // ----- 绑定事件与启动动画 -----
+    function bindEvents() {
+      wavelengthSlider.addEventListener('input', onWavelengthChange);
+      amplitudeSlider.addEventListener('input', onAmplitudeChange);
+      
+      playPauseBtn.addEventListener('click', togglePlayPause);
+      resetBtn.addEventListener('click', () => {
+        resetPhase();
+        // 如果当前是播放状态，重置lastTimestamp防止delta时间突变
+        if (isAnimating) {
+          lastTimestamp = 0;
+        }
+      });
+
+      // 窗口失去焦点时不做特殊处理，但保留动画。
+    }
+
+    // 设置初始滑块值和显示
+    function setInitialValues() {
+      wavelengthSlider.value = wavelength;
+      amplitudeSlider.value = amplitude;
+      updateSliderDisplays();
+      // 默认激活状态 (播放中)
+      playPauseBtn.classList.add('active');
+      playIcon.textContent = '⏸️';
+      playText.textContent = '暂停';
+    }
+
+    // 清理动画 (非必须，但良好实践)
+    function startAnimation() {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
+      lastTimestamp = 0;
+      animationId = requestAnimationFrame(animationLoop);
+    }
+
+    // ----- 初始化整个应用 -----
+    function init() {
+      updateParticlePositions();
+      setInitialValues();
+      bindEvents();
+      startAnimation();
+      // 初始绘制
+      drawScene();
+    }
+
+    // 启动一切
+    init();
+
+    // 可选：处理窗口大小不变 (canvas固定尺寸)
+  })();
+</script>
+</body>
+</html>

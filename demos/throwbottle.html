@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>扔瓶子模拟器 🍼</title>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --surface: #2d2d44;
+            --text: #e0e0e0;
+            --accent: #4cc9f0;
+            --gold: #ffd166;
+            --success: #06d6a0;
+            --fail: #ef476f;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        .container {
+            position: relative;
+            width: 420px;
+            max-width: 95vw;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .stat-badge {
+            background: var(--surface);
+            color: var(--text);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        .stat-badge .val {
+            color: var(--accent);
+            font-size: 18px;
+            font-weight: 700;
+        }
+        .stat-badge.combo {
+            background: var(--gold);
+            color: #1a1a2e;
+            animation: pulse-combo 0.8s ease-in-out infinite;
+            display: none;
+        }
+        .stat-badge.combo.active {
+            display: block;
+        }
+        @keyframes pulse-combo {
+            0%,
+            100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.08);
+            }
+        }
+
+        .canvas-wrap {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4/5.5;
+            max-height: 70vh;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+            background: #1e1e35;
+            transition: transform 0.1s;
+        }
+        .canvas-wrap:active {
+            transform: scale(0.98);
+        }
+        .canvas-wrap.shake {
+            animation: shake 0.4s ease-out;
+        }
+        @keyframes shake {
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+            15% {
+                transform: translateX(-6px);
+            }
+            30% {
+                transform: translateX(6px);
+            }
+            45% {
+                transform: translateX(-5px);
+            }
+            60% {
+                transform: translateX(4px);
+            }
+            75% {
+                transform: translateX(-2px);
+            }
+            90% {
+                transform: translateX(1px);
+            }
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .hint {
+            color: #8888aa;
+            font-size: 13px;
+            text-align: center;
+            letter-spacing: 0.5px;
+            animation: fade-hint 2.5s ease-in-out infinite;
+        }
+        @keyframes fade-hint {
+            0%,
+            100% {
+                opacity: 0.5;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .btn {
+            padding: 10px 22px;
+            border-radius: 25px;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .btn-reset {
+            background: var(--surface);
+            color: var(--text);
+        }
+        .btn-reset:hover {
+            background: #3d3d58;
+        }
+        .btn-auto {
+            background: var(--accent);
+            color: #1a1a2e;
+        }
+        .btn-auto:hover {
+            background: #5dd5f5;
+        }
+        .btn-auto.on {
+            background: var(--fail);
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 统计面板 -->
+        <div class="header">
+            <div class="stat-badge">🎯 得分 <span class="val" id="scoreVal">0</span></div>
+            <div class="stat-badge">🔄 次数 <span class="val" id="attemptsVal">0</span></div>
+            <div class="stat-badge">📊 成功率 <span class="val" id="rateVal">0%</span></div>
+            <div class="stat-badge combo" id="comboBadge">🔥 连击 <span class="val" id="comboVal">0</span></div>
+        </div>
+
+        <!-- 画布 -->
+        <div class="canvas-wrap" id="canvasWrap">
+            <canvas id="mainCanvas"></canvas>
+        </div>
+
+        <!-- 提示 -->
+        <p class="hint" id="hintText">👆 看准力度条，点击画面扔出瓶子！</p>
+
+        <!-- 按钮 -->
+        <div class="btn-row">
+            <button class="btn btn-reset" id="btnReset">🔄 重置统计</button>
+            <button class="btn btn-auto" id="btnAuto">🤖 自动演示</button>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ============ DOM元素 ============
+            const canvas = document.getElementById('mainCanvas');
+            const ctx = canvas.getContext('2d');
+            const wrap = document.getElementById('canvasWrap');
+            const hintText = document.getElementById('hintText');
+            const scoreVal = document.getElementById('scoreVal');
+            const attemptsVal = document.getElementById('attemptsVal');
+            const rateVal = document.getElementById('rateVal');
+            const comboBadge = document.getElementById('comboBadge');
+            const comboVal = document.getElementById('comboVal');
+            const btnReset = document.getElementById('btnReset');
+            const btnAuto = document.getElementById('btnAuto');
+
+            // ============ Canvas尺寸 ============
+            const W = 400;
+            const H = 550;
+            let scale = 1;
+
+            function resizeCanvas() {
+                const rect = wrap.getBoundingClientRect();
+                const w = rect.width;
+                const h = rect.height;
+                scale = Math.min(w / W, h / H);
+                canvas.width = W;
+                canvas.height = H;
+                canvas.style.width = (W * scale) + 'px';
+                canvas.style.height = (H * scale) + 'px';
+            }
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            // 也监听orientationchange
+            window.addEventListener('orientationchange', () => {
+                setTimeout(resizeCanvas, 200);
+            });
+
+            // ============ 音效系统 ============
+            let audioCtx = null;
+
+            function getAudioCtx() {
+                if (!audioCtx) {
+                    audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                return audioCtx;
+            }
+
+            function playBeep(freq, duration, type = 'sine', vol = 0.08) {
+                try {
+                    const ac = getAudioCtx();
+                    const t = ac.currentTime;
+                    const osc = ac.createOscillator();
+                    const gain = ac.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, t);
+                    osc.frequency.exponentialRampToValueAtTime(freq * 0.4, t + duration);
+                    gain.gain.setValueAtTime(vol, t);
+                    gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+                    osc.connect(gain);
+                    gain.connect(ac.destination);
+                    osc.start(t);
+                    osc.stop(t + duration);
+                } catch (e) {
+                    // 静默处理
+                }
+            }
+
+            function sfxSuccess() {
+                playBeep(880, 0.12, 'sine', 0.1);
+                setTimeout(() => playBeep(1100, 0.15, 'sine', 0.08), 100);
+                setTimeout(() => playBeep(1320, 0.2, 'triangle', 0.06), 180);
+            }
+
+            function sfxFail() {
+                playBeep(120, 0.25, 'triangle', 0.09);
+                setTimeout(() => playBeep(80, 0.3, 'sawtooth', 0.05), 150);
+            }
+
+            function sfxThrow() {
+                playBeep(300, 0.18, 'sine', 0.04);
+                setTimeout(() => playBeep(500, 0.1, 'sine', 0.03), 100);
+            }
+
+            function sfxTick() {
+                playBeep(600, 0.04, 'sine', 0.02);
+            }
+
+            // ============ 游戏状态 ============
+            const STATE = { IDLE: 'idle', THROWING: 'throwing', RESULT: 'result', RESETTING: 'resetting' };
+            let gameState = STATE.IDLE;
+            let stateTimer = 0;
+
+            // 统计
+            let score = 0;
+            let attempts = 0;
+            let comboCount = 0;
+            let maxCombo = 0;
+
+            // 瓶子物理
+            let bottleX = W / 2; // 瓶子底部中心X
+            let bottleY = 0; // 瓶子底部中心Y（桌面线以上）
+            let bottleTheta = 0; // 旋转角度（弧度）
+            let bottleVelY = 0; // 垂直速度
+            let bottleVelX = 0; // 水平速度（微小）
+            let bottleAngVel = 0; // 角速度（度/秒）
+            const GRAVITY = 980; // 重力 px/s²
+            const DESK_Y = 440; // 桌面线Y坐标
+
+            // 力度条
+            let powerValue = 0; // 0-1
+            let powerDirection = 1;
+            const POWER_SPEED = 2.8; // 力度条移动速度（周期/秒）
+            const POWER_MIN = 0.05;
+            const POWER_MAX = 0.95;
+            const ANGVEL_MIN = 400; // 最小角速度 度/秒
+            const ANGVEL_MAX = 2400; // 最大角速度 度/秒
+
+            // 粒子
+            let particles = [];
+
+            // 结果动画
+            let resultAnimTimer = 0;
+            let fallDownTheta = 0; // 倒下目标角度
+            let fallDownProgress = 0;
+            let isSuccess = false;
+            let bottleRestingTheta = 0; // 最终静止角度
+
+            // 自动演示
+            let autoMode = false;
+            let autoTimer = 0;
+            const AUTO_INTERVAL = 2.2; // 自动扔瓶间隔
+
+            // 弹跳
+            let bounceVelY = 0;
+            let bounceY = 0;
+            let isBouncing = false;
+
+            // ============ 粒子系统 ============
+            function spawnParticles(x, y, count, colors, spread = 200, life = 1.2) {
+                for (let i = 0; i < count; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 80 + Math.random() * spread;
+                    particles.push({
+                        x: x,
+                        y: y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed - Math.random() * 250,
+                        life: life * (0.5 + Math.random() * 0.5),
+                        maxLife: life,
+                        size: 2 + Math.random() * 6,
+                        color: colors[Math.floor(Math.random() * colors.length)],
+                        gravity: 300 + Math.random() * 400,
+                        rotation: Math.random() * Math.PI * 2,
+                        rotSpeed: (Math.random() - 0.5) * 10,
+                        shape: Math.random() < 0.5 ? 'circle' : 'rect',
+                    });
+                }
+            }
+
+            function updateParticles(dt) {
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    const p = particles[i];
+                    p.life -= dt;
+                    if (p.life <= 0) {
+                        particles.splice(i, 1);
+                        continue;
+                    }
+                    p.x += p.vx * dt;
+                    p.y += p.vy * dt;
+                    p.vy += p.gravity * dt;
+                    p.rotation += p.rotSpeed * dt;
+                }
+            }
+
+            function drawParticles(ctx) {
+                for (const p of particles) {
+                    const alpha = Math.max(0, p.life / p.maxLife);
+                    const scale = 0.6 + alpha * 0.4;
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.rotation);
+                    ctx.fillStyle = p.color;
+                    if (p.shape === 'circle') {
+                        ctx.beginPath();
+                        ctx.arc(0, 0, p.size * scale, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else {
+                        ctx.fillRect(-p.size * scale * 0.6, -p.size * scale * 0.35, p.size * scale * 1.2, p.size *
+                            scale * 0.7);
+                    }
+                    ctx.restore();
+                }
+            }
+
+            // ============ 绘制函数 ============
+            function drawBackground(ctx) {
+                // 天空渐变
+                const skyGrad = ctx.createLinearGradient(0, 0, 0, DESK_Y);
+                skyGrad.addColorStop(0, '#1a1a3a');
+                skyGrad.addColorStop(0.5, '#252550');
+                skyGrad.addColorStop(1, '#2a2a55');
+                ctx.fillStyle = skyGrad;
+                ctx.fillRect(0, 0, W, DESK_Y);
+
+                // 远处的灯光点
+                ctx.fillStyle = 'rgba(255,255,220,0.15)';
+                const lightPositions = [
+                    { x: 60, y: 80, r: 30 }, { x: 320, y: 50, r: 20 }, { x: 180, y: 30, r: 25 },
+                    { x: 260, y: 100, r: 18 }, { x: 100, y: 140, r: 22 }, { x: 350, y: 160, r: 15 },
+                ];
+                for (const l of lightPositions) {
+                    const grd = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, l.r);
+                    grd.addColorStop(0, 'rgba(255,255,240,0.2)');
+                    grd.addColorStop(1, 'rgba(255,255,240,0)');
+                    ctx.fillStyle = grd;
+                    ctx.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2);
+                }
+
+                // 桌面
+                const deskGrad = ctx.createLinearGradient(0, DESK_Y, 0, H);
+                deskGrad.addColorStop(0, '#5c3d2e');
+                deskGrad.addColorStop(0.02, '#6b4433');
+                deskGrad.addColorStop(0.15, '#7d5a45');
+                deskGrad.addColorStop(0.5, '#6b4835');
+                deskGrad.addColorStop(1, '#3d2218');
+                ctx.fillStyle = deskGrad;
+                ctx.fillRect(0, DESK_Y, W, H - DESK_Y);
+
+                // 桌面纹理
+                ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+                ctx.lineWidth = 1;
+                for (let y = DESK_Y + 15; y < H; y += 18) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(W, y + (Math.sin(y * 0.05) * 4));
+                    ctx.stroke();
+                }
+
+                // 桌面顶部高光线
+                ctx.strokeStyle = 'rgba(255,220,180,0.35)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(0, DESK_Y);
+                ctx.lineTo(W, DESK_Y);
+                ctx.stroke();
+
+                // 桌面高光第二条
+                ctx.strokeStyle = 'rgba(255,200,160,0.15)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(0, DESK_Y + 3);
+                ctx.lineTo(W, DESK_Y + 3);
+                ctx.stroke();
+            }
+
+            function drawBottle(ctx, x, y, theta, alpha = 1) {
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.translate(x, y);
+                ctx.rotate(theta);
+
+                // 瓶子参数
+                const bodyW = 44;
+                const bodyH = 72;
+                const shoulderH = 14;
+                const neckW = 18;
+                const neckH = 22;
+                const capW = 22;
+                const capH = 10;
+                const totalH = bodyH + shoulderH + neckH + capH;
+                const bottomY = 0;
+                const bodyTopY = -bodyH;
+                const shoulderTopY = bodyTopY - shoulderH;
+                const neckTopY = shoulderTopY - neckH;
+                const capTopY = neckTopY - capH;
+
+                // 瓶身阴影
+                ctx.fillStyle = 'rgba(0,0,0,0.15)';
+                ctx.beginPath();
+                ctx.roundRect(-bodyW / 2 + 3, bodyTopY + 5, bodyW, bodyH, 8);
+                ctx.fill();
+
+                // 瓶身主体
+                const bodyGrad = ctx.createLinearGradient(-bodyW / 2, 0, bodyW / 2, 0);
+                bodyGrad.addColorStop(0, 'rgba(180,215,235,0.55)');
+                bodyGrad.addColorStop(0.2, 'rgba(210,235,250,0.75)');
+                bodyGrad.addColorStop(0.35, 'rgba(230,245,255,0.85)');
+                bodyGrad.addColorStop(0.5, 'rgba(240,248,255,0.9)');
+                bodyGrad.addColorStop(0.65, 'rgba(225,240,250,0.8)');
+                bodyGrad.addColorStop(0.85, 'rgba(190,220,240,0.6)');
+                bodyGrad.addColorStop(1, 'rgba(160,200,225,0.45)');
+                ctx.fillStyle = bodyGrad;
+                ctx.beginPath();
+                ctx.roundRect(-bodyW / 2, bodyTopY, bodyW, bodyH, 7);
+                ctx.fill();
+
+                // 瓶身描边
+                ctx.strokeStyle = 'rgba(140,180,210,0.5)';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.roundRect(-bodyW / 2, bodyTopY, bodyW, bodyH, 7);
+                ctx.stroke();
+
+                // 瓶身标签
+                const labelY = bodyTopY + bodyH * 0.35;
+                const labelH = bodyH * 0.38;
+                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                ctx.fillRect(-bodyW / 2 + 1, labelY, bodyW - 2, labelH);
+                ctx.strokeStyle = 'rgba(100,150,200,0.5)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(-bodyW / 2 + 1, labelY, bodyW - 2, labelH);
+                // 标签上的线条
+                ctx.fillStyle = 'rgba(60,130,200,0.6)';
+                ctx.fillRect(-bodyW / 2 + 1, labelY + labelH * 0.35, bodyW - 2, 3);
+                ctx.fillRect(-bodyW / 2 + 1, labelY + labelH * 0.6, bodyW - 2, 2);
+                ctx.fillStyle = 'rgba(30,80,160,0.7)';
+                ctx.font = 'bold 11px "PingFang SC","Microsoft YaHei",sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('💧 H₂O', 0, labelY + labelH * 0.25);
+
+                // 瓶身内部水位
+                const waterTop = bodyTopY + bodyH * 0.25;
+                const waterGrad = ctx.createLinearGradient(0, waterTop, 0, 0);
+                waterGrad.addColorStop(0, 'rgba(100,180,220,0.5)');
+                waterGrad.addColorStop(1, 'rgba(60,140,200,0.7)');
+                ctx.fillStyle = waterGrad;
+                ctx.beginPath();
+                ctx.roundRect(-bodyW / 2 + 3, waterTop, bodyW - 6, -waterTop, 5);
+                ctx.fill();
+
+                // 肩部
+                ctx.fillStyle = 'rgba(200,225,245,0.7)';
+                ctx.beginPath();
+                ctx.moveTo(-bodyW / 2, bodyTopY);
+                ctx.lineTo(-neckW / 2, shoulderTopY);
+                ctx.lineTo(neckW / 2, shoulderTopY);
+                ctx.lineTo(bodyW / 2, bodyTopY);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(140,180,210,0.5)';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                // 瓶颈
+                const neckGrad = ctx.createLinearGradient(-neckW / 2, 0, neckW / 2, 0);
+                neckGrad.addColorStop(0, 'rgba(180,210,235,0.6)');
+                neckGrad.addColorStop(0.5, 'rgba(225,240,252,0.8)');
+                neckGrad.addColorStop(1, 'rgba(170,200,228,0.55)');
+                ctx.fillStyle = neckGrad;
+                ctx.fillRect(-neckW / 2, neckTopY, neckW, neckH);
+                ctx.strokeStyle = 'rgba(140,180,210,0.5)';
+                ctx.lineWidth = 1.2;
+                ctx.strokeRect(-neckW / 2, neckTopY, neckW, neckH);
+
+                // 瓶颈螺纹
+                for (let ry = neckTopY + 4; ry < shoulderTopY - 2; ry += 5) {
+                    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(-neckW / 2 - 1, ry);
+                    ctx.lineTo(neckW / 2 + 1, ry);
+                    ctx.stroke();
+                }
+
+                // 瓶盖
+                const capGrad = ctx.createLinearGradient(-capW / 2, 0, capW / 2, 0);
+                capGrad.addColorStop(0, '#e8e8e8');
+                capGrad.addColorStop(0.3, '#fafafa');
+                capGrad.addColorStop(0.5, '#ffffff');
+                capGrad.addColorStop(0.7, '#f5f5f5');
+                capGrad.addColorStop(1, '#d0d0d0');
+                ctx.fillStyle = capGrad;
+                ctx.beginPath();
+                ctx.roundRect(-capW / 2, capTopY, capW, capH, 3);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(150,150,150,0.6)';
+                ctx.lineWidth = 1.2;
+                ctx.beginPath();
+                ctx.roundRect(-capW / 2, capTopY, capW, capH, 3);
+                ctx.stroke();
+                // 瓶盖竖纹
+                for (let rx = -capW / 2 + 3; rx < capW / 2; rx += 3.5) {
+                    ctx.strokeStyle = 'rgba(180,180,180,0.5)';
+                    ctx.lineWidth = 0.6;
+                    ctx.beginPath();
+                    ctx.moveTo(rx, capTopY + 1);
+                    ctx.lineTo(rx, capTopY + capH - 1);
+                    ctx.stroke();
+                }
+
+                // 高光条
+                const highlightGrad = ctx.createLinearGradient(-bodyW / 2, 0, bodyW / 2, 0);
+                highlightGrad.addColorStop(0, 'rgba(255,255,255,0)');
+                highlightGrad.addColorStop(0.25, 'rgba(255,255,255,0.3)');
+                highlightGrad.addColorStop(0.35, 'rgba(255,255,255,0.55)');
+                highlightGrad.addColorStop(0.45, 'rgba(255,255,255,0.2)');
+                highlightGrad.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.fillStyle = highlightGrad;
+                ctx.beginPath();
+                ctx.roundRect(-bodyW / 2 + 2, bodyTopY + 4, bodyW - 4, bodyH - 8, 5);
+                ctx.fill();
+
+                ctx.restore();
+            }
+
+            function drawShadow(ctx, x, y, alpha = 0.4) {
+                ctx.save();
+                ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+                ctx.beginPath();
+                ctx.ellipse(x, y, 28, 7, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            function drawPowerBar(ctx) {
+                const barX = 50;
+                const barY = DESK_Y + 35;
+                const barW = W - 100;
+                const barH = 16;
+                const indicatorX = barX + powerValue * barW;
+
+                // 背景轨道
+                ctx.fillStyle = 'rgba(0,0,0,0.4)';
+                ctx.beginPath();
+                ctx.roundRect(barX, barY, barW, barH, barH / 2);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.roundRect(barX, barY, barW, barH, barH / 2);
+                ctx.stroke();
+
+                // 成功区域标记（多个窄带）
+                // 计算哪些powerValue对应成功
+                const fallTime = 0.58;
+                for (let i = 1; i <= 5; i++) {
+                    const targetTotalDeg = i * 360;
+                    const targetAngVel = targetTotalDeg / fallTime;
+                    const targetPower = (targetAngVel - ANGVEL_MIN) / (ANGVEL_MAX - ANGVEL_MIN);
+                    if (targetPower >= POWER_MIN && targetPower <= POWER_MAX) {
+                        const sx = barX + targetPower * barW;
+                        const tolerance = 25 / fallTime / (ANGVEL_MAX - ANGVEL_MIN) * barW;
+                        ctx.fillStyle = 'rgba(6,214,160,0.5)';
+                        ctx.beginPath();
+                        ctx.roundRect(sx - tolerance / 2, barY + 2, tolerance, barH - 4, (barH - 4) / 2);
+                        ctx.fill();
+                    }
+                }
+
+                // 指示器光晕
+                const glowGrad = ctx.createRadialGradient(indicatorX, barY + barH / 2, 2, indicatorX, barY + barH / 2, 16);
+                glowGrad.addColorStop(0, 'rgba(255,255,255,0.9)');
+                glowGrad.addColorStop(0.4, 'rgba(255,210,100,0.6)');
+                glowGrad.addColorStop(1, 'rgba(255,150,50,0)');
+                ctx.fillStyle = glowGrad;
+                ctx.beginPath();
+                ctx.arc(indicatorX, barY + barH / 2, 16, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 指示器主体
+                const indGrad = ctx.createLinearGradient(0, barY, 0, barY + barH);
+                indGrad.addColorStop(0, '#ffffff');
+                indGrad.addColorStop(0.4, '#ffd166');
+                indGrad.addColorStop(1, '#ff8c42');
+                ctx.fillStyle = indGrad;
+                ctx.beginPath();
+                ctx.roundRect(indicatorX - 10, barY - 2, 20, barH + 4, 8);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.roundRect(indicatorX - 10, barY - 2, 20, barH + 4, 8);
+                ctx.stroke();
+
+                // 标签
+                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                ctx.font = '11px "PingFang SC","Microsoft YaHei",sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('力度', W / 2, barY - 8);
+                ctx.fillText('轻', barX - 5, barY + barH + 16);
+                ctx.fillText('重', barX + barW + 5, barY + barH + 16);
+            }
+
+            function drawResultOverlay(ctx) {
+                if (gameState !== STATE.RESULT) return;
+                const progress = Math.min(1, resultAnimTimer / 0.6);
+                const alpha = progress < 0.3 ? progress / 0.3 : 1;
+
+                ctx.save();
+                ctx.globalAlpha = alpha;
+
+                if (isSuccess) {
+                    // 成功光环
+                    const ringY = DESK_Y - 60;
+                    const ringGrad = ctx.createRadialGradient(bottleX, ringY, 5, bottleX, ringY, 70);
+                    ringGrad.addColorStop(0, 'rgba(255,215,100,0.6)');
+                    ringGrad.addColorStop(0.5, 'rgba(255,180,50,0.3)');
+                    ringGrad.addColorStop(1, 'rgba(255,150,0,0)');
+                    ctx.fillStyle = ringGrad;
+                    ctx.beginPath();
+                    ctx.arc(bottleX, ringY, 70, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 文字
+                    ctx.fillStyle = '#ffd166';
+                    ctx.font = 'bold 36px "PingFang SC","Microsoft YaHei",sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.shadowColor = 'rgba(255,200,50,0.7)';
+                    ctx.shadowBlur = 20;
+                    ctx.fillText('✨ 立住了！', bottleX, DESK_Y - 90);
+                    ctx.shadowBlur = 0;
+
+                    if (comboCount >= 3) {
+                        ctx.fillStyle = '#ff8c42';
+                        ctx.font = 'bold 20px "PingFang SC","Microsoft YaHei",sans-serif';
+                        ctx.fillText(`🔥 ${comboCount}连击！`, bottleX, DESK_Y - 55);
+                    }
+                } else {
+                    // 失败
+                    ctx.fillStyle = 'rgba(239,71,111,0.8)';
+                    ctx.font = 'bold 30px "PingFang SC","Microsoft YaHei",sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('💨 倒了...', bottleX, DESK_Y - 80);
+                }
+                ctx.restore();
+            }
+
+            // ============ 游戏逻辑 ============
+            function throwBottle() {
+                if (gameState !== STATE.IDLE) return;
+
+                gameState = STATE.THROWING;
+                stateTimer = 0;
+                bottleX = W / 2;
+                bottleY = DESK_Y;
+                bottleTheta = 0;
+                bottleAngVel = ANGVEL_MIN + powerValue * (ANGVEL_MAX - ANGVEL_MIN);
+                bottleVelY = -420 - Math.random() * 80; // 上抛初速度
+                bottleVelX = (Math.random() - 0.5) * 40;
+                isBouncing = false;
+                bounceY = 0;
+                bounceVelY = 0;
+                particles = [];
+                fallDownProgress = 0;
+                resultAnimTimer = 0;
+
+                sfxThrow();
+                attempts++;
+                updateStatsUI();
+            }
+
+            function updateStatsUI() {
+                scoreVal.textContent = score;
+                attemptsVal.textContent = attempts;
+                const rate = attempts > 0 ? Math.round((score / attempts) * 100) : 0;
+                rateVal.textContent = rate + '%';
+                comboVal.textContent = comboCount;
+                if (comboCount >= 2) {
+                    comboBadge.classList.add('active');
+                } else {
+                    comboBadge.classList.remove('active');
+                }
+                if (comboCount > maxCombo) maxCombo = comboCount;
+            }
+
+            function handleLanding() {
+                // 标准化角度到[-180, 180]
+                let normTheta = bottleTheta % 360;
+                if (normTheta > 180) normTheta -= 360;
+                if (normTheta < -180) normTheta += 360;
+
+                const successThreshold = 16; // 度，成功范围
+                isSuccess = Math.abs(normTheta) < successThreshold;
+
+                if (isSuccess) {
+                    // 成功站立！
+                    score++;
+                    comboCount++;
+                    bottleRestingTheta = 0;
+                    bounceY = 0;
+                    bounceVelY = -40; // 微小弹跳
+                    isBouncing = true;
+                    sfxSuccess();
+                    spawnParticles(bottleX, DESK_Y - 50, 50,
+                        ['#ffd166', '#ff8c42', '#ffdd57', '#fff', '#06d6a0', '#4cc9f0', '#ff6b6b'],
+                        300, 1.5);
+                    hintText.textContent = ['👏 漂亮！', '🎯 完美！', '✨ 太棒了！', '💪 继续加油！', '🌟 神之一手！'][Math.floor(Math
+                        .random() * 5)];
+                } else {
+                    // 倒下
+                    comboCount = 0;
+                    // 判断倒下方向
+                    if (normTheta > 0) {
+                        fallDownTheta = Math.PI / 2; // 向右倒下
+                    } else {
+                        fallDownTheta = -Math.PI / 2; // 向左倒下
+                    }
+                    bottleRestingTheta = fallDownTheta;
+                    fallDownProgress = 0;
+                    bounceY = 0;
+                    bounceVelY = -25;
+                    isBouncing = true;
+                    sfxFail();
+                    wrap.classList.add('shake');
+                    setTimeout(() => wrap.classList.remove('shake'), 400);
+                    spawnParticles(bottleX, DESK_Y - 10, 15,
+                        ['#888', '#aaa', '#999', '#bbb'], 80, 0.6);
+                    hintText.textContent = ['😅 差一点！', '🤔 再试试！', '💨 力度不对~', '🎲 运气不好'][Math.floor(Math.random() *
+                        4)];
+                }
+
+                gameState = STATE.RESULT;
+                stateTimer = 0;
+                resultAnimTimer = 0;
+                updateStatsUI();
+            }
+
+            function resetToIdle() {
+                gameState = STATE.IDLE;
+                stateTimer = 0;
+                bottleX = W / 2;
+                bottleY = DESK_Y;
+                bottleTheta = bottleRestingTheta;
+                bottleVelY = 0;
+                bottleVelX = 0;
+                bottleAngVel = 0;
+                bounceY = 0;
+                bounceVelY = 0;
+                isBouncing = false;
+                fallDownProgress = 0;
+                particles = [];
+                // 让瓶子在idle时慢慢恢复直立（如果倒下了）
+                if (Math.abs(bottleRestingTheta) > 0.05) {
+                    // 会在idle动画中缓慢恢复
+                }
+            }
+
+            // ============ 主循环 ============
+            let lastTime = performance.now();
+
+            function update(dt) {
+                // 限制最大步长防止跳帧问题
+                if (dt > 0.1) dt = 0.1;
+
+                stateTimer += dt;
+
+                // 更新力度条
+                if (gameState === STATE.IDLE) {
+                    powerValue += powerDirection * POWER_SPEED * dt;
+                    if (powerValue >= POWER_MAX) {
+                        powerValue = POWER_MAX;
+                        powerDirection = -1;
+                    } else if (powerValue <= POWER_MIN) {
+                        powerValue = POWER_MIN;
+                        powerDirection = 1;
+                    }
+                    // 力度条经过成功区域时发出微弱提示音
+                    const fallTime = 0.58;
+                    for (let i = 1; i <= 5; i++) {
+                        const targetAngVel = i * 360 / fallTime;
+                        const targetPower = (targetAngVel - ANGVEL_MIN) / (ANGVEL_MAX - ANGVEL_MIN);
+                        const tolerance = 0.012;
+                        if (Math.abs(powerValue - targetPower) < tolerance &&
+                            Math.abs(powerValue - (targetPower - powerDirection * POWER_SPEED * dt)) >= tolerance) {
+                            // 刚好经过成功带
+                        }
+                    }
+
+                    // 瓶子在idle时缓慢恢复直立
+                    if (Math.abs(bottleRestingTheta) > 0.01) {
+                        bottleRestingTheta *= Math.exp(-6 * dt);
+                        if (Math.abs(bottleRestingTheta) < 0.015) bottleRestingTheta = 0;
+                    }
+                    bottleTheta = bottleRestingTheta;
+                    bottleY = DESK_Y;
+                }
+
+                // 更新投掷物理
+                if (gameState === STATE.THROWING) {
+                    bottleVelY += GRAVITY * dt;
+                    bottleY += bottleVelY * dt;
+                    bottleX += bottleVelX * dt;
+                    bottleTheta += bottleAngVel * dt;
+
+                    // 检测落地
+                    if (bottleY >= DESK_Y && bottleVelY > 0) {
+                        bottleY = DESK_Y;
+                        bottleVelY = 0;
+                        bottleVelX = 0;
+                        handleLanding();
+                    }
+                }
+
+                // 更新结果动画
+                if (gameState === STATE.RESULT) {
+                    resultAnimTimer += dt;
+
+                    if (isSuccess) {
+                        // 弹跳
+                        if (isBouncing) {
+                            bounceVelY += GRAVITY * dt;
+                            bounceY += bounceVelY * dt;
+                            if (bounceY >= 0) {
+                                bounceY = 0;
+                                if (Math.abs(bounceVelY) < 15) {
+                                    bounceVelY = 0;
+                                    isBouncing = false;
+                                } else {
+                                    bounceVelY *= -0.4;
+                                }
+                            }
+                        }
+                        bottleY = DESK_Y + bounceY;
+                        bottleTheta = 0;
+                    } else {
+                        // 倒下动画
+                        fallDownProgress = Math.min(1, fallDownProgress + dt / 0.35);
+                        const eased = 1 - Math.pow(1 - fallDownProgress, 3); // ease-out
+                        bottleTheta = bottleRestingTheta * eased;
+                        if (isBouncing) {
+                            bounceVelY += GRAVITY * dt;
+                            bounceY += bounceVelY * dt;
+                            if (bounceY >= 0) {
+                                bounceY = 0;
+                                bounceVelY = 0;
+                                isBouncing = false;
+                            }
+                        }
+                        bottleY = DESK_Y + bounceY;
+                    }
+
+                    // 自动回到idle
+                    if (resultAnimTimer > 1.5) {
+                        resetToIdle();
+                        if (autoMode) {
+                            autoTimer = AUTO_INTERVAL - 0.3;
+                        }
+                    }
+                }
+
+                // 更新粒子
+                updateParticles(dt);
+
+                // 自动模式
+                if (autoMode && gameState === STATE.IDLE) {
+                    autoTimer += dt;
+                    if (autoTimer >= AUTO_INTERVAL) {
+                        autoTimer = 0;
+                        // 自动瞄准成功区域
+                        const fallTime = 0.58;
+                        const targetCycle = Math.floor(Math.random() * 4) + 1;
+                        const targetAngVel = targetCycle * 360 / fallTime;
+                        let targetPower = (targetAngVel - ANGVEL_MIN) / (ANGVEL_MAX - ANGVEL_MIN);
+                        targetPower += (Math.random() - 0.5) * 0.04;
+                        targetPower = Math.max(POWER_MIN, Math.min(POWER_MAX, targetPower));
+                        // 快速设置powerValue并投掷
+                        powerValue = targetPower;
+                        throwBottle();
+                    }
+                }
+            }
+
+            function render() {
+                ctx.clearRect(0, 0, W, H);
+                drawBackground(ctx);
+
+                // 绘制阴影
+                const shadowAlpha = Math.max(0, 0.4 - (DESK_Y - bottleY) / 400);
+                if (gameState === STATE.THROWING && bottleY < DESK_Y) {
+                    drawShadow(ctx, bottleX, DESK_Y + 2, shadowAlpha);
+                } else if (gameState === STATE.IDLE || gameState === STATE.RESULT) {
+                    drawShadow(ctx, bottleX, DESK_Y + 2, 0.4);
+                }
+
+                // 绘制瓶子
+                const displayY = bottleY;
+                if (gameState === STATE.THROWING && bottleY < DESK_Y - 200) {
+                    // 瓶子在空中很高
+                }
+                drawBottle(ctx, bottleX, displayY, bottleTheta);
+
+                // 绘制粒子（在瓶子前面）
+                drawParticles(ctx);
+
+                // 绘制力度条
+                if (gameState === STATE.IDLE) {
+                    drawPowerBar(ctx);
+                }
+
+                // 绘制结果覆盖层
+                drawResultOverlay(ctx);
+
+                // 桌面上的装饰文字
+                if (gameState === STATE.IDLE) {
+                    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+                    ctx.font = '12px "PingFang SC","Microsoft YaHei",sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('看准力度条 • 点击扔出', W / 2, DESK_Y + 80);
+                }
+            }
+
+            function gameLoop(timestamp) {
+                let dt = (timestamp - lastTime) / 1000;
+                if (dt <= 0) dt = 0.016;
+                if (dt > 0.15) dt = 0.15; // 防止大帧跳跃
+                lastTime = timestamp;
+
+                update(dt);
+                render();
+                requestAnimationFrame(gameLoop);
+            }
+
+            // ============ 事件处理 ============
+            function handleThrow() {
+                if (gameState === STATE.IDLE) {
+                    throwBottle();
+                } else if (gameState === STATE.RESULT && resultAnimTimer > 0.6) {
+                    // 快速跳过结果动画
+                    resetToIdle();
+                    if (autoMode) autoTimer = AUTO_INTERVAL - 0.2;
+                }
+            }
+
+            wrap.addEventListener('click', (e) => {
+                e.preventDefault();
+                handleThrow();
+            });
+
+            wrap.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                handleThrow();
+            });
+
+            // 键盘支持
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' || e.code === 'Enter') {
+                    e.preventDefault();
+                    handleThrow();
+                }
+            });
+
+            // 重置按钮
+            btnReset.addEventListener('click', (e) => {
+                e.stopPropagation();
+                score = 0;
+                attempts = 0;
+                comboCount = 0;
+                maxCombo = 0;
+                bottleRestingTheta = 0;
+                bottleTheta = 0;
+                particles = [];
+                resetToIdle();
+                updateStatsUI();
+                hintText.textContent = '👆 看准力度条，点击画面扔出瓶子！';
+                comboBadge.classList.remove('active');
+            });
+
+            // 自动演示按钮
+            btnAuto.addEventListener('click', (e) => {
+                e.stopPropagation();
+                autoMode = !autoMode;
+                autoTimer = 0;
+                if (autoMode) {
+                    btnAuto.textContent = '⏹ 停止演示';
+                    btnAuto.classList.add('on');
+                    hintText.textContent = '🤖 自动演示中...';
+                } else {
+                    btnAuto.textContent = '🤖 自动演示';
+                    btnAuto.classList.remove('on');
+                    hintText.textContent = '👆 看准力度条，点击画面扔出瓶子！';
+                    resetToIdle();
+                }
+            });
+
+            // ============ 初始化 ============
+            bottleX = W / 2;
+            bottleY = DESK_Y;
+            bottleTheta = 0;
+            bottleRestingTheta = 0;
+            updateStatsUI();
+            lastTime = performance.now();
+            requestAnimationFrame(gameLoop);
+
+            console.log('🍼 扔瓶子模拟器已就绪！');
+            console.log('   - 点击画面扔瓶子');
+            console.log('   - 观察力度条把握时机');
+            console.log('   - 绿色区域是成功区');
+            console.log('   - 支持键盘空格键');
+            console.log('   - 试试自动演示模式');
+            console.log('🎯 祝你好运！');
+        })();
+    </script>
+</body>
+</html>

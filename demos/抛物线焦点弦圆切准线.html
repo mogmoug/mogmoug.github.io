@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Plotly.js 演示：抛物线焦点弦为直径的圆与准线相切 (修正版)</title>
+    <!-- 引入 Plotly.js 核心库 -->
+    <script src="https://cdn.plot.ly/plotly-3.0.1.min.js" charset="utf-8"></script>
+    <style>
+        * { user-select: none; }
+        body {
+            font-family: 'Segoe UI', 'Roboto', 'Georgia', serif;
+            background: #eef2f5;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            background: white;
+            border-radius: 32px;
+            box-shadow: 0 20px 30px -12px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        .header {
+            background: #0f172a;
+            color: white;
+            padding: 16px 24px;
+            text-align: center;
+        }
+        .header h2 { margin: 0; font-weight: 500; }
+        .header p { margin: 6px 0 0; opacity: 0.8; }
+        .plot-container { padding: 20px; background: #fff; }
+        #plotDiv { width: 100%; height: 600px; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .controls { padding: 20px 28px 28px; background: #f8fafc; }
+        .slider-row { display: flex; flex-wrap: wrap; gap: 30px; margin-bottom: 20px; }
+        .ctrl { flex: 1; }
+        .ctrl label { display: flex; justify-content: space-between; font-weight: 600; font-family: monospace; margin-bottom: 6px; }
+        input[type="range"] { width: 100%; height: 4px; -webkit-appearance: none; background: #cbd5e1; border-radius: 2px; }
+        input[type="range"]::-webkit-slider-thumb { width: 16px; height: 16px; background: #3b82f6; border-radius: 50%; cursor: pointer; }
+        .value-badge { background: #e2e8f0; padding: 2px 10px; border-radius: 20px; font-family: monospace; }
+        .info-bar { background: #eef2ff; border-radius: 24px; padding: 12px 20px; margin-top: 20px; display: flex; flex-wrap: wrap; justify-content: space-between; font-family: monospace; font-size: 13px; border-left: 4px solid #3b82f6; }
+        .metric { background: white; padding: 4px 14px; border-radius: 24px; }
+        .highlight { color: #d97706; font-weight: bold; }
+        footer { font-size: 12px; text-align: center; padding: 12px; color: #475569; border-top: 1px solid #e2e8f0; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h2>📐 修正版 · 无错误连线</h2>
+        <p>以抛物线焦点弦为直径的圆 &nbsp;≡&nbsp; 与准线相切 &nbsp;|&nbsp; 抛物线上下支独立绘制</p>
+    </div>
+    <div class="plot-container"><div id="plotDiv"></div></div>
+    <div class="controls">
+        <div class="slider-row">
+            <div class="ctrl">
+                <label>📌 抛物线参数 <em>p</em> &nbsp; <span id="pVal" class="value-badge">2.00</span></label>
+                <input type="range" id="pSlider" min="0.6" max="4.5" step="0.01" value="2.0">
+                <div style="font-size:12px; margin-top:6px;">焦点 (p/2, 0) &nbsp;&nbsp; 准线 x = -p/2</div>
+            </div>
+            <div class="ctrl">
+                <label>📈 焦点弦斜率 <em>k</em> &nbsp; <span id="kVal" class="value-badge">1.73</span></label>
+                <input type="range" id="angleSlider" min="2" max="178" step="1" value="60">
+                <div style="font-size:12px;">倾斜角 θ = <span id="thetaDeg">60</span>° &nbsp; (k = tanθ)</div>
+            </div>
+        </div>
+        <div class="info-bar" id="infoBar">
+            <div>🎯 圆心 M: <span id="mCoord">—</span></div>
+            <div>📏 半径 r = <span id="rVal">—</span></div>
+            <div>📐 圆心到准线距离 d = <span id="distVal">—</span></div>
+            <div class="highlight" id="diffMsg">⚡ d - r = 0 (相切)</div>
+        </div>
+        <div style="text-align:center; margin-top:14px; font-size:13px; background:#f1f5f9; border-radius:40px; padding:6px;">
+            ✅ 坐标轴等比例 (scaleanchor: 'x') | 抛物线上下支独立 → 无多余连线
+        </div>
+    </div>
+    <footer>数学理性之美：无论 p 和 θ 如何变化，圆心到准线距离 ≡ 半径 | 动点弦的永恒不变性</footer>
+</div>
+
+<script>
+    (function(){
+        const pSlider = document.getElementById('pSlider');
+        const angleSlider = document.getElementById('angleSlider');
+        const pValSpan = document.getElementById('pVal');
+        const kValSpan = document.getElementById('kVal');
+        const thetaDegSpan = document.getElementById('thetaDeg');
+        const mCoordSpan = document.getElementById('mCoord');
+        const rValSpan = document.getElementById('rVal');
+        const distValSpan = document.getElementById('distVal');
+        const diffMsgSpan = document.getElementById('diffMsg');
+        
+        let p = 2.0;
+        let thetaDeg = 60;
+        let thetaRad = thetaDeg * Math.PI / 180;
+        let Ax=0, Ay=0, Bx=0, By=0, Mx=0, My=0, radius=0;
+        let valid = true;
+        
+        function updateGeometry() {
+            thetaRad = thetaDeg * Math.PI / 180;
+            const cosTheta = Math.cos(thetaRad);
+            const sinTheta = Math.sin(thetaRad);
+            if (Math.abs(sinTheta) < 1e-6) { valid = false; return; }
+            if (Math.abs(1 - cosTheta) < 1e-8 || Math.abs(1 + cosTheta) < 1e-8) { valid = false; return; }
+            const t1 = p / (1 - cosTheta);
+            const t2 = -p / (1 + cosTheta);
+            Ax = p/2 + t1 * cosTheta;
+            Ay = t1 * sinTheta;
+            Bx = p/2 + t2 * cosTheta;
+            By = t2 * sinTheta;
+            Mx = (Ax + Bx) / 2;
+            My = (Ay + By) / 2;
+            radius = 0.5 * Math.hypot(Ax - Bx, Ay - By);
+            valid = true;
+        }
+        
+        // 抛物线正支 (y >= 0) 独立点集
+        function getParabolaUpper() {
+            const points = [];
+            const step = 0.05;
+            let maxX = Math.max(p * 2 + 1, (valid ? Math.max(Ax, Bx) + 1 : p*2+1));
+            maxX = Math.min(maxX, 12);
+            for (let x = 0; x <= maxX; x += step) {
+                let y = Math.sqrt(2 * p * x);
+                if (!isNaN(y)) points.push({x, y});
+            }
+            return points;
+        }
+        // 抛物线负支 (y <= 0) 独立点集
+        function getParabolaLower() {
+            const points = [];
+            const step = 0.05;
+            let maxX = Math.max(p * 2 + 1, (valid ? Math.max(Ax, Bx) + 1 : p*2+1));
+            maxX = Math.min(maxX, 12);
+            for (let x = 0; x <= maxX; x += step) {
+                let y = -Math.sqrt(2 * p * x);
+                if (!isNaN(y)) points.push({x, y});
+            }
+            return points;
+        }
+        
+        function computeAxisRanges() {
+            if (!valid) {
+                let range = Math.max(5, p * 1.5 + 2);
+                return { xmin: -range/1.5, xmax: range, ymin: -range/1.2, ymax: range/1.2 };
+            }
+            let xs = [-p/2, p/2, Ax, Bx, Mx, Mx - radius, Mx + radius];
+            let ys = [0, Ay, By, My, My - radius, My + radius];
+            let xmin = Math.min(...xs) - 0.8;
+            let xmax = Math.max(...xs) + 0.8;
+            let ymin = Math.min(...ys) - 0.8;
+            let ymax = Math.max(...ys) + 0.8;
+            xmin = Math.min(xmin, -0.5);
+            let dx = xmax - xmin;
+            let dy = ymax - ymin;
+            let maxDelta = Math.max(dx, dy);
+            let midX = (xmin + xmax) / 2;
+            let midY = (ymin + ymax) / 2;
+            xmin = midX - maxDelta/2;
+            xmax = midX + maxDelta/2;
+            ymin = midY - maxDelta/2;
+            ymax = midY + maxDelta/2;
+            if (xmin > -p/2 - 0.5) xmin = -p/2 - 0.8;
+            return { xmin, xmax, ymin, ymax };
+        }
+        
+        function updatePlot() {
+            updateGeometry();
+            const ranges = computeAxisRanges();
+            
+            // 抛物线上下支分开绘制，避免错误连线
+            const upperPoints = getParabolaUpper();
+            const lowerPoints = getParabolaLower();
+            const parabolaUpperTrace = {
+                x: upperPoints.map(p => p.x),
+                y: upperPoints.map(p => p.y),
+                mode: 'lines',
+                name: '抛物线 (上支)',
+                line: { color: '#0f3b5c', width: 3 },
+                type: 'scatter',
+                showlegend: false
+            };
+            const parabolaLowerTrace = {
+                x: lowerPoints.map(p => p.x),
+                y: lowerPoints.map(p => p.y),
+                mode: 'lines',
+                name: '抛物线 (下支)',
+                line: { color: '#0f3b5c', width: 3 },
+                type: 'scatter',
+                showlegend: false
+            };
+            
+            const directrixTrace = {
+                x: [-p/2, -p/2], y: [ranges.ymin, ranges.ymax],
+                mode: 'lines', name: '准线',
+                line: { color: '#d43f1f', width: 2, dash: 'dash' }, type: 'scatter'
+            };
+            const focusTrace = {
+                x: [p/2], y: [0], mode: 'markers', name: '焦点 F',
+                marker: { color: '#e11d48', size: 10, symbol: 'circle', line: { color: 'white', width: 2 } }, type: 'scatter'
+            };
+            
+            let traces = [parabolaUpperTrace, parabolaLowerTrace, directrixTrace, focusTrace];
+            
+            if (valid) {
+                const chordTrace = {
+                    x: [Ax, Bx], y: [Ay, By], mode: 'lines+markers', name: '焦点弦 AB',
+                    line: { color: '#f97316', width: 2.5 }, marker: { color: '#f97316', size: 8 }, type: 'scatter'
+                };
+                const thetaVals = Array.from({length: 100}, (_, i) => i * 2 * Math.PI / 99);
+                const circleX = thetaVals.map(t => Mx + radius * Math.cos(t));
+                const circleY = thetaVals.map(t => My + radius * Math.sin(t));
+                const circleTrace = {
+                    x: circleX, y: circleY, mode: 'lines', name: '以 AB 为直径的圆',
+                    line: { color: '#2563eb', width: 2, dash: 'dot' }, type: 'scatter'
+                };
+                const centerTrace = {
+                    x: [Mx], y: [My], mode: 'markers', name: '圆心 M',
+                    marker: { color: '#3b82f6', size: 8 }, type: 'scatter'
+                };
+                traces.push(chordTrace, circleTrace, centerTrace);
+            }
+            
+            const layout = {
+                title: { text: `抛物线 y² = ${(2*p).toFixed(3)} x &nbsp;&nbsp; 焦点弦 &nbsp;&nbsp; 相切验证`, font: { size: 16 } },
+                xaxis: { title: 'x', range: [ranges.xmin, ranges.xmax], scaleanchor: 'y', scaleratio: 1, gridcolor: '#cbd5e6', zerolinecolor: '#1e293b', zerolinewidth: 2 },
+                yaxis: { title: 'y', range: [ranges.ymin, ranges.ymax], scaleanchor: 'x', scaleratio: 1, gridcolor: '#cbd5e6', zerolinecolor: '#1e293b', zerolinewidth: 2 },
+                legend: { orientation: 'h', y: -0.1, x: 0.5, xanchor: 'center' },
+                plot_bgcolor: '#fff', paper_bgcolor: '#fff', margin: { t: 60, l: 50, r: 30, b: 40 }
+            };
+            const config = { responsive: true, displayModeBar: false };
+            Plotly.newPlot('plotDiv', traces, layout, config);
+            
+            if (valid) {
+                mCoordSpan.innerText = `(${Mx.toFixed(4)}, ${My.toFixed(4)})`;
+                rValSpan.innerText = radius.toFixed(5);
+                const dist = Math.abs(Mx + p/2);
+                distValSpan.innerText = dist.toFixed(6);
+                const diff = dist - radius;
+                if (Math.abs(diff) < 1e-5)
+                    diffMsgSpan.innerHTML = `✅ 精确相切  |d - r| = ${Math.abs(diff).toExponential(4)} ≈ 0`;
+                else
+                    diffMsgSpan.innerHTML = `⚡ 计算误差 ${diff.toExponential(4)} (极小，浮点精度影响)`;
+            } else {
+                mCoordSpan.innerText = "(无效)";
+                rValSpan.innerText = "—";
+                distValSpan.innerText = "—";
+                diffMsgSpan.innerHTML = "⚠️ 避免水平/竖直退化直线 (θ ≈ 0° 或 180°)";
+            }
+        }
+        
+        function syncUI() {
+            p = parseFloat(pSlider.value);
+            thetaDeg = parseInt(angleSlider.value);
+            thetaDeg = Math.min(178, Math.max(2, thetaDeg));
+            angleSlider.value = thetaDeg;
+            thetaRad = thetaDeg * Math.PI / 180;
+            const k = Math.tan(thetaRad);
+            pValSpan.innerText = p.toFixed(3);
+            kValSpan.innerText = k.toFixed(5);
+            thetaDegSpan.innerText = thetaDeg;
+            updatePlot();
+        }
+        
+        pSlider.addEventListener('input', syncUI);
+        angleSlider.addEventListener('input', syncUI);
+        syncUI();
+        window.addEventListener('resize', () => updatePlot());
+    })();
+</script>
+</body>
+</html>

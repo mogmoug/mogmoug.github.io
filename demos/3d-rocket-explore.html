@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D地球 - 火箭背包探索</title>
+    <style>
+        :root { --bg: #0a0a14; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: var(--bg);
+            overflow: hidden;
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            cursor: grab;
+            user-select: none;
+            -webkit-user-select: none;
+            height: 100vh;
+            width: 100vw;
+            touch-action: none;
+        }
+        body:active { cursor: grabbing; }
+        body.flying { cursor: default; }
+        #canvas-container { position: fixed; inset: 0; z-index: 1; }
+        canvas { display: block; }
+        #hud { position: fixed; z-index: 10; pointer-events: none; inset: 0; }
+        #info-panel {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 20px; align-items: center;
+            background: rgba(10, 10, 30, 0.75); backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 40px; padding: 12px 28px; color: #e0e0f0;
+            font-size: 14px; letter-spacing: 0.5px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+        #info-panel .key-hint { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+        .key-badge {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 28px; height: 26px; padding: 0 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 6px; font-weight: 700; font-size: 12px; color: #fff;
+        }
+        .key-badge.space { min-width: 50px; font-size: 10px; }
+        #fuel-indicator {
+            position: absolute; bottom: 110px; left: 50%; transform: translateX(-50%);
+            width: 200px; height: 6px; background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px; overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        #fuel-fill {
+            height: 100%; background: linear-gradient(90deg, #ff6622, #ffaa00, #ffe860);
+            border-radius: 3px; transition: width 0.15s linear; width: 100%;
+        }
+        #fuel-indicator.low #fuel-fill {
+            background: linear-gradient(90deg, #cc2200, #ff4422);
+            animation: pulse-fuel 0.6s ease-in-out infinite;
+        }
+        @keyframes pulse-fuel { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        #altitude-display {
+            position: absolute; top: 30px; right: 40px;
+            color: #c0d0f0; font-size: 13px; letter-spacing: 0.8px;
+            background: rgba(10, 10, 30, 0.6); backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            padding: 8px 16px; border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        #altitude-value { font-weight: 700; color: #fff; font-size: 16px; }
+        @media (max-width: 768px) {
+            #info-panel { gap: 10px; padding: 10px 16px; font-size: 11px; border-radius: 28px; bottom: 16px; }
+            .key-badge { min-width: 22px; height: 22px; font-size: 10px; padding: 0 5px; border-radius: 4px; }
+            .key-badge.space { min-width: 36px; font-size: 9px; }
+            #fuel-indicator { bottom: 90px; width: 140px; height: 4px; }
+            #altitude-display { top: 14px; right: 14px; font-size: 11px; padding: 6px 12px; }
+            #altitude-value { font-size: 13px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="hud">
+        <div id="altitude-display">高度 <span id="altitude-value">0.0</span> m</div>
+        <div id="fuel-indicator"><div id="fuel-fill"></div></div>
+        <div id="info-panel">
+            <span class="key-hint"><span class="key-badge">W A S D</span> 移动</span>
+            <span class="key-hint"><span class="key-badge space">空格</span> 火箭背包</span>
+            <span class="key-hint"><span class="key-badge">🖱</span> 旋转视角</span>
+            <span class="key-hint"><span class="key-badge">滚轮</span> 缩放</span>
+        </div>
+    </div>
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+
+        const container = document.getElementById('canvas-container');
+        const fuelFill = document.getElementById('fuel-fill');
+        const fuelIndicator = document.getElementById('fuel-indicator');
+        const altitudeValue = document.getElementById('altitude-value');
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x060612);
+        scene.fog = new THREE.Fog(0x060612, 40, 120);
+
+        const camera = new THREE.PerspectiveCamera(55, container.clientWidth / container.clientHeight, 0.5, 200);
+        camera.position.set(8, 6, 16);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.1;
+        container.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0x334466, 2.5);
+        scene.add(ambientLight);
+        const sunLight = new THREE.DirectionalLight(0xfff5e8, 8);
+        sunLight.position.set(30, 15, 20);
+        sunLight.castShadow = true;
+        sunLight.shadow.mapSize.width = 2048;
+        sunLight.shadow.mapSize.height = 2048;
+        sunLight.shadow.camera.near = 0.5;
+        sunLight.shadow.camera.far = 100;
+        sunLight.shadow.camera.left = -25;
+        sunLight.shadow.camera.right = 25;
+        sunLight.shadow.camera.top = 25;
+        sunLight.shadow.camera.bottom = -25;
+        sunLight.shadow.bias = -0.0001;
+        sunLight.shadow.normalBias = 0.02;
+        scene.add(sunLight);
+        const rimLight = new THREE.DirectionalLight(0x8899cc, 1.5);
+        rimLight.position.set(-10, -5, -15);
+        scene.add(rimLight);
+
+        // 星空
+        {
+            const starsGeo = new THREE.BufferGeometry();
+            const starCount = 2000;
+            const pos = new Float32Array(starCount * 3);
+            const col = new Float32Array(starCount * 3);
+            for (let i = 0; i < starCount; i++) {
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                const r = 70 + Math.random() * 20;
+                pos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+                pos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+                pos[i * 3 + 2] = r * Math.cos(phi);
+                const b = 0.5 + Math.random() * 0.5;
+                const tint = Math.random();
+                if (tint < 0.15) { col[i * 3] = b; col[i * 3 + 1] = b * 0.85; col[i * 3 + 2] = b * 0.7; }
+                else if (tint < 0.25) { col[i * 3] = b * 0.7; col[i * 3 + 1] = b * 0.8; col[i * 3 + 2] = b; }
+                else { col[i * 3] = b; col[i * 3 + 1] = b; col[i * 3 + 2] = b; }
+            }
+            starsGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            starsGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+            const starsMat = new THREE.PointsMaterial({ size: 0.12, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+            const stars = new THREE.Points(starsGeo, starsMat);
+            stars.name = 'stars';
+            scene.add(stars);
+        }
+
+        // 柏林噪声
+        class PerlinNoise {
+            constructor(seed = 42) {
+                this.perm = new Uint8Array(512);
+                this.grad3 = [[1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],[1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],[0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1]];
+                this.seed(seed);
+            }
+            seed(seed) {
+                const p = new Uint8Array(256);
+                for (let i = 0; i < 256; i++) p[i] = i;
+                let s = seed;
+                for (let i = 255; i > 0; i--) { s = (s * 16807 + 0) % 2147483647; const j = s % (i + 1); [p[i], p[j]] = [p[j], p[i]]; }
+                for (let i = 0; i < 512; i++) this.perm[i] = p[i & 255];
+            }
+            dot3(g, x, y, z) { return g[0] * x + g[1] * y + g[2] * z; }
+            fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
+            lerp(a, b, t) { return a + t * (b - a); }
+            noise3D(x, y, z) {
+                const X = Math.floor(x) & 255, Y = Math.floor(y) & 255, Z = Math.floor(z) & 255;
+                const xf = x - Math.floor(x), yf = y - Math.floor(y), zf = z - Math.floor(z);
+                const u = this.fade(xf), v = this.fade(yf), w = this.fade(zf);
+                const p = this.perm;
+                const A = p[X] + Y, AA = p[A] + Z, AB = p[A + 1] + Z;
+                const B = p[X + 1] + Y, BA = p[B] + Z, BB = p[B + 1] + Z;
+                const g000 = this.grad3[p[AA] % 12], g100 = this.grad3[p[BA] % 12], g010 = this.grad3[p[AB] % 12], g110 = this.grad3[p[BB] % 12];
+                const g001 = this.grad3[p[AA + 1] % 12], g101 = this.grad3[p[BA + 1] % 12], g011 = this.grad3[p[AB + 1] % 12], g111 = this.grad3[p[BB + 1] % 12];
+                const n000 = this.dot3(g000, xf, yf, zf), n100 = this.dot3(g100, xf - 1, yf, zf);
+                const n010 = this.dot3(g010, xf, yf - 1, zf), n110 = this.dot3(g110, xf - 1, yf - 1, zf);
+                const n001 = this.dot3(g001, xf, yf, zf - 1), n101 = this.dot3(g101, xf - 1, yf, zf - 1);
+                const n011 = this.dot3(g011, xf, yf - 1, zf - 1), n111 = this.dot3(g111, xf - 1, yf - 1, zf - 1);
+                return this.lerp(this.lerp(this.lerp(n000, n100, u), this.lerp(n010, n110, u), v), this.lerp(this.lerp(n001, n101, u), this.lerp(n011, n111, u), v), w);
+            }
+            fbm(x, y, z, octaves = 6, lacunarity = 2.0, gain = 0.5) {
+                let value = 0, amplitude = 1, frequency = 1, maxValue = 0;
+                for (let i = 0; i < octaves; i++) { value += amplitude * this.noise3D(x * frequency, y * frequency, z * frequency); maxValue += amplitude; amplitude *= gain; frequency *= lacunarity; }
+                return value / maxValue;
+            }
+        }
+        const perlin = new PerlinNoise(137);
+
+        const BASE_RADIUS = 10, NOISE_AMPLITUDE = 2.2, SEA_LEVEL = BASE_RADIUS + 0.05;
+        function getTerrainDistance(dir) {
+            const d = dir.clone().normalize();
+            return BASE_RADIUS + perlin.fbm(d.x * 1.8, d.y * 1.8, d.z * 1.8, 6, 2.3, 0.55) * NOISE_AMPLITUDE;
+        }
+        function getTerrainNormal(worldPos) {
+            const dir = worldPos.clone().normalize();
+            const eps = 0.015;
+            let t1 = new THREE.Vector3(-dir.y, dir.x, 0).normalize();
+            if (t1.length() < 0.1) t1.set(1, 0, 0).normalize();
+            const t2 = new THREE.Vector3().crossVectors(dir, t1).normalize();
+            const d0 = getTerrainDistance(dir);
+            const d1 = getTerrainDistance(new THREE.Vector3().addVectors(dir.clone().multiplyScalar(1), t1.clone().multiplyScalar(eps)).normalize());
+            const d2 = getTerrainDistance(new THREE.Vector3().addVectors(dir.clone().multiplyScalar(1), t2.clone().multiplyScalar(eps)).normalize());
+            const p0 = dir.clone().multiplyScalar(d0);
+            const p1 = new THREE.Vector3().addVectors(dir.clone().multiplyScalar(1), t1.clone().multiplyScalar(eps)).normalize().multiplyScalar(d1);
+            const p2 = new THREE.Vector3().addVectors(dir.clone().multiplyScalar(1), t2.clone().multiplyScalar(eps)).normalize().multiplyScalar(d2);
+            const n = new THREE.Vector3().crossVectors(new THREE.Vector3().subVectors(p1, p0), new THREE.Vector3().subVectors(p2, p0)).normalize();
+            if (n.dot(dir) < 0) n.negate();
+            return n;
+        }
+
+        const earthGroup = new THREE.Group();
+        scene.add(earthGroup);
+
+        const terrainGeo = new THREE.SphereGeometry(BASE_RADIUS, 180, 120);
+        const positions = terrainGeo.attributes.position;
+        const colorsArray = new Float32Array(positions.count * 3);
+        function getTerrainColor(h) {
+            const c = {
+                deepOcean: new THREE.Color('#1a5c7a'), shallowOcean: new THREE.Color('#1e7d9c'), beach: new THREE.Color('#e8d5a3'),
+                grassLow: new THREE.Color('#7baa3f'), grass: new THREE.Color('#5d8c2a'), grassHigh: new THREE.Color('#4a7520'),
+                rock: new THREE.Color('#8b7d6b'), rockHigh: new THREE.Color('#9e8e7e'), snow: new THREE.Color('#f0f4f8')
+            };
+            if (h < -0.35) return c.deepOcean;
+            if (h < 0.02) return c.deepOcean.clone().lerp(c.shallowOcean, (h + 0.35) / 0.37);
+            if (h < 0.15) return c.shallowOcean.clone().lerp(c.beach, (h - 0.02) / 0.13);
+            if (h < 0.35) return c.beach.clone().lerp(c.grassLow, (h - 0.15) / 0.2);
+            if (h < 0.7) return c.grassLow.clone().lerp(c.grass, (h - 0.35) / 0.35);
+            if (h < 1.1) return c.grass.clone().lerp(c.grassHigh, (h - 0.7) / 0.4);
+            if (h < 1.5) return c.grassHigh.clone().lerp(c.rock, (h - 1.1) / 0.4);
+            if (h < 2.0) return c.rock.clone().lerp(c.rockHigh, (h - 1.5) / 0.5);
+            if (h < 2.4) return c.rockHigh.clone().lerp(c.snow, (h - 2.0) / 0.4);
+            return c.snow;
+        }
+        for (let i = 0; i < positions.count; i++) {
+            const x = positions.getX(i), y = positions.getY(i), z = positions.getZ(i);
+            const dir = new THREE.Vector3(x, y, z).normalize();
+            const offset = perlin.fbm(dir.x * 1.8, dir.y * 1.8, dir.z * 1.8, 6, 2.3, 0.55) * NOISE_AMPLITUDE;
+            const r = BASE_RADIUS + offset;
+            positions.setXYZ(i, dir.x * r, dir.y * r, dir.z * r);
+            const color = getTerrainColor(r - BASE_RADIUS);
+            colorsArray[i * 3] = color.r; colorsArray[i * 3 + 1] = color.g; colorsArray[i * 3 + 2] = color.b;
+        }
+        terrainGeo.setAttribute('color', new THREE.BufferAttribute(colorsArray, 3));
+        terrainGeo.computeVertexNormals();
+        const terrainMesh = new THREE.Mesh(terrainGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75, metalness: 0.05 }));
+        terrainMesh.castShadow = terrainMesh.receiveShadow = true;
+        earthGroup.add(terrainMesh);
+
+        const oceanGeo = new THREE.SphereGeometry(SEA_LEVEL, 100, 70);
+        const oceanMesh = new THREE.Mesh(oceanGeo, new THREE.MeshStandardMaterial({ color: new THREE.Color('#1a6d94'), roughness: 0.3, metalness: 0.2, transparent: true, opacity: 0.82 }));
+        oceanMesh.receiveShadow = true;
+        earthGroup.add(oceanMesh);
+
+        const atmosphereGeo = new THREE.SphereGeometry(BASE_RADIUS + 2.5, 64, 40);
+        const atmosphereMat = new THREE.ShaderMaterial({
+            vertexShader: `varying vec3 vNormal; varying vec3 vWorldPos; void main() { vec4 wp = modelMatrix * vec4(position,1.0); vWorldPos = wp.xyz; vNormal = normalize(mat3(modelMatrix) * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+            fragmentShader: `varying vec3 vNormal; varying vec3 vWorldPos; uniform vec3 uViewPos; void main() { vec3 vd = normalize(uViewPos - vWorldPos); float f = 1.0 - abs(dot(vd, vNormal)); f = pow(f, 3.5); gl_FragColor = vec4(mix(vec3(0.4,0.65,0.9), vec3(0.6,0.8,1.0), f), f*0.35); }`,
+            uniforms: { uViewPos: { value: camera.position } },
+            transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+        });
+        const atmosphereMesh = new THREE.Mesh(atmosphereGeo, atmosphereMat);
+        atmosphereMesh.renderOrder = 1;
+        earthGroup.add(atmosphereMesh);
+
+        // 角色
+        const characterGroup = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.55, 8, 12), new THREE.MeshStandardMaterial({ color: 0x445566, roughness: 0.5, metalness: 0.3 }));
+        body.position.y = 0.55; body.castShadow = true; characterGroup.add(body);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 12), new THREE.MeshStandardMaterial({ color: 0xf5d5b8, roughness: 0.6 }));
+        head.position.y = 1.05; head.castShadow = true; characterGroup.add(head);
+        const visor = new THREE.Mesh(new THREE.SphereGeometry(0.21, 16, 10, 0, Math.PI*2, 0, Math.PI*0.55), new THREE.MeshStandardMaterial({ color: 0x3388cc, roughness: 0.25, metalness: 0.6, transparent: true, opacity: 0.7 }));
+        visor.position.set(0, 1.08, 0.06); visor.rotation.x = -0.1; characterGroup.add(visor);
+        const pack = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.45, 0.2), new THREE.MeshStandardMaterial({ color: 0x889999, roughness: 0.35, metalness: 0.7 }));
+        pack.position.set(0, 0.55, -0.28); pack.castShadow = true; characterGroup.add(pack);
+        const nozzleGeo = new THREE.CylinderGeometry(0.06, 0.08, 0.2, 8);
+        const nozzleMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.3, metalness: 0.9 });
+        const nL = new THREE.Mesh(nozzleGeo, nozzleMat); nL.position.set(-0.08, 0.22, -0.28); nL.rotation.x = -0.25; nL.castShadow = true; characterGroup.add(nL);
+        const nR = new THREE.Mesh(nozzleGeo, nozzleMat); nR.position.set(0.08, 0.22, -0.28); nR.rotation.x = -0.25; nR.castShadow = true; characterGroup.add(nR);
+        const initDir = new THREE.Vector3(1, 0.15, 0.5).normalize();
+        characterGroup.position.copy(initDir.clone().multiplyScalar(getTerrainDistance(initDir) + 0.8));
+        scene.add(characterGroup);
+
+        const shadowDisc = new THREE.Mesh(new THREE.CircleGeometry(0.28, 16), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.45, depthWrite: false, side: THREE.DoubleSide }));
+        shadowDisc.renderOrder = 0;
+        scene.add(shadowDisc);
+
+        // 粒子
+        const MAX_P = 180;
+        const pool = Array.from({ length: MAX_P }, () => ({ alive: false, position: new THREE.Vector3(), velocity: new THREE.Vector3(), life: 0, maxLife: 0, size: 0 }));
+        const pGeo = new THREE.BufferGeometry();
+        const pPos = new Float32Array(MAX_P * 3), pCol = new Float32Array(MAX_P * 3), pSiz = new Float32Array(MAX_P);
+        pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+        pGeo.setAttribute('color', new THREE.BufferAttribute(pCol, 3));
+        pGeo.setAttribute('size', new THREE.BufferAttribute(pSiz, 1));
+        const tex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const ctx = c.getContext('2d'); const g = ctx.createRadialGradient(32,32,0,32,32,32); g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(0.08,'rgba(255,240,200,1)'); g.addColorStop(0.25,'rgba(255,160,40,0.85)'); g.addColorStop(0.5,'rgba(255,60,10,0.5)'); g.addColorStop(0.75,'rgba(180,20,0,0.12)'); g.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(0,0,64,64); return new THREE.CanvasTexture(c); })();
+        const particleMat = new THREE.PointsMaterial({ size: 0.35, map: tex, vertexColors: true, blending: THREE.AdditiveBlending, depthWrite: false });
+        const particleSystem = new THREE.Points(pGeo, particleMat);
+        scene.add(particleSystem);
+        let pTimer = 0;
+        function spawnParticle(origin, baseVel, spread) {
+            for (const p of pool) if (!p.alive) { p.alive = true; p.position.copy(origin).add(new THREE.Vector3((Math.random()-0.5)*spread, (Math.random()-0.5)*spread*0.5, (Math.random()-0.5)*spread)); p.velocity.copy(baseVel).add(new THREE.Vector3((Math.random()-0.5)*1.5, (Math.random()-0.5)*1, (Math.random()-0.5)*1.5)); p.life = 0; p.maxLife = 0.3+Math.random()*0.55; p.size = 0.15+Math.random()*0.6; return; }
+        }
+        function updateParticles(dt) {
+            pool.forEach((p, i) => {
+                if (!p.alive) { pPos[i*3+1] = -999; return; }
+                p.life += dt;
+                if (p.life >= p.maxLife) { p.alive = false; pPos[i*3+1] = -999; pSiz[i] = 0; return; }
+                const prog = p.life / p.maxLife;
+                p.position.add(p.velocity.clone().multiplyScalar(dt));
+                p.velocity.y -= 1.5 * dt;
+                p.size *= (1 - dt * 2.5);
+                pPos[i*3] = p.position.x; pPos[i*3+1] = p.position.y; pPos[i*3+2] = p.position.z;
+                pSiz[i] = Math.max(0.02, p.size);
+                pCol[i*3] = 1; pCol[i*3+1] = Math.max(0, 0.85*(1-prog)+0.2*prog); pCol[i*3+2] = Math.max(0, 0.4*(1-prog)*(1-prog));
+            });
+            pGeo.attributes.position.needsUpdate = true;
+            pGeo.attributes.color.needsUpdate = true;
+            pGeo.attributes.size.needsUpdate = true;
+        }
+
+        const GRAVITY = 12.5, JETPACK_THRUST = 18.0, GROUND_SPEED = 6.5, AIR_SPEED = 3.5;
+        const MAX_FUEL = 6.0, FUEL_REGEN = 1.8, FEET_OFFSET = 0.7;
+        let jetpackFuel = MAX_FUEL, isJetpackActive = false, playerVelocity = new THREE.Vector3(), playerForwardAngle = 0, isGrounded = true, altitudeAboveTerrain = 0;
+        const input = { forward: false, backward: false, left: false, right: false, jetpack: false };
+
+        const camState = { azimuth: Math.PI*0.6, elevation: 0.55, distance: 7.5, targetAzimuth: Math.PI*0.6, targetElevation: 0.55, targetDistance: 7.5, smooth: 8, minDist: 3.5, maxDist: 25, minEl: -0.8, maxEl: 1.5 };
+        let dragging = false, prevMX = 0, prevMY = 0, lastPinch = null;
+
+        function radialDir(p) { return p.clone().normalize(); }
+        function distCenter(p) { return p.length(); }
+
+        function updateCharacter(dt) {
+            const pos = characterGroup.position.clone();
+            const rDir = radialDir(pos);
+            const terrainDist = getTerrainDistance(rDir);
+            const normal = getTerrainNormal(pos);
+            altitudeAboveTerrain = distCenter(pos) - terrainDist;
+            isGrounded = altitudeAboveTerrain < FEET_OFFSET + 0.05 && !isJetpackActive;
+
+            // 删除旧的穿透推出逻辑，统一在地面吸附处理
+
+            if (isJetpackActive && jetpackFuel > 0) { jetpackFuel -= dt; if (jetpackFuel <= 0) { jetpackFuel = 0; isJetpackActive = false; } }
+            else if (jetpackFuel < MAX_FUEL) jetpackFuel = Math.min(MAX_FUEL, jetpackFuel + FUEL_REGEN * dt);
+
+            playerVelocity.addScaledVector(rDir, -GRAVITY * dt);
+            if (isJetpackActive && jetpackFuel > 0) {
+                playerVelocity.addScaledVector(rDir, JETPACK_THRUST * dt);
+                const nPos = new THREE.Vector3(0, 0.15, -0.28).applyMatrix4(characterGroup.matrixWorld);
+                const bVel = rDir.clone().multiplyScalar(-4).add(new THREE.Vector3((Math.random()-0.5)*2, (Math.random()-0.5)*1.5, (Math.random()-0.5)*2));
+                pTimer += dt;
+                while (pTimer > 0.008) { pTimer -= 0.008; spawnParticle(nPos, bVel, 0.35); }
+            }
+
+            if (isGrounded) {
+                const radV = playerVelocity.dot(rDir);
+                const tanV = playerVelocity.clone().addScaledVector(rDir, -radV);
+                playerVelocity.addScaledVector(tanV, -12 * dt);
+                if (tanV.length() < 0.3) playerVelocity.addScaledVector(tanV.clone().normalize(), -tanV.length());
+                if (radV < -0.5) playerVelocity.addScaledVector(rDir, -radV - 0.1);
+            }
+
+            const speed = isGrounded ? GROUND_SPEED : AIR_SPEED;
+            const moveDir = new THREE.Vector3();
+            if (input.forward || input.backward || input.left || input.right) {
+                const up = normal.clone();
+                let refF = new THREE.Vector3(1,0,0);
+                if (Math.abs(refF.dot(up)) > 0.99) refF.set(0,1,0);
+                const projF = refF.clone().addScaledVector(up, -refF.dot(up)).normalize();
+                const rot = new THREE.Quaternion().setFromAxisAngle(up, playerForwardAngle);
+                const fwd = projF.clone().applyQuaternion(rot);
+                const right = new THREE.Vector3().crossVectors(up, fwd).normalize();
+                if (input.forward) moveDir.add(fwd);
+                if (input.backward) moveDir.add(fwd.clone().multiplyScalar(-1));
+                if (input.right) moveDir.add(right);
+                if (input.left) moveDir.add(right.clone().multiplyScalar(-1));
+                if (moveDir.length() > 1) moveDir.normalize();
+                playerVelocity.addScaledVector(moveDir, speed * dt * 8);
+                if (moveDir.length() > 0.01) playerForwardAngle = Math.atan2(moveDir.dot(right), moveDir.dot(projF));
+            }
+
+            characterGroup.position.add(playerVelocity.clone().multiplyScalar(dt));
+
+            // 地面吸附：强制贴地并消除向外径向速度
+            const newRDir = radialDir(characterGroup.position);
+            const newTerrainDist = getTerrainDistance(newRDir);
+            if (isGrounded && !isJetpackActive) {
+                characterGroup.position.copy(newRDir.clone().multiplyScalar(newTerrainDist + FEET_OFFSET));
+                const radV = playerVelocity.dot(newRDir);
+                if (radV > 0) playerVelocity.addScaledVector(newRDir, -radV);
+                altitudeAboveTerrain = FEET_OFFSET;
+            }
+
+            const finalNormal = getTerrainNormal(characterGroup.position);
+            const baseQ = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0), finalNormal);
+            const fwdQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), playerForwardAngle);
+            characterGroup.quaternion.slerp(baseQ.clone().multiply(fwdQ), 0.2);
+
+            const sDir = radialDir(characterGroup.position);
+            const sDist = getTerrainDistance(sDir);
+            shadowDisc.position.copy(sDir.clone().multiplyScalar(sDist + 0.03));
+            shadowDisc.quaternion.copy(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1), getTerrainNormal(shadowDisc.position)));
+            const dToChar = characterGroup.position.distanceTo(shadowDisc.position);
+            shadowDisc.material.opacity = Math.max(0, 0.45 * (1 - dToChar/6));
+            shadowDisc.scale.setScalar(1 + dToChar*0.08);
+            shadowDisc.visible = dToChar < 8;
+        }
+
+        function updateCamera(dt) {
+            const s = Math.min(1, camState.smooth * dt);
+            camState.azimuth += (camState.targetAzimuth - camState.azimuth) * s;
+            camState.elevation += (camState.targetElevation - camState.elevation) * s;
+            camState.distance += (camState.targetDistance - camState.distance) * s;
+            const pos = characterGroup.position.clone();
+            const up = radialDir(pos);
+            let hRef = new THREE.Vector3(1,0,0);
+            if (Math.abs(hRef.dot(up)) > 0.99) hRef.set(0,1,0);
+            const projH = hRef.clone().addScaledVector(up, -hRef.dot(up)).normalize();
+            const right = new THREE.Vector3().crossVectors(up, projH).normalize();
+            const azQ = new THREE.Quaternion().setFromAxisAngle(up, camState.azimuth);
+            const elQ = new THREE.Quaternion().setFromAxisAngle(right.clone().applyQuaternion(azQ), camState.elevation);
+            const offset = new THREE.Vector3(0, 0, camState.distance).applyQuaternion(elQ).applyQuaternion(azQ);
+            const targetCamPos = pos.clone().add(offset);
+            const camDist = targetCamPos.length();
+            const camDir = targetCamPos.clone().normalize();
+            const minDist = getTerrainDistance(camDir) + 0.6;
+            if (camDist < minDist) camera.position.lerp(camDir.clone().multiplyScalar(minDist), 0.3);
+            else camera.position.lerp(targetCamPos, 0.25);
+            const lookQ = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(camera.position, pos, up));
+            camera.quaternion.slerp(lookQ, 0.25);
+            atmosphereMesh.material.uniforms.uViewPos.value.copy(camera.position);
+        }
+
+        window.addEventListener('keydown', e => {
+            if (e.code === 'KeyW') input.forward = true;
+            if (e.code === 'KeyS') input.backward = true;
+            if (e.code === 'KeyA') input.left = true;
+            if (e.code === 'KeyD') input.right = true;
+            if (e.code === 'Space') { e.preventDefault(); input.jetpack = true; if (jetpackFuel > 0.05) isJetpackActive = true; document.body.classList.add('flying'); }
+        });
+        window.addEventListener('keyup', e => {
+            if (e.code === 'KeyW') input.forward = false;
+            if (e.code === 'KeyS') input.backward = false;
+            if (e.code === 'KeyA') input.left = false;
+            if (e.code === 'KeyD') input.right = false;
+            if (e.code === 'Space') { input.jetpack = false; isJetpackActive = false; document.body.classList.remove('flying'); }
+        });
+        renderer.domElement.addEventListener('mousedown', e => { if (e.button === 0) { dragging = true; prevMX = e.clientX; prevMY = e.clientY; } });
+        window.addEventListener('mousemove', e => {
+            if (!dragging) return;
+            camState.targetAzimuth -= (e.clientX - prevMX) * 0.005;
+            camState.targetElevation = Math.max(camState.minEl, Math.min(camState.maxEl, camState.targetElevation + (e.clientY - prevMY) * 0.005));
+            prevMX = e.clientX; prevMY = e.clientY;
+        });
+        window.addEventListener('mouseup', () => dragging = false);
+        renderer.domElement.addEventListener('wheel', e => { e.preventDefault(); camState.targetDistance = Math.max(camState.minDist, Math.min(camState.maxDist, camState.targetDistance + e.deltaY * 0.015)); }, { passive: false });
+        renderer.domElement.addEventListener('touchstart', e => {
+            if (e.touches.length === 1) { dragging = true; prevMX = e.touches[0].clientX; prevMY = e.touches[0].clientY; }
+            else dragging = false;
+        });
+        renderer.domElement.addEventListener('touchmove', e => {
+            e.preventDefault();
+            if (dragging && e.touches.length === 1) {
+                camState.targetAzimuth -= (e.touches[0].clientX - prevMX) * 0.005;
+                camState.targetElevation = Math.max(camState.minEl, Math.min(camState.maxEl, camState.targetElevation + (e.touches[0].clientY - prevMY) * 0.005));
+                prevMX = e.touches[0].clientX; prevMY = e.touches[0].clientY;
+            } else if (e.touches.length === 2) {
+                const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                if (lastPinch) { camState.targetDistance = Math.max(camState.minDist, Math.min(camState.maxDist, camState.targetDistance + (lastPinch - d) * 0.03)); }
+                lastPinch = d;
+            }
+        }, { passive: false });
+        renderer.domElement.addEventListener('touchend', () => { dragging = false; lastPinch = null; });
+        renderer.domElement.addEventListener('dblclick', e => { e.preventDefault(); if (jetpackFuel > 0.05) { isJetpackActive = !isJetpackActive; input.jetpack = isJetpackActive; document.body.classList.toggle('flying', isJetpackActive); } });
+        window.addEventListener('resize', () => { camera.aspect = container.clientWidth / container.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(container.clientWidth, container.clientHeight); });
+
+        // 初始视角
+        const initPos = characterGroup.position.clone();
+        const initUp = radialDir(initPos);
+        const initCam = initPos.clone().add(new THREE.Vector3(5,4,8).normalize().multiplyScalar(7.5));
+        camera.position.copy(initCam);
+        camera.quaternion.copy(new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(initCam, initPos, initUp)));
+        camState.distance = camState.targetDistance = initCam.distanceTo(initPos);
+        const camDirInit = initCam.clone().sub(initPos).normalize();
+        camState.elevation = camState.targetElevation = Math.asin(camDirInit.dot(initUp));
+        const proj = camDirInit.clone().addScaledVector(initUp, -camDirInit.dot(initUp)).normalize();
+        const refX = new THREE.Vector3(1,0,0).addScaledVector(initUp, -new THREE.Vector3(1,0,0).dot(initUp)).normalize();
+        const refZ = new THREE.Vector3().crossVectors(initUp, refX).normalize();
+        camState.azimuth = camState.targetAzimuth = Math.atan2(proj.dot(refZ), proj.dot(refX));
+
+        const clock = new THREE.Clock();
+        let fuelWarn = false;
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = Math.min(clock.getDelta(), 0.15);
+            updateCharacter(dt);
+            updateParticles(dt);
+            updateCamera(dt);
+            const stars = scene.getObjectByName('stars');
+            if (stars) { stars.rotation.y += dt * 0.015; stars.rotation.x += dt * 0.005; }
+            altitudeValue.textContent = Math.max(0, altitudeAboveTerrain * 3.5).toFixed(1);
+            const fp = (jetpackFuel / MAX_FUEL) * 100;
+            fuelFill.style.width = fp + '%';
+            if (jetpackFuel < MAX_FUEL * 0.2 && !fuelWarn) { fuelIndicator.classList.add('low'); fuelWarn = true; }
+            else if (jetpackFuel > MAX_FUEL * 0.25 && fuelWarn) { fuelIndicator.classList.remove('low'); fuelWarn = false; }
+            renderer.render(scene, camera);
+            particleMat.size = 0.25 + camera.position.distanceTo(characterGroup.position) * 0.04;
+        }
+        requestAnimationFrame(animate);
+        console.log('🌍 修复完成：地面移动不再自动起飞');
+    </script>
+</body>
+</html>

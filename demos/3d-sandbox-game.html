@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>方块世界 - 3D沙盒游戏</title>
+    <style>
+        :root {
+            --bg: #1a1a1a;
+            --ui-bg: rgba(0, 0, 0, 0.75);
+            --text: #ffffff;
+            --highlight: #ffdd57;
+            --slot-bg: rgba(0, 0, 0, 0.6);
+            --slot-border: #555;
+            --slot-active: #ffffff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            background: #000;
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            cursor: default;
+            height: 100vh;
+            width: 100vw;
+            touch-action: none;
+        }
+
+        canvas {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* 准星 */
+        #crosshair {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.85;
+        }
+        #crosshair::before,
+        #crosshair::after {
+            content: '';
+            position: absolute;
+            background: #fff;
+        }
+        #crosshair::before {
+            width: 24px;
+            height: 2px;
+        }
+        #crosshair::after {
+            width: 2px;
+            height: 24px;
+        }
+        #crosshair .dot {
+            width: 3px;
+            height: 3px;
+            background: #fff;
+            border-radius: 50%;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* 覆盖层 */
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.55);
+            transition: opacity 0.4s;
+            pointer-events: all;
+        }
+        #overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        #overlay-box {
+            background: rgba(20, 20, 20, 0.9);
+            border: 1px solid #444;
+            border-radius: 16px;
+            padding: 32px 40px;
+            text-align: center;
+            color: #fff;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+        }
+        #overlay-box h2 {
+            font-size: 1.8em;
+            margin-bottom: 8px;
+            letter-spacing: 0.04em;
+        }
+        #overlay-box p {
+            color: #bbb;
+            margin: 6px 0;
+            font-size: 0.95em;
+            line-height: 1.6;
+        }
+        #overlay-box .btn {
+            display: inline-block;
+            margin-top: 18px;
+            padding: 12px 32px;
+            background: #5a9e4b;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            letter-spacing: 0.03em;
+            transition: background 0.2s;
+            pointer-events: all;
+        }
+        #overlay-box .btn:hover {
+            background: #6db858;
+        }
+        #overlay-box .keys {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 10px;
+            font-size: 0.8em;
+            color: #aaa;
+        }
+        #overlay-box .keys span {
+            background: #333;
+            padding: 3px 8px;
+            border-radius: 4px;
+            border: 1px solid #555;
+            white-space: nowrap;
+        }
+
+        /* 底部快捷栏 */
+        #hotbar {
+            position: fixed;
+            bottom: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 15;
+            display: flex;
+            gap: 4px;
+            pointer-events: none;
+        }
+        #hotbar .slot {
+            width: 52px;
+            height: 52px;
+            background: var(--slot-bg);
+            border: 3px solid var(--slot-border);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+        }
+        #hotbar .slot.active {
+            border-color: var(--slot-active);
+            transform: translateY(-6px);
+            box-shadow: 0 8px 24px rgba(255, 255, 255, 0.2);
+        }
+        #hotbar .slot .swatch {
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        #hotbar .slot .num {
+            position: absolute;
+            top: 3px;
+            left: 7px;
+            font-size: 0.65em;
+            color: #ccc;
+            font-weight: bold;
+            text-shadow: 0 1px 2px #000;
+        }
+        #hotbar .slot .label {
+            position: absolute;
+            bottom: 2px;
+            font-size: 0.55em;
+            color: #ccc;
+            text-shadow: 0 1px 2px #000;
+            white-space: nowrap;
+        }
+
+        /* 提示 */
+        #tooltip {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 15;
+            pointer-events: none;
+            color: #fff;
+            font-size: 0.85em;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 6px 14px;
+            border-radius: 20px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            text-align: center;
+        }
+        #tooltip.visible {
+            opacity: 1;
+        }
+
+        /* 小地图坐标 */
+        #coords {
+            position: fixed;
+            top: 12px;
+            left: 16px;
+            z-index: 12;
+            pointer-events: none;
+            color: #fff;
+            font-size: 0.75em;
+            font-family: 'Consolas', 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 4px 10px;
+            border-radius: 6px;
+            letter-spacing: 0.03em;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 覆盖层 -->
+    <div id="overlay">
+        <div id="overlay-box">
+            <h2>🧊 方块世界</h2>
+            <p>点击下方按钮开始游戏</p>
+            <p style="font-size:0.8em;color:#999;">鼠标锁定后移动视角，WASD移动，空格跳跃</p>
+            <div class="keys">
+                <span>🖱️ 左键</span><span>挖掘方块</span>
+                <span>🖱️ 右键</span><span>放置方块</span>
+                <span>1-6</span><span>切换方块</span>
+                <span>滚轮</span><span>切换方块</span>
+            </div>
+            <button class="btn" id="start-btn">🎮 开始游戏</button>
+        </div>
+    </div>
+
+    <!-- 准星 -->
+    <div id="crosshair"><div class="dot"></div></div>
+
+    <!-- 底部快捷栏 -->
+    <div id="hotbar"></div>
+
+    <!-- 提示 -->
+    <div id="tooltip"></div>
+
+    <!-- 坐标 -->
+    <div id="coords">X: 0.0 | Y: 0.0 | Z: 0.0</div>
+
+    <!-- Three.js Import Map -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // ==================== 常量与配置 ====================
+        const WORLD_SIZE_X = 24; // 地形X范围（方块数）
+        const WORLD_SIZE_Z = 24; // 地形Z范围（方块数）
+        const WORLD_OFFSET_X = -Math.floor(WORLD_SIZE_X / 2);
+        const WORLD_OFFSET_Z = -Math.floor(WORLD_SIZE_Z / 2);
+        const MAX_INTERACT_DISTANCE = 7; // 最大交互距离
+        const PLAYER_WIDTH = 0.6; // 玩家碰撞盒宽度
+        const PLAYER_HEIGHT = 1.8; // 玩家碰撞盒高度
+        const PLAYER_EYE_HEIGHT = 1.6; // 眼睛高度
+        const WALK_SPEED = 6.5; // 步行速度 单位/秒
+        const GRAVITY = 28; // 重力加速度
+        const JUMP_VELOCITY = 11; // 跳跃初始速度
+        const MAX_FALL_SPEED = 50;
+        const MOUSE_SENSITIVITY = 0.002;
+        const ACTION_COOLDOWN = 0.22; // 操作冷却秒
+        const INSTANCE_CAPACITY = 6000; // 每种方块类型的InstancedMesh容量
+
+        // 方块类型定义
+        const BLOCK_TYPES = [
+            { id: 0, name: '草地', color: '#7ec850', emoji: '🟩' },
+            { id: 1, name: '泥土', color: '#b57a4c', emoji: '🟫' },
+            { id: 2, name: '石头', color: '#8b8b8b', emoji: '🪨' },
+            { id: 3, name: '木头', color: '#c4945a', emoji: '🟤' },
+            { id: 4, name: '树叶', color: '#3d7c2f', emoji: '🌿' },
+            { id: 5, name: '沙子', color: '#e8d5a3', emoji: '🟨' },
+        ];
+
+        // ==================== DOM元素 ====================
+        const overlay = document.getElementById('overlay');
+        const startBtn = document.getElementById('start-btn');
+        const hotbarEl = document.getElementById('hotbar');
+        const tooltipEl = document.getElementById('tooltip');
+        const coordsEl = document.getElementById('coords');
+        const crosshairEl = document.getElementById('crosshair');
+
+        // ==================== Three.js初始化 ====================
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color('#87ceeb');
+        scene.fog = new THREE.Fog('#c8e0f0', 40, 100);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = false;
+        document.body.appendChild(renderer.domElement);
+
+        const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 200);
+        camera.rotation.order = 'YXZ';
+
+        // 光照
+        const ambientLight = new THREE.AmbientLight('#ffffff', 0.55);
+        scene.add(ambientLight);
+        const hemiLight = new THREE.HemisphereLight('#b1e1ff', '#5a3d2b', 0.5);
+        scene.add(hemiLight);
+        const sunLight = new THREE.DirectionalLight('#fff8e7', 2.2);
+        sunLight.position.set(60, 80, 40);
+        scene.add(sunLight);
+        const fillLight = new THREE.DirectionalLight('#c8d8ff', 0.5);
+        fillLight.position.set(-30, 20, -20);
+        scene.add(fillLight);
+
+        // ==================== 方块数据管理 ====================
+        // blockData: Map<"x,y,z", {type: number}>
+        const blockData = new Map();
+        // typePositions: Map<type, Vector3[]>
+        const typePositions = new Map();
+        // instancedMeshes: Map<type, InstancedMesh>
+        const instancedMeshes = new Map();
+
+        // 初始化InstancedMesh
+        const sharedGeometry = new THREE.BoxGeometry(1, 1, 1);
+
+        function createInstancedMesh(colorHex) {
+            const material = new THREE.MeshLambertMaterial({ color: new THREE.Color(colorHex) });
+            const im = new THREE.InstancedMesh(sharedGeometry, material, INSTANCE_CAPACITY);
+            im.count = 0;
+            im.castShadow = false;
+            im.receiveShadow = true;
+            im.frustumCulled = true;
+            return im;
+        }
+
+        for (const bt of BLOCK_TYPES) {
+            const im = createInstancedMesh(bt.color);
+            instancedMeshes.set(bt.id, im);
+            typePositions.set(bt.id, []);
+            scene.add(im);
+        }
+
+        function rebuildInstancedMesh(type) {
+            const im = instancedMeshes.get(type);
+            const positions = typePositions.get(type);
+            const count = positions.length;
+            if (count > INSTANCE_CAPACITY) {
+                console.warn(`方块类型 ${type} 超出容量限制!`);
+            }
+            const actualCount = Math.min(count, INSTANCE_CAPACITY);
+            im.count = actualCount;
+            const matrix = new THREE.Matrix4();
+            for (let i = 0; i < actualCount; i++) {
+                const pos = positions[i];
+                matrix.setPosition(pos.x, pos.y, pos.z);
+                im.setMatrixAt(i, matrix);
+            }
+            im.instanceMatrix.needsUpdate = true;
+            im.computeBoundingSphere();
+            im.visible = actualCount > 0;
+        }
+
+        function addBlock(x, y, z, type) {
+            const key = `${x},${y},${z}`;
+            if (blockData.has(key)) return false; // 已有方块
+            // 检查是否与玩家重叠
+            if (isBlockOverlappingPlayer(x, y, z)) return false;
+            blockData.set(key, { type, position: new THREE.Vector3(x, y, z) });
+            typePositions.get(type).push(new THREE.Vector3(x, y, z));
+            rebuildInstancedMesh(type);
+            return true;
+        }
+
+        function removeBlock(x, y, z) {
+            const key = `${x},${y},${z}`;
+            if (!blockData.has(key)) return false;
+            const entry = blockData.get(key);
+            const type = entry.type;
+            blockData.delete(key);
+            const arr = typePositions.get(type);
+            const idx = arr.findIndex(v => v.x === x && v.y === y && v.z === z);
+            if (idx >= 0) {
+                arr.splice(idx, 1);
+            }
+            rebuildInstancedMesh(type);
+            return true;
+        }
+
+        function getBlockAt(x, y, z) {
+            return blockData.has(`${x},${y},${z}`);
+        }
+
+        function getBlockTypeAt(x, y, z) {
+            const entry = blockData.get(`${x},${y},${z}`);
+            return entry ? entry.type : null;
+        }
+
+        function isBlockOverlappingPlayer(bx, by, bz) {
+            // 方块占据 [bx-0.5, bx+0.5] x [by-0.5, by+0.5] x [bz-0.5, bz+0.5]
+            const px = player.position.x;
+            const py = player.position.y;
+            const pz = player.position.z;
+            const pMinX = px - PLAYER_WIDTH / 2;
+            const pMaxX = px + PLAYER_WIDTH / 2;
+            const pMinY = py;
+            const pMaxY = py + PLAYER_HEIGHT;
+            const pMinZ = pz - PLAYER_WIDTH / 2;
+            const pMaxZ = pz + PLAYER_WIDTH / 2;
+            const bMinX = bx - 0.5;
+            const bMaxX = bx + 0.5;
+            const bMinY = by - 0.5;
+            const bMaxY = by + 0.5;
+            const bMinZ = bz - 0.5;
+            const bMaxZ = bz + 0.5;
+            return (
+                pMaxX > bMinX && pMinX < bMaxX &&
+                pMaxY > bMinY && pMinY < bMaxY &&
+                pMaxZ > bMinZ && pMinZ < bMaxZ
+            );
+        }
+
+        // ==================== 地形生成 ====================
+        function noise2D(x, z, seed = 42) {
+            const n = Math.sin(x * 12.9898 + z * 78.233 + seed) * 43758.5453;
+            return n - Math.floor(n);
+        }
+
+        function layeredNoise(x, z) {
+            let val = 0;
+            val += Math.sin(x * 0.27 + z * 0.31) * Math.cos(z * 0.29 - x * 0.23) * 3.5;
+            val += Math.sin(x * 0.09 + z * 0.11) * Math.cos(z * 0.07 - x * 0.13) * 5;
+            val += Math.sin(x * 0.045 + z * 0.055) * Math.cos(z * 0.038 - x * 0.042) * 7;
+            val += noise2D(x * 0.6, z * 0.6, 100) * 2.5;
+            val += noise2D(x * 0.15, z * 0.15, 200) * 3;
+            return val;
+        }
+
+        function getTerrainHeight(x, z) {
+            const raw = layeredNoise(x, z);
+            return Math.round(raw + 7); // 基准高度约7
+        }
+
+        function generateTerrain() {
+            const minX = WORLD_OFFSET_X;
+            const maxX = WORLD_OFFSET_X + WORLD_SIZE_X - 1;
+            const minZ = WORLD_OFFSET_Z;
+            const maxZ = WORLD_OFFSET_Z + WORLD_SIZE_Z - 1;
+
+            const treePositions = [];
+
+            for (let x = minX; x <= maxX; x++) {
+                for (let z = minZ; z <= maxZ; z++) {
+                    const h = getTerrainHeight(x, z);
+                    const clampedH = Math.max(1, h);
+
+                    // 地表方块类型
+                    let surfaceType = 0; // 默认草地
+                    if (clampedH <= 3) {
+                        surfaceType = 5; // 低洼处沙子
+                    }
+
+                    // 填充地下层
+                    for (let y = 0; y < clampedH; y++) {
+                        let type;
+                        if (y === 0) {
+                            type = 2; // 最底层石头（基岩）
+                        } else if (y >= clampedH - 3 && y < clampedH) {
+                            type = 1; // 上层泥土
+                        } else {
+                            type = 2; // 深层石头
+                        }
+                        addBlockDirect(x, y, z, type);
+                    }
+
+                    // 地表
+                    addBlockDirect(x, clampedH, z, surfaceType);
+
+                    // 记录可能的树位置
+                    if (surfaceType === 0 && clampedH >= 4) {
+                        treePositions.push({ x, z, h: clampedH });
+                    }
+                }
+            }
+
+            // 生成树
+            const treeProbability = 0.07;
+            for (const tp of treePositions) {
+                if (Math.random() < treeProbability) {
+                    generateTree(tp.x, tp.z, tp.h);
+                }
+            }
+
+            // 重建所有InstancedMesh
+            for (const bt of BLOCK_TYPES) {
+                rebuildInstancedMesh(bt.id);
+            }
+        }
+
+        function addBlockDirect(x, y, z, type) {
+            const key = `${x},${y},${z}`;
+            if (blockData.has(key)) return;
+            blockData.set(key, { type, position: new THREE.Vector3(x, y, z) });
+            typePositions.get(type).push(new THREE.Vector3(x, y, z));
+        }
+
+        function generateTree(x, z, groundH) {
+            const trunkHeight = 3 + Math.floor(Math.random() * 3); // 3-5格高
+            // 树干
+            for (let dy = 1; dy <= trunkHeight; dy++) {
+                addBlockDirect(x, groundH + dy, z, 3); // 木头
+            }
+            // 树冠
+            const crownBase = groundH + trunkHeight - 1;
+            const crownTop = groundH + trunkHeight + 2;
+            for (let dy = crownBase; dy <= crownTop; dy++) {
+                const radius = dy <= crownBase + 1 ? 2 : (dy <= crownBase + 2 ? 1 : 0);
+                for (let dx = -radius; dx <= radius; dx++) {
+                    for (let dz = -radius; dz <= radius; dz++) {
+                        if (dx === 0 && dz === 0 && dy < crownBase + 1) continue; // 树干位置
+                        // 去掉角落使树冠更圆
+                        if (Math.abs(dx) === radius && Math.abs(dz) === radius && Math.random() < 0.4) continue;
+                        const bx = x + dx;
+                        const bz = z + dz;
+                        const by = dy;
+                        // 检查是否在范围内且不与其他方块冲突
+                        if (
+                            bx >= WORLD_OFFSET_X && bx < WORLD_OFFSET_X + WORLD_SIZE_X &&
+                            bz >= WORLD_OFFSET_Z && bz < WORLD_OFFSET_Z + WORLD_SIZE_Z
+                        ) {
+                            if (!getBlockAt(bx, by, bz)) {
+                                addBlockDirect(bx, by, bz, 4); // 树叶
+                            }
+                        }
+                    }
+                }
+            }
+            // 顶部尖
+            const topY = crownTop + 1;
+            if (!getBlockAt(x, topY, z)) {
+                addBlockDirect(x, topY, z, 4);
+            }
+        }
+
+        // ==================== 玩家状态 ====================
+        const player = {
+            position: new THREE.Vector3(0, 20, 0), // 临时高空位置，地形生成后重设
+            velocity: new THREE.Vector3(0, 0, 0),
+            onGround: false,
+            yaw: 0, // 水平旋转角（弧度）
+            pitch: 0, // 垂直旋转角（弧度）
+        };
+
+        function resetPlayerPosition() {
+            const cx = Math.floor((WORLD_OFFSET_X + WORLD_SIZE_X / 2));
+            const cz = Math.floor((WORLD_OFFSET_Z + WORLD_SIZE_Z / 2));
+            const h = getTerrainHeight(cx, cz);
+            player.position.set(cx, h + 2.5, cz);
+            player.velocity.set(0, 0, 0);
+            player.yaw = Math.PI / 4;
+            player.pitch = -0.3;
+            player.onGround = false;
+        }
+
+        // ==================== 输入处理 ====================
+        const keys = {};
+        let pointerLocked = false;
+        let actionCooldownTimer = 0;
+        let selectedBlockType = 0;
+
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            // 数字键选择方块
+            if (e.code >= 'Digit1' && e.code <= 'Digit6') {
+                const idx = parseInt(e.code.replace('Digit', '')) - 1;
+                selectBlockType(idx);
+            }
+            if (e.code === 'Digit0') {
+                selectBlockType(0);
+            }
+            // 防止某些键的默认行为
+            if (e.code === 'Space' || e.code === 'Tab') {
+                e.preventDefault();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!pointerLocked) return;
+            player.yaw -= e.movementX * MOUSE_SENSITIVITY;
+            player.pitch -= e.movementY * MOUSE_SENSITIVITY;
+            player.pitch = Math.max(-Math.PI / 2 + 0.02, Math.min(Math.PI / 2 - 0.02, player.pitch));
+        });
+
+        window.addEventListener('mousedown', (e) => {
+            if (!pointerLocked) return;
+            if (actionCooldownTimer > 0) return;
+            if (e.button === 0) {
+                // 左键 - 破坏
+                destroyBlock();
+                actionCooldownTimer = ACTION_COOLDOWN;
+            } else if (e.button === 2) {
+                // 右键 - 放置
+                placeBlock();
+                actionCooldownTimer = ACTION_COOLDOWN;
+            }
+        });
+
+        window.addEventListener('contextmenu', (e) => {
+            if (pointerLocked) e.preventDefault();
+        });
+
+        window.addEventListener('wheel', (e) => {
+            if (!pointerLocked) return;
+            const delta = e.deltaY > 0 ? 1 : -1;
+            const newIdx = (selectedBlockType + delta + BLOCK_TYPES.length) % BLOCK_TYPES.length;
+            selectBlockType(newIdx);
+        });
+
+        document.addEventListener('pointerlockchange', () => {
+            pointerLocked = document.pointerLockElement === renderer.domElement;
+            if (pointerLocked) {
+                overlay.classList.add('hidden');
+                crosshairEl.style.display = 'flex';
+                showTooltip('左键挖掘 | 右键放置 | 滚轮/数字键切换方块', 3000);
+            } else {
+                overlay.classList.remove('hidden');
+                crosshairEl.style.display = 'none';
+                hideTooltip();
+            }
+        });
+
+        startBtn.addEventListener('click', () => {
+            renderer.domElement.requestPointerLock();
+        });
+
+        renderer.domElement.addEventListener('click', () => {
+            if (!pointerLocked) {
+                renderer.domElement.requestPointerLock();
+            }
+        });
+
+        function selectBlockType(idx) {
+            selectedBlockType = Math.max(0, Math.min(BLOCK_TYPES.length - 1, idx));
+            updateHotbarUI();
+            const bt = BLOCK_TYPES[selectedBlockType];
+            showTooltip(`${bt.emoji} 已选择: ${bt.name}`, 1500);
+        }
+
+        // ==================== 射线检测 ====================
+        const raycaster = new THREE.Raycaster();
+        raycaster.far = MAX_INTERACT_DISTANCE + 2;
+
+        function getTargetBlock() {
+            // 更新射线
+            const direction = new THREE.Vector3(0, 0, -1);
+            direction.applyQuaternion(camera.quaternion);
+            raycaster.set(camera.position, direction);
+
+            // 收集所有InstancedMesh进行检测
+            const allIMs = [];
+            for (const bt of BLOCK_TYPES) {
+                const im = instancedMeshes.get(bt.id);
+                if (im && im.count > 0) {
+                    allIMs.push(im);
+                }
+            }
+            if (allIMs.length === 0) return null;
+
+            const intersects = raycaster.intersectObjects(allIMs, false);
+            if (intersects.length === 0) return null;
+
+            // 取最近的交点
+            const hit = intersects[0];
+            if (hit.distance > MAX_INTERACT_DISTANCE) return null;
+
+            // 获取实例ID
+            const instanceId = hit.instanceId;
+            const im = hit.object;
+            // 找到这个InstancedMesh对应的方块类型
+            let hitType = null;
+            for (const bt of BLOCK_TYPES) {
+                if (instancedMeshes.get(bt.id) === im) {
+                    hitType = bt.id;
+                    break;
+                }
+            }
+            if (hitType === null) return null;
+
+            // 获取实例位置
+            const matrix = new THREE.Matrix4();
+            im.getMatrixAt(instanceId, matrix);
+            const pos = new THREE.Vector3();
+            pos.setFromMatrixPosition(matrix);
+
+            // 计算面法线
+            const localPoint = hit.point.clone().sub(pos);
+            const absN = new THREE.Vector3(
+                Math.abs(localPoint.x),
+                Math.abs(localPoint.y),
+                Math.abs(localPoint.z)
+            );
+            let normal;
+            if (absN.x >= absN.y && absN.x >= absN.z) {
+                normal = new THREE.Vector3(Math.sign(localPoint.x), 0, 0);
+            } else if (absN.y >= absN.x && absN.y >= absN.z) {
+                normal = new THREE.Vector3(0, Math.sign(localPoint.y), 0);
+            } else {
+                normal = new THREE.Vector3(0, 0, Math.sign(localPoint.z));
+            }
+
+            return {
+                position: new THREE.Vector3(Math.round(pos.x), Math.round(pos.y), Math.round(pos.z)),
+                normal: normal,
+                distance: hit.distance,
+                type: hitType,
+            };
+        }
+
+        function destroyBlock() {
+            const target = getTargetBlock();
+            if (!target) return;
+            const success = removeBlock(target.position.x, target.position.y, target.position.z);
+            if (success) {
+                spawnBreakParticles(target.position);
+                showTooltip(`⛏️ 已挖掘 ${BLOCK_TYPES[target.type].name}`, 1200);
+            }
+        }
+
+        function placeBlock() {
+            const target = getTargetBlock();
+            if (!target) return;
+            const placePos = target.position.clone().add(target.normal);
+            const px = Math.round(placePos.x);
+            const py = Math.round(placePos.y);
+            const pz = Math.round(placePos.z);
+            // 检查是否在合理范围内
+            if (py < -10 || py > 60) return;
+            const success = addBlock(px, py, pz, selectedBlockType);
+            if (success) {
+                showTooltip(`🧱 已放置 ${BLOCK_TYPES[selectedBlockType].name}`, 1200);
+            }
+        }
+
+        // ==================== 粒子效果 ====================
+        const particlesGroup = new THREE.Group();
+        scene.add(particlesGroup);
+        const activeParticles = [];
+
+        function spawnBreakParticles(position) {
+            const count = 12;
+            const particleGeo = new THREE.BoxGeometry(0.08, 0.08, 0.08);
+            for (let i = 0; i < count; i++) {
+                const mat = new THREE.MeshLambertMaterial({
+                    color: new THREE.Color().setHSL(0.12 + Math.random() * 0.15, 0.4, 0.3 + Math.random() * 0.5),
+                });
+                const particle = new THREE.Mesh(particleGeo, mat);
+                particle.position.copy(position);
+                particle.position.x += (Math.random() - 0.5) * 0.7;
+                particle.position.y += (Math.random() - 0.5) * 0.7;
+                particle.position.z += (Math.random() - 0.5) * 0.7;
+                const vel = new THREE.Vector3(
+                    (Math.random() - 0.5) * 5,
+                    Math.random() * 6 + 2,
+                    (Math.random() - 0.5) * 5
+                );
+                particlesGroup.add(particle);
+                activeParticles.push({
+                    mesh: particle,
+                    velocity: vel,
+                    life: 0.6 + Math.random() * 0.8,
+                    age: 0,
+                });
+            }
+        }
+
+        function updateParticles(deltaTime) {
+            for (let i = activeParticles.length - 1; i >= 0; i--) {
+                const p = activeParticles[i];
+                p.age += deltaTime;
+                if (p.age >= p.life) {
+                    particlesGroup.remove(p.mesh);
+                    p.mesh.material.dispose();
+                    activeParticles.splice(i, 1);
+                } else {
+                    p.velocity.y -= GRAVITY * deltaTime;
+                    p.mesh.position.x += p.velocity.x * deltaTime;
+                    p.mesh.position.y += p.velocity.y * deltaTime;
+                    p.mesh.position.z += p.velocity.z * deltaTime;
+                    const alpha = 1 - p.age / p.life;
+                    p.mesh.material.opacity = alpha;
+                    p.mesh.material.transparent = true;
+                    p.mesh.scale.setScalar(alpha);
+                }
+            }
+        }
+
+        // ==================== 高亮线框 ====================
+        const highlightGeo = new THREE.BoxGeometry(1.02, 1.02, 1.02);
+        const highlightEdges = new THREE.EdgesGeometry(highlightGeo);
+        const highlightLine = new THREE.LineSegments(
+            highlightEdges,
+            new THREE.LineBasicMaterial({ color: '#000000', linewidth: 1, transparent: true, opacity: 0.5,
+                depthTest: true })
+        );
+        highlightLine.visible = false;
+        scene.add(highlightLine);
+
+        const previewGeo = new THREE.BoxGeometry(1, 1, 1);
+        const previewMaterial = new THREE.MeshBasicMaterial({
+            color: '#ffffff',
+            transparent: true,
+            opacity: 0.35,
+            depthTest: true,
+            depthWrite: false,
+        });
+        const previewMesh = new THREE.Mesh(previewGeo, previewMaterial);
+        previewMesh.visible = false;
+        scene.add(previewMesh);
+
+        function updateHighlight() {
+            const target = getTargetBlock();
+            if (target) {
+                highlightLine.position.copy(target.position);
+                highlightLine.visible = true;
+                // 预览放置位置
+                const placePos = target.position.clone().add(target.normal);
+                previewMesh.position.copy(placePos);
+                previewMesh.visible = true;
+                previewMaterial.color.set(BLOCK_TYPES[selectedBlockType].color);
+            } else {
+                highlightLine.visible = false;
+                previewMesh.visible = false;
+            }
+        }
+
+        // ==================== 碰撞检测 ====================
+        function checkCollisionAt(px, py, pz) {
+            // 玩家碰撞盒 [px-w/2, px+w/2] x [py, py+h] x [pz-w/2, pz+w/2]
+            const hw = PLAYER_WIDTH / 2;
+            const minX = px - hw;
+            const maxX = px + hw;
+            const minY = py;
+            const maxY = py + PLAYER_HEIGHT;
+            const minZ = pz - hw;
+            const maxZ = pz + hw;
+
+            // 检查可能重叠的方块坐标范围
+            const bxMin = Math.floor(minX + 0.5);
+            const bxMax = Math.floor(maxX + 0.5);
+            const byMin = Math.floor(minY + 0.5);
+            const byMax = Math.floor(maxY + 0.5);
+            const bzMin = Math.floor(minZ + 0.5);
+            const bzMax = Math.floor(maxZ + 0.5);
+
+            for (let bx = bxMin; bx <= bxMax; bx++) {
+                for (let by = byMin; by <= byMax; by++) {
+                    for (let bz = bzMin; bz <= bzMax; bz++) {
+                        if (getBlockAt(bx, by, bz)) {
+                            // 方块占据 [bx-0.5, bx+0.5]...
+                            const bMinX = bx - 0.5;
+                            const bMaxX = bx + 0.5;
+                            const bMinY = by - 0.5;
+                            const bMaxY = by + 0.5;
+                            const bMinZ = bz - 0.5;
+                            const bMaxZ = bz + 0.5;
+                            if (
+                                maxX > bMinX && minX < bMaxX &&
+                                maxY > bMinY && minY < bMaxY &&
+                                maxZ > bMinZ && minZ < bMaxZ
+                            ) {
+                                return true; // 碰撞
+                            }
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        function isOnGround() {
+            const px = player.position.x;
+            const py = player.position.y;
+            const pz = player.position.z;
+            const hw = PLAYER_WIDTH / 2;
+            const checkY = py - 0.02;
+            const by = Math.floor(checkY + 0.5);
+            const bxMin = Math.floor(px - hw + 0.5);
+            const bxMax = Math.floor(px + hw + 0.5);
+            const bzMin = Math.floor(pz - hw + 0.5);
+            const bzMax = Math.floor(pz + hw + 0.5);
+
+            for (let bx = bxMin; bx <= bxMax; bx++) {
+                for (let bz = bzMin; bz <= bzMax; bz++) {
+                    if (getBlockAt(bx, by, bz)) {
+                        const bMinY = by - 0.5;
+                        const bMaxY = by + 0.5;
+                        const bMinX = bx - 0.5;
+                        const bMaxX = bx + 0.5;
+                        const bMinZ = bz - 0.5;
+                        const bMaxZ = bz + 0.5;
+                        if (
+                            px + hw > bMinX && px - hw < bMaxX &&
+                            py <= bMaxY && checkY >= bMinY &&
+                            pz + hw > bMinZ && pz - hw < bMaxZ
+                        ) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        // ==================== 游戏循环 ====================
+        let lastTimestamp = performance.now();
+        let fpsCounter = 0;
+        let fpsTime = 0;
+        let currentFPS = 60;
+
+        function gameLoop(timestamp) {
+            requestAnimationFrame(gameLoop);
+
+            let deltaTime = (timestamp - lastTimestamp) / 1000;
+            if (deltaTime <= 0) deltaTime = 0.016;
+            if (deltaTime > 0.15) deltaTime = 0.15; // 防止大帧跳跃
+            lastTimestamp = timestamp;
+
+            // FPS
+            fpsCounter++;
+            fpsTime += deltaTime;
+            if (fpsTime >= 1.0) {
+                currentFPS = Math.round(fpsCounter / fpsTime);
+                fpsCounter = 0;
+                fpsTime = 0;
+            }
+
+            update(deltaTime);
+            render();
+            updateCoordsDisplay();
+        }
+
+        function update(deltaTime) {
+            // 更新冷却
+            if (actionCooldownTimer > 0) {
+                actionCooldownTimer -= deltaTime;
+            }
+
+            // 更新高亮
+            updateHighlight();
+
+            // 更新粒子
+            updateParticles(deltaTime);
+
+            // 玩家移动（仅在指针锁定时）
+            if (!pointerLocked) return;
+
+            // 计算水平移动方向
+            const forward = new THREE.Vector3(0, 0, -1);
+            forward.applyAxisAngle(new THREE.Vector3(0, 1, 0), player.yaw);
+            forward.y = 0;
+            forward.normalize();
+            const right = new THREE.Vector3(1, 0, 0);
+            right.applyAxisAngle(new THREE.Vector3(0, 1, 0), player.yaw);
+            right.y = 0;
+            right.normalize();
+
+            let moveX = 0;
+            let moveZ = 0;
+            if (keys['KeyW'] || keys['ArrowUp']) { moveX += forward.x;
+                moveZ += forward.z; }
+            if (keys['KeyS'] || keys['ArrowDown']) { moveX -= forward.x;
+                moveZ -= forward.z; }
+            if (keys['KeyA'] || keys['ArrowLeft']) { moveX -= right.x;
+                moveZ -= right.z; }
+            if (keys['KeyD'] || keys['ArrowRight']) { moveX += right.x;
+                moveZ += right.z; }
+
+            // 归一化水平移动
+            const moveMag = Math.sqrt(moveX * moveX + moveZ * moveZ);
+            if (moveMag > 1) {
+                moveX /= moveMag;
+                moveZ /= moveMag;
+            }
+            const speed = WALK_SPEED;
+            moveX *= speed * deltaTime;
+            moveZ *= speed * deltaTime;
+
+            // 重力
+            player.velocity.y -= GRAVITY * deltaTime;
+            if (player.velocity.y < -MAX_FALL_SPEED) player.velocity.y = -MAX_FALL_SPEED;
+
+            // 跳跃
+            if ((keys['Space'] || keys['KeyW'] === undefined ? false : keys['Space']) && player.onGround) {
+                player.velocity.y = JUMP_VELOCITY;
+                player.onGround = false;
+            }
+            // 再次检查Space（上面的逻辑有点问题，简化）
+            if (keys['Space'] && player.onGround) {
+                player.velocity.y = JUMP_VELOCITY;
+                player.onGround = false;
+            }
+
+            const moveY = player.velocity.y * deltaTime;
+
+            // 分轴碰撞检测与移动
+            // X轴
+            const newX = player.position.x + moveX;
+            if (!checkCollisionAt(newX, player.position.y, player.position.z)) {
+                player.position.x = newX;
+            } else {
+                // 尝试贴近墙壁滑动
+                const halfW = PLAYER_WIDTH / 2;
+                const testX1 = Math.floor(newX + halfW + 0.5) - 0.5 - halfW - 0.001;
+                const testX2 = Math.floor(newX - halfW - 0.5) + 0.5 + halfW + 0.001;
+                if (!checkCollisionAt(testX1, player.position.y, player.position.z)) {
+                    player.position.x = testX1;
+                } else if (!checkCollisionAt(testX2, player.position.y, player.position.z)) {
+                    player.position.x = testX2;
+                }
+            }
+
+            // Z轴
+            const newZ = player.position.z + moveZ;
+            if (!checkCollisionAt(player.position.x, player.position.y, newZ)) {
+                player.position.z = newZ;
+            } else {
+                const halfW = PLAYER_WIDTH / 2;
+                const testZ1 = Math.floor(newZ + halfW + 0.5) - 0.5 - halfW - 0.001;
+                const testZ2 = Math.floor(newZ - halfW - 0.5) + 0.5 + halfW + 0.001;
+                if (!checkCollisionAt(player.position.x, player.position.y, testZ1)) {
+                    player.position.z = testZ1;
+                } else if (!checkCollisionAt(player.position.x, player.position.y, testZ2)) {
+                    player.position.z = testZ2;
+                }
+            }
+
+            // Y轴
+            const newY = player.position.y + moveY;
+            if (!checkCollisionAt(player.position.x, newY, player.position.z)) {
+                player.position.y = newY;
+                player.onGround = false;
+            } else {
+                if (moveY < 0) {
+                    // 着陆
+                    player.position.y = Math.floor(newY + 0.5) + 0.5;
+                    player.velocity.y = 0;
+                    player.onGround = true;
+                } else {
+                    // 撞头
+                    player.position.y = Math.floor(newY + PLAYER_HEIGHT - 0.5) - PLAYER_HEIGHT;
+                    player.velocity.y = 0;
+                }
+            }
+
+            // 重新检查地面状态
+            if (!player.onGround && player.velocity.y <= 0) {
+                player.onGround = isOnGround();
+                if (player.onGround) {
+                    player.velocity.y = 0;
+                    // 将玩家精确放在地面上
+                    const hw = PLAYER_WIDTH / 2;
+                    const by = Math.floor(player.position.y - 0.02 + 0.5);
+                    player.position.y = by + 0.5;
+                }
+            }
+
+            // 边界限制
+            const boundMinX = WORLD_OFFSET_X - 1;
+            const boundMaxX = WORLD_OFFSET_X + WORLD_SIZE_X;
+            const boundMinZ = WORLD_OFFSET_Z - 1;
+            const boundMaxZ = WORLD_OFFSET_Z + WORLD_SIZE_Z;
+            player.position.x = Math.max(boundMinX, Math.min(boundMaxX, player.position.x));
+            player.position.z = Math.max(boundMinZ, Math.min(boundMaxZ, player.position.z));
+            if (player.position.y < -20) {
+                // 掉出世界，重生
+                resetPlayerPosition();
+                showTooltip('🔄 你掉出了世界，已重生', 2500);
+            }
+
+            // 更新相机
+            updateCamera();
+        }
+
+        function updateCamera() {
+            camera.position.set(
+                player.position.x,
+                player.position.y + PLAYER_EYE_HEIGHT,
+                player.position.z
+            );
+            camera.rotation.set(player.pitch, player.yaw, 0);
+        }
+
+        function render() {
+            renderer.render(scene, camera);
+        }
+
+        function updateCoordsDisplay() {
+            const px = player.position.x.toFixed(1);
+            const py = player.position.y.toFixed(1);
+            const pz = player.position.z.toFixed(1);
+            coordsEl.textContent = `X: ${px} | Y: ${py} | Z: ${pz} | FPS: ${currentFPS}`;
+        }
+
+        // ==================== UI ====================
+        function buildHotbar() {
+            hotbarEl.innerHTML = '';
+            for (let i = 0; i < BLOCK_TYPES.length; i++) {
+                const bt = BLOCK_TYPES[i];
+                const slot = document.createElement('div');
+                slot.className = 'slot' + (i === selectedBlockType ? ' active' : '');
+                slot.innerHTML = `
+                    <span class="num">${i + 1}</span>
+                    <div class="swatch" style="background:${bt.color};"></div>
+                    <span class="label">${bt.name}</span>
+                `;
+                slot.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectBlockType(i);
+                    if (!pointerLocked) {
+                        renderer.domElement.requestPointerLock();
+                    }
+                });
+                hotbarEl.appendChild(slot);
+            }
+        }
+
+        function updateHotbarUI() {
+            const slots = hotbarEl.querySelectorAll('.slot');
+            slots.forEach((slot, i) => {
+                slot.classList.toggle('active', i === selectedBlockType);
+            });
+        }
+
+        let tooltipTimeout = null;
+
+        function showTooltip(msg, duration = 2000) {
+            tooltipEl.textContent = msg;
+            tooltipEl.classList.add('visible');
+            if (tooltipTimeout) clearTimeout(tooltipTimeout);
+            tooltipTimeout = setTimeout(() => {
+                tooltipEl.classList.remove('visible');
+                tooltipTimeout = null;
+            }, duration);
+        }
+
+        function hideTooltip() {
+            tooltipEl.classList.remove('visible');
+            if (tooltipTimeout) clearTimeout(tooltipTimeout);
+            tooltipTimeout = null;
+        }
+
+        // ==================== 窗口调整 ====================
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // ==================== 初始化 ====================
+        function init() {
+            buildHotbar();
+            generateTerrain();
+            resetPlayerPosition();
+            updateCamera();
+            updateHighlight();
+            updateHotbarUI();
+            // 初始显示覆盖层
+            overlay.classList.remove('hidden');
+            crosshairEl.style.display = 'none';
+            highlightLine.visible = false;
+            previewMesh.visible = false;
+        }
+
+        init();
+
+        // 启动游戏循环
+        requestAnimationFrame(gameLoop);
+
+        // ==================== 导出调试接口 ====================
+        console.log('🧊 方块世界已就绪！');
+        console.log('  - 点击画面锁定鼠标开始游戏');
+        console.log('  - WASD 移动，空格跳跃');
+        console.log('  - 左键挖掘，右键放置');
+        console.log('  - 数字键1-6或滚轮切换方块类型');
+        console.log('  - 地形范围: ' + WORLD_SIZE_X + 'x' + WORLD_SIZE_Z + ' 方块');
+        console.log('  - 可用方块类型:', BLOCK_TYPES.map(b => b.name).join(', '));
+        console.log('  💡 提示：可在控制台使用 window.gameAPI 访问游戏接口');
+        console.log('    例如: gameAPI.teleport(5, 20, 5) 传送玩家');
+
+        // 暴露API方便调试
+        window.gameAPI = {
+            teleport: (x, y, z) => {
+                player.position.set(x, y, z);
+                player.velocity.set(0, 0, 0);
+                updateCamera();
+                showTooltip(`📍 已传送至 (${x}, ${y}, ${z})`, 2000);
+            },
+            getPlayerPos: () => player.position.clone(),
+            getBlockCount: () => blockData.size,
+            getTypeCounts: () => {
+                const counts = {};
+                for (const bt of BLOCK_TYPES) {
+                    counts[bt.name] = typePositions.get(bt.id).length;
+                }
+                return counts;
+            },
+            resetWorld: () => {
+                // 清除所有方块
+                for (const bt of BLOCK_TYPES) {
+                    typePositions.set(bt.id, []);
+                    const im = instancedMeshes.get(bt.id);
+                    im.count = 0;
+                    im.instanceMatrix.needsUpdate = true;
+                    im.computeBoundingSphere();
+                    im.visible = false;
+                }
+                blockData.clear();
+                // 重新生成
+                generateTerrain();
+                resetPlayerPosition();
+                updateCamera();
+                showTooltip('🔄 世界已重置', 2000);
+            },
+            listBlockTypes: () => BLOCK_TYPES,
+            getSelectedBlock: () => BLOCK_TYPES[selectedBlockType],
+            setBlockType: (idx) => selectBlockType(idx),
+        };
+    </script>
+</body>
+</html>

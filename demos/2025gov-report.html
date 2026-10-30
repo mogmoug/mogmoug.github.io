@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2025年国民经济和社会发展统计公报 - 数据看板</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: #f8fafc; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05); transition: transform 0.2s; }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05); }
+        .chart-container { width: 100%; height: 350px; }
+        .metric-value { font-variant-numeric: tabular-nums; }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <!-- 顶部导航/标题 -->
+    <header class="bg-slate-900 text-white py-8 px-4 sm:px-6 lg:px-8 shadow-lg">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold tracking-tight">2025年国民经济和社会发展统计公报</h1>
+                    <p class="mt-2 text-slate-400">数据来源：国家统计局 | 发布日期：2026年2月28日</p>
+                </div>
+                <div class="mt-4 md:mt-0">
+                    <span class="inline-flex items-center rounded-md bg-green-400/10 px-3 py-1 text-sm font-medium text-green-400 ring-1 ring-inset ring-green-400/20">
+                        数据已更新至2025全年
+                    </span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        <!-- 核心指标卡片 (Key Metrics) -->
+        <section>
+            <h2 class="text-xl font-semibold text-slate-900 mb-4 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                核心宏观指标
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- GDP -->
+                <div class="card p-6 border-l-4 border-blue-500">
+                    <p class="text-sm font-medium text-slate-500">国内生产总值 (GDP)</p>
+                    <p class="mt-2 text-3xl font-bold text-slate-900 metric-value">1,401,879 <span class="text-lg font-normal text-slate-500">亿元</span></p>
+                    <div class="mt-2 flex items-center text-sm">
+                        <span class="text-green-600 font-medium flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                            5.0%
+                        </span>
+                        <span class="text-slate-400 ml-2">比上年增长</span>
+                    </div>
+                </div>
+                <!-- 人口 -->
+                <div class="card p-6 border-l-4 border-indigo-500">
+                    <p class="text-sm font-medium text-slate-500">年末全国人口</p>
+                    <p class="mt-2 text-3xl font-bold text-slate-900 metric-value">140,489 <span class="text-lg font-normal text-slate-500">万人</span></p>
+                    <div class="mt-2 flex items-center text-sm">
+                        <span class="text-red-500 font-medium flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                            339万人
+                        </span>
+                        <span class="text-slate-400 ml-2">比上年末减少</span>
+                    </div>
+                </div>
+                <!-- 居民收入 -->
+                <div class="card p-6 border-l-4 border-emerald-500">
+                    <p class="text-sm font-medium text-slate-500">居民人均可支配收入</p>
+                    <p class="mt-2 text-3xl font-bold text-slate-900 metric-value">43,377 <span class="text-lg font-normal text-slate-500">元</span></p>
+                    <div class="mt-2 flex items-center text-sm">
+                        <span class="text-green-600 font-medium flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                            5.0%
+                        </span>
+                        <span class="text-slate-400 ml-2">实际增长</span>
+                    </div>
+                </div>
+                <!-- 进出口 -->
+                <div class="card p-6 border-l-4 border-amber-500">
+                    <p class="text-sm font-medium text-slate-500">货物进出口总额</p>
+                    <p class="mt-2 text-3xl font-bold text-slate-900 metric-value">454,685 <span class="text-lg font-normal text-slate-500">亿元</span></p>
+                    <div class="mt-2 flex items-center text-sm">
+                        <span class="text-green-600 font-medium flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                            3.8%
+                        </span>
+                        <span class="text-slate-400 ml-2">比上年增长</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 图表区域 1: 产业结构与季度趋势 -->
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="card p-6">
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">2025年三次产业增加值占比</h3>
+                <div id="chart-industry" class="chart-container"></div>
+            </div>
+            <div class="card p-6">
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">2025年分季度 GDP 同比增长率</h3>
+                <div id="chart-gdp-quarter" class="chart-container"></div>
+            </div>
+        </section>
+
+        <!-- 图表区域 2: 消费与工业亮点 -->
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="card p-6">
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">2025年居民消费价格 (CPI) 分类涨跌幅</h3>
+                <div id="chart-cpi" class="chart-container"></div>
+            </div>
+            <div class="card p-6">
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">新质生产力亮点：主要高技术产品产量及增速</h3>
+                <div id="chart-industry-tech" class="chart-container"></div>
+            </div>
+        </section>
+
+        <!-- 详细数据表格区域 -->
+        <section>
+            <h2 class="text-xl font-semibold text-slate-900 mb-4 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                关键统计数据明细
+            </h2>
+            <div class="card overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">指标名称</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">绝对数</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">单位</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">比上年增长 (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-slate-200">
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">粮食产量</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 text-right metric-value">71,488</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-right">万吨</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 text-right font-medium">+1.2%</td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">新能源汽车产量</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 text-right metric-value">1,652.4</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-right">万辆</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 text-right font-medium">+25.1%</td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">社会消费品零售总额</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 text-right metric-value">501,202</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-right">亿元</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 text-right font-medium">+3.7%</td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">房地产开发投资</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 text-right metric-value">82,788</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-right">亿元</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-red-500 text-right font-medium">-17.2%</td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">研究与试验发展(R&D)经费支出</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 text-right metric-value">39,262</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-right">亿元</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 text-right font-medium">+8.1%</td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">国内出游人次</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 text-right metric-value">65.2</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-right">亿人次</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 text-right font-medium">+16.2%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-slate-900 text-slate-400 py-8 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <p>数据来源：中华人民共和国国家统计局《2025年国民经济和社会发展统计公报》</p>
+            <p class="mt-2 text-sm">注：本页面数据均为初步统计数。部分数据因四舍五入的原因，存在总计与分项合计不等的情况。</p>
+        </div>
+    </footer>
+
+    <!-- ECharts 初始化脚本 -->
+    <script>
+        // 1. 产业结构饼图
+        const chartIndustry = echarts.init(document.getElementById('chart-industry'));
+        chartIndustry.setOption({
+            tooltip: { trigger: 'item', formatter: '{b}: {c}亿元 ({d}%)' },
+            legend: { bottom: '0%', left: 'center' },
+            color: ['#3b82f6', '#10b981', '#f59e0b'],
+            series: [{
+                name: '产业增加值',
+                type: 'pie',
+                radius: ['40%', '70%'],
+                avoidLabelOverlap: false,
+                itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
+                label: { show: false, position: 'center' },
+                emphasis: { label: { show: true, fontSize: 20, fontWeight: 'bold' } },
+                data: [
+                    { value: 93347, name: '第一产业 (6.7%)' },
+                    { value: 499653, name: '第二产业 (35.6%)' },
+                    { value: 808879, name: '第三产业 (57.7%)' }
+                ]
+            }]
+        });
+
+        // 2. 季度GDP增速柱状图
+        const chartGdpQuarter = echarts.init(document.getElementById('chart-gdp-quarter'));
+        chartGdpQuarter.setOption({
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+            grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+            xAxis: { type: 'category', data: ['一季度', '二季度', '三季度', '四季度'], axisTick: { alignWithLabel: true } },
+            yAxis: { type: 'value', name: '增长率 (%)', axisLabel: { formatter: '{value}%' } },
+            series: [{
+                name: 'GDP同比增长',
+                type: 'bar',
+                barWidth: '40%',
+                data: [
+                    { value: 5.4, itemStyle: { color: '#3b82f6' } },
+                    { value: 5.2, itemStyle: { color: '#60a5fa' } },
+                    { value: 4.8, itemStyle: { color: '#93c5fd' } },
+                    { value: 4.5, itemStyle: { color: '#bfdbfe' } }
+                ],
+                label: { show: true, position: 'top', formatter: '{c}%' }
+            }]
+        });
+
+        // 3. CPI 分类涨跌幅条形图
+        const chartCpi = echarts.init(document.getElementById('chart-cpi'));
+        chartCpi.setOption({
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: '{b}: {c}%' },
+            grid: { left: '3%', right: '8%', bottom: '3%', containLabel: true },
+            xAxis: { type: 'value', axisLabel: { formatter: '{value}%' } },
+            yAxis: { type: 'category', data: ['其他用品及服务', '衣着', '生活用品及服务', '教育文化娱乐', '医疗保健', '居住', '食品烟酒', '交通通信'] },
+            series: [{
+                name: 'CPI涨跌幅',
+                type: 'bar',
+                data: [9.3, 1.5, 0.9, 0.8, 0.8, 0.1, -0.7, -2.6],
+                itemStyle: {
+                    color: function(params) {
+                        return params.value > 0 ? '#10b981' : '#ef4444';
+                    }
+                },
+                label: { show: true, position: 'right', formatter: '{c}%' }
+            }]
+        });
+
+        // 4. 高技术产品产量增速 (气泡/柱状混合，这里用柱状图清晰展示)
+        const chartTech = echarts.init(document.getElementById('chart-industry-tech'));
+        chartTech.setOption({
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+            grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+            xAxis: { type: 'category', data: ['服务机器人', '移动通信基站', '服务器', '新能源汽车', '集成电路', '3D打印设备'], axisLabel: { interval: 0, rotate: 15 } },
+            yAxis: { type: 'value', name: '增长率 (%)', axisLabel: { formatter: '{value}%' } },
+            series: [{
+                name: '产量同比增长',
+                type: 'bar',
+                data: [16.1, 13.5, 12.6, 25.1, 10.9, 52.5],
+                itemStyle: { color: '#8b5cf6' },
+                label: { show: true, position: 'top', formatter: '{c}%' }
+            }]
+        });
+
+        // 响应式调整
+        window.addEventListener('resize', function() {
+            chartIndustry.resize();
+            chartGdpQuarter.resize();
+            chartCpi.resize();
+            chartTech.resize();
+        });
+    </script>
+</body>
+</html>

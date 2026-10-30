@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手写数字识别</title>
+
+    <!-- 预加载 TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js">
+    </script>
+
+    <style>
+        :root {
+            --bg: #f0f4f8;
+            --card-bg: #ffffff;
+            --text: #2d3748;
+            --text-secondary: #718096;
+            --primary: #5a67d8;
+            --primary-hover: #4c51bf;
+            --danger: #e53e3e;
+            --danger-hover: #c53030;
+            --border: #e2e8f0;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.12);
+            --radius: 16px;
+            --radius-sm: 10px;
+            --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #e8edf5 0%, #dce3ed 30%, #eef1f7 60%, #e4e9f3 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* 背景装饰 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -180px;
+            right: -120px;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(90, 103, 216, 0.06) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        body::after {
+            content: '';
+            position: fixed;
+            bottom: -150px;
+            left: -100px;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(90, 103, 216, 0.05) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            background: var(--card-bg);
+            border-radius: 24px;
+            box-shadow: var(--shadow-lg);
+            padding: 32px 28px 28px;
+            max-width: 460px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            transition: transform var(--transition);
+        }
+
+        .header {
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 1.7rem;
+            font-weight: 700;
+            color: var(--text);
+            letter-spacing: -0.02em;
+            margin-bottom: 4px;
+        }
+        .header .subtitle {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        /* 状态徽章 */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+            transition: all var(--transition);
+        }
+        .status-badge.training {
+            background: #fef3c7;
+            color: #b45309;
+            animation: pulse-badge 1.5s ease-in-out infinite;
+        }
+        .status-badge.ready {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .status-badge.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        @keyframes pulse-badge {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.55;
+            }
+        }
+
+        /* Canvas 容器 */
+        .canvas-wrapper {
+            position: relative;
+            background: #fafbfc;
+            border: 3px dashed #dde4ef;
+            border-radius: var(--radius);
+            cursor: crosshair;
+            transition: all var(--transition);
+            overflow: hidden;
+            touch-action: none;
+            /* 防止移动端滚动 */;
+        }
+        .canvas-wrapper:hover {
+            border-color: #c4cdf9;
+            box-shadow: 0 0 0 6px rgba(90, 103, 216, 0.06);
+        }
+        .canvas-wrapper.active {
+            border-color: var(--primary);
+            border-style: solid;
+            box-shadow: 0 0 0 8px rgba(90, 103, 216, 0.1);
+        }
+        .canvas-wrapper canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            background: #ffffff;
+            border-radius: 11px;
+        }
+        .canvas-hint {
+            position: absolute;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            pointer-events: none;
+            font-size: 0.78rem;
+            color: #b0bec5;
+            font-weight: 500;
+            letter-spacing: 0.03em;
+            transition: opacity 0.3s;
+            white-space: nowrap;
+        }
+        .canvas-wrapper.has-content .canvas-hint {
+            opacity: 0;
+        }
+
+        /* 按钮组 */
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            width: 100%;
+            flex-wrap: wrap;
+        }
+        .btn {
+            flex: 1;
+            min-width: 100px;
+            padding: 13px 20px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            letter-spacing: 0.02em;
+            transition: all var(--transition);
+            position: relative;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        .btn:active {
+            transform: scale(0.96);
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(90, 103, 216, 0.35);
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: var(--primary-hover);
+            box-shadow: 0 6px 20px rgba(90, 103, 216, 0.45);
+            transform: translateY(-1px);
+        }
+        .btn-primary:disabled {
+            background: #c4c9e8;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+        .btn-outline {
+            background: #fff;
+            color: var(--text);
+            border: 2px solid var(--border);
+        }
+        .btn-outline:hover {
+            background: #f7f8fa;
+            border-color: #cbd5e0;
+        }
+        .btn-danger {
+            background: #fff;
+            color: var(--danger);
+            border: 2px solid #fed7d7;
+        }
+        .btn-danger:hover {
+            background: #fff5f5;
+            border-color: #feb2b2;
+        }
+
+        /* 结果面板 */
+        .result-panel {
+            width: 100%;
+            background: #f8fafc;
+            border-radius: var(--radius);
+            padding: 18px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: all var(--transition);
+            border: 2px solid transparent;
+            min-height: 70px;
+        }
+        .result-panel.has-result {
+            border-color: #dde4ef;
+            background: #fff;
+            box-shadow: var(--shadow);
+        }
+        .result-digit {
+            font-size: 3.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            line-height: 1;
+            min-width: 60px;
+            text-align: center;
+            letter-spacing: -0.03em;
+            transition: all 0.3s;
+        }
+        .result-digit.pop {
+            animation: popIn 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+        }
+        @keyframes popIn {
+            0% {
+                transform: scale(0.3);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        .result-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .result-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            font-weight: 600;
+        }
+        .result-confidence {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .result-placeholder {
+            color: #b0bec5;
+            font-size: 0.9rem;
+            text-align: center;
+            width: 100%;
+            font-weight: 500;
+        }
+        .confidence-bar-wrap {
+            margin-top: 4px;
+            height: 6px;
+            background: #edf2f7;
+            border-radius: 3px;
+            overflow: hidden;
+            width: 100%;
+        }
+        .confidence-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #5a67d8, #7c3aed);
+            border-radius: 3px;
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* 概率分布 */
+        .prob-dist {
+            width: 100%;
+            display: flex;
+            gap: 3px;
+            align-items: flex-end;
+            height: 60px;
+            padding: 0 4px;
+        }
+        .prob-bar-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            cursor: default;
+        }
+        .prob-bar {
+            width: 100%;
+            max-width: 28px;
+            background: #e8ecf4;
+            border-radius: 4px 4px 0 0;
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            min-height: 2px;
+            position: relative;
+        }
+        .prob-bar.highlight {
+            background: var(--primary);
+            box-shadow: 0 0 8px rgba(90, 103, 216, 0.5);
+        }
+        .prob-label {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+        .prob-label.highlight {
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        /* 响应式 */
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px 14px 18px;
+                gap: 14px;
+                border-radius: 20px;
+            }
+            .header h1 {
+                font-size: 1.4rem;
+            }
+            .btn {
+                padding: 11px 14px;
+                font-size: 0.85rem;
+            }
+            .result-digit {
+                font-size: 2.6rem;
+                min-width: 44px;
+            }
+            .canvas-wrapper {
+                border-radius: 12px;
+            }
+            .canvas-wrapper canvas {
+                border-radius: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- 头部 -->
+        <div class="header">
+            <h1>✍️ 手写数字识别</h1>
+            <p class="subtitle">在画布上写一个数字，AI 来识别</p>
+        </div>
+
+        <!-- 状态 -->
+        <div id="statusBadge" class="status-badge training">
+            <span id="statusText">⏳ 正在加载模型...</span>
+        </div>
+
+        <!-- 画布 -->
+        <div class="canvas-wrapper" id="canvasWrapper">
+            <canvas id="drawCanvas" width="280" height="280"></canvas>
+            <span class="canvas-hint" id="canvasHint">在此处画一个数字 ✏️</span>
+        </div>
+
+        <!-- 按钮 -->
+        <div class="btn-group">
+            <button class="btn btn-primary" id="btnPredict" disabled>🔍 识 别</button>
+            <button class="btn btn-outline" id="btnClear">🧹 清 除</button>
+        </div>
+
+        <!-- 识别结果 -->
+        <div class="result-panel" id="resultPanel">
+            <span class="result-placeholder" id="resultPlaceholder">画一个数字，然后点击「识别」</span>
+            <span class="result-digit" id="resultDigit" style="display:none;"></span>
+            <div class="result-info" id="resultInfo" style="display:none;">
+                <span class="result-label">置信度</span>
+                <span class="result-confidence" id="resultConfidence"></span>
+                <div class="confidence-bar-wrap">
+                    <div class="confidence-bar-fill" id="confidenceBarFill" style="width: 0%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 概率分布 -->
+        <div class="prob-dist" id="probDist">
+            <!-- JS动态生成 0-9 -->
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ==================== DOM 元素 ====================
+            const canvas = document.getElementById('drawCanvas');
+            const ctx = canvas.getContext('2d');
+            const canvasWrapper = document.getElementById('canvasWrapper');
+            const canvasHint = document.getElementById('canvasHint');
+            const btnPredict = document.getElementById('btnPredict');
+            const btnClear = document.getElementById('btnClear');
+            const statusBadge = document.getElementById('statusBadge');
+            const statusText = document.getElementById('statusText');
+            const resultPanel = document.getElementById('resultPanel');
+            const resultPlaceholder = document.getElementById('resultPlaceholder');
+            const resultDigit = document.getElementById('resultDigit');
+            const resultInfo = document.getElementById('resultInfo');
+            const resultConfidence = document.getElementById('resultConfidence');
+            const confidenceBarFill = document.getElementById('confidenceBarFill');
+            const probDist = document.getElementById('probDist');
+
+            // ==================== 状态变量 ====================
+            let model = null;
+            let isDrawing = false;
+            let hasDrawn = false;
+            let lastX = 0;
+            let lastY = 0;
+            let modelReady = false;
+
+            // ==================== 概率分布条初始化 ====================
+            const probBarContainers = [];
+            const probBars = [];
+            const probLabels = [];
+            for (let i = 0; i < 10; i++) {
+                const container = document.createElement('div');
+                container.className = 'prob-bar-container';
+
+                const bar = document.createElement('div');
+                bar.className = 'prob-bar';
+                bar.style.height = '4px';
+
+                const label = document.createElement('span');
+                label.className = 'prob-label';
+                label.textContent = i;
+
+                container.appendChild(bar);
+                container.appendChild(label);
+                probDist.appendChild(container);
+
+                probBarContainers.push(container);
+                probBars.push(bar);
+                probLabels.push(label);
+            }
+
+            // ==================== Canvas 绘制逻辑 ====================
+            function initCanvas() {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.lineWidth = 18;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.strokeStyle = '#1a1a2e';
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+            }
+
+            function getCanvasPos(e) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                let clientX, clientY;
+
+                if (e.touches) {
+                    // 触摸事件
+                    if (e.touches.length === 0) return null;
+                    clientX = e.touches[0].clientX;
+                    clientY = e.touches[0].clientY;
+                } else {
+                    clientX = e.clientX;
+                    clientY = e.clientY;
+                }
+
+                return {
+                    x: (clientX - rect.left) * scaleX,
+                    y: (clientY - rect.top) * scaleY
+                };
+            }
+
+            function startDraw(e) {
+                e.preventDefault();
+                const pos = getCanvasPos(e);
+                if (!pos) return;
+                isDrawing = true;
+                lastX = pos.x;
+                lastY = pos.y;
+                // 画一个点（用于单击的情况）
+                ctx.beginPath();
+                ctx.arc(lastX, lastY, ctx.lineWidth / 2, 0, Math.PI * 2);
+                ctx.fillStyle = ctx.strokeStyle;
+                ctx.fill();
+                canvasWrapper.classList.add('active');
+            }
+
+            function draw(e) {
+                e.preventDefault();
+                if (!isDrawing) return;
+                const pos = getCanvasPos(e);
+                if (!pos) return;
+                const currentX = pos.x;
+                const currentY = pos.y;
+
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(currentX, currentY);
+                ctx.stroke();
+
+                lastX = currentX;
+                lastY = currentY;
+                if (!hasDrawn) {
+                    hasDrawn = true;
+                    canvasWrapper.classList.add('has-content');
+                    canvasHint.style.opacity = '0';
+                }
+            }
+
+            function endDraw(e) {
+                if (!isDrawing) return;
+                isDrawing = false;
+                canvasWrapper.classList.remove('active');
+                if (hasDrawn && modelReady) {
+                    // 自动触发识别
+                    predict();
+                }
+            }
+
+            // 鼠标事件
+            canvas.addEventListener('mousedown', startDraw);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', endDraw);
+            canvas.addEventListener('mouseleave', endDraw);
+
+            // 触摸事件
+            canvas.addEventListener('touchstart', startDraw, { passive: false });
+            canvas.addEventListener('touchmove', draw, { passive: false });
+            canvas.addEventListener('touchend', endDraw);
+            canvas.addEventListener('touchcancel', endDraw);
+
+            // 清除按钮
+            btnClear.addEventListener('click', () => {
+                clearCanvas();
+            });
+
+            function clearCanvas() {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                hasDrawn = false;
+                canvasWrapper.classList.remove('has-content');
+                canvasHint.style.opacity = '1';
+                resetResults();
+            }
+
+            // 识别按钮
+            btnPredict.addEventListener('click', () => {
+                if (!modelReady) return;
+                if (!hasDrawn) {
+                    shakeElement(canvasWrapper);
+                    return;
+                }
+                predict();
+            });
+
+            function resetResults() {
+                resultPanel.classList.remove('has-result');
+                resultPlaceholder.style.display = 'block';
+                resultDigit.style.display = 'none';
+                resultInfo.style.display = 'none';
+                resultDigit.textContent = '';
+                resultConfidence.textContent = '';
+                confidenceBarFill.style.width = '0%';
+                // 重置概率条
+                probBars.forEach(b => {
+                    b.style.height = '4px';
+                    b.classList.remove('highlight');
+                });
+                probLabels.forEach(l => l.classList.remove('highlight'));
+            }
+
+            function shakeElement(el) {
+                el.style.animation = 'none';
+                el.offsetHeight; // reflow
+                el.style.animation = 'shake 0.5s ease';
+                setTimeout(() => {
+                    el.style.animation = '';
+                }, 500);
+            }
+
+            // ==================== 图像预处理 ====================
+            function preprocessCanvas() {
+                // 获取画布图像数据
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const pixels = imageData.data;
+
+                // 创建离屏canvas用于缩放
+                const offCanvas = document.createElement('canvas');
+                offCanvas.width = 28;
+                offCanvas.height = 28;
+                const offCtx = offCanvas.getContext('2d');
+
+                // 将主canvas绘制到28x28的离屏canvas上
+                offCtx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, 28, 28);
+
+                // 获取28x28的图像数据
+                const smallImageData = offCtx.getImageData(0, 0, 28, 28);
+                const smallPixels = smallImageData.data;
+
+                // 转换为灰度并反转颜色（MNIST是黑底白字，画布是白底黑字）
+                const inputArray = new Float32Array(28 * 28);
+                for (let i = 0; i < 28 * 28; i++) {
+                    const r = smallPixels[i * 4];
+                    const g = smallPixels[i * 4 + 1];
+                    const b = smallPixels[i * 4 + 2];
+                    // 灰度值 (0-255)
+                    const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+                    // 反转颜色并归一化到[0, 1]
+                    inputArray[i] = (255 - gray) / 255.0;
+                }
+
+                //  reshape为[1, 28, 28, 1]
+                const tensor = tf.tensor4d(inputArray, [1, 28, 28, 1]);
+                return tensor;
+            }
+
+            // ==================== 预测 ====================
+            async function predict() {
+                if (!modelReady || !model || !hasDrawn) return;
+
+                try {
+                    const inputTensor = preprocessCanvas();
+                    const predictions = model.predict(inputTensor);
+                    const probabilities = await predictions.data();
+                    inputTensor.dispose();
+                    predictions.dispose();
+
+                    // 找到最大概率的类别
+                    let maxProb = -1;
+                    let predictedDigit = -1;
+                    for (let i = 0; i < probabilities.length; i++) {
+                        if (probabilities[i] > maxProb) {
+                            maxProb = probabilities[i];
+                            predictedDigit = i;
+                        }
+                    }
+
+                    // 更新结果展示
+                    displayResult(predictedDigit, maxProb, probabilities);
+                } catch (err) {
+                    console.error('预测失败:', err);
+                    showStatus('error', '❌ 识别失败，请重试');
+                }
+            }
+
+            function displayResult(digit, confidence, allProbs) {
+                // 结果面板
+                resultPanel.classList.add('has-result');
+                resultPlaceholder.style.display = 'none';
+                resultDigit.style.display = 'block';
+                resultInfo.style.display = 'flex';
+                resultDigit.textContent = digit;
+                resultConfidence.textContent = (confidence * 100).toFixed(2) + '%';
+                confidenceBarFill.style.width = (confidence * 100).toFixed(1) + '%';
+
+                // 动画
+                resultDigit.classList.remove('pop');
+                void resultDigit.offsetWidth;
+                resultDigit.classList.add('pop');
+
+                // 更新概率分布条
+                const maxHeight = 56; // 最大高度（px）
+                for (let i = 0; i < 10; i++) {
+                    const prob = allProbs[i];
+                    const barHeight = Math.max(3, prob * maxHeight);
+                    probBars[i].style.height = barHeight + 'px';
+
+                    if (i === digit) {
+                        probBars[i].classList.add('highlight');
+                        probLabels[i].classList.add('highlight');
+                    } else {
+                        probBars[i].classList.remove('highlight');
+                        probLabels[i].classList.remove('highlight');
+                    }
+                }
+
+                // 滚动概率分布到视图（移动端）
+                if (window.innerWidth < 480) {
+                    probDist.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
+
+            // ==================== 模型构建与训练 ====================
+            function buildModel() {
+                const model = tf.sequential();
+
+                // 输入: 28x28x1
+                model.add(tf.layers.conv2d({
+                    inputShape: [28, 28, 1],
+                    filters: 32,
+                    kernelSize: 3,
+                    activation: 'relu',
+                    kernelInitializer: 'heNormal'
+                }));
+                model.add(tf.layers.maxPooling2d({ poolSize: 2, strides: 2 }));
+
+                model.add(tf.layers.conv2d({
+                    filters: 64,
+                    kernelSize: 3,
+                    activation: 'relu',
+                    kernelInitializer: 'heNormal'
+                }));
+                model.add(tf.layers.maxPooling2d({ poolSize: 2, strides: 2 }));
+
+                model.add(tf.layers.flatten());
+                model.add(tf.layers.dense({
+                    units: 128,
+                    activation: 'relu',
+                    kernelInitializer: 'heNormal'
+                }));
+                model.add(tf.layers.dropout({ rate: 0.4 }));
+                model.add(tf.layers.dense({
+                    units: 10,
+                    activation: 'softmax'
+                }));
+
+                model.compile({
+                    optimizer: tf.train.adam(0.001),
+                    loss: 'categoricalCrossentropy',
+                    metrics: ['accuracy']
+                });
+
+                return model;
+            }
+
+            async function loadMNISTData() {
+                // 使用 tf.data.mnist 加载数据
+                showStatus('training', '⏳ 正在下载 MNIST 数据集...');
+
+                let mnistData;
+                // 尝试多种API
+                if (typeof tf.data !== 'undefined' && typeof tf.data.mnist === 'function') {
+                    mnistData = tf.data.mnist();
+                } else if (typeof tf.datasets !== 'undefined' && typeof tf.datasets.mnist === 'function') {
+                    mnistData = tf.datasets.mnist();
+                } else {
+                    // 尝试直接调用
+                    mnistData = await tf.data.mnist();
+                }
+
+                showStatus('training', '⏳ 正在准备训练数据...');
+
+                // 获取训练数据
+                let trainImages, trainLabels;
+                if (typeof mnistData.getTrainData === 'function') {
+                    const trainData = await mnistData.getTrainData();
+                    trainImages = trainData.images;
+                    trainLabels = trainData.labels;
+                } else if (mnistData.trainImages && mnistData.trainLabels) {
+                    trainImages = mnistData.trainImages;
+                    trainLabels = mnistData.trainLabels;
+                } else if (mnistData.next) {
+                    // 可能是迭代器，收集数据
+                    const batches = [];
+                    await mnistData.forEachAsync(batch => {
+                        batches.push(batch);
+                    });
+                    if (batches.length > 0) {
+                        trainImages = tf.concat(batches.map(b => b.xs || b.images));
+                        trainLabels = tf.concat(batches.map(b => b.ys || b.labels));
+                    }
+                }
+
+                if (!trainImages || !trainLabels) {
+                    throw new Error('无法解析MNIST数据，请检查tf.data.mnist API');
+                }
+
+                // 确保数据格式正确
+                // trainImages: [N, 28, 28, 1] 或 [N, 28, 28]
+                if (trainImages.shape.length === 3) {
+                    trainImages = trainImages.expandDims(-1);
+                }
+                // 归一化
+                if (trainImages.max().dataSync()[0] > 1) {
+                    trainImages = trainImages.div(255.0);
+                }
+                // 确保labels是one-hot格式
+                if (trainLabels.shape.length === 1 || trainLabels.shape[1] === 1) {
+                    trainLabels = tf.oneHot(trainLabels.toInt(), 10);
+                }
+
+                return { images: trainImages, labels: trainLabels };
+            }
+
+            async function trainModel(model, data) {
+                const { images, labels } = data;
+                const numSamples = images.shape[0];
+
+                showStatus('training', `⏳ 正在训练模型 (${numSamples} 样本)...`);
+
+                const history = await model.fit(images, labels, {
+                    batchSize: 64,
+                    epochs: 5,
+                    validationSplit: 0.1,
+                    shuffle: true,
+                    callbacks: {
+                        onEpochEnd: (epoch, logs) => {
+                            const acc = (logs.acc * 100).toFixed(1);
+                            const valAcc = (logs.val_acc * 100).toFixed(1);
+                            showStatus('training',
+                                `⏳ 训练中... Epoch ${epoch + 1}/5 | 准确率: ${acc}% | 验证: ${valAcc}%`
+                                );
+                        }
+                    }
+                });
+
+                // 清理训练数据以释放内存
+                images.dispose();
+                labels.dispose();
+
+                return history;
+            }
+
+            async function loadPretrainedModel() {
+                // 尝试多个可能的预训练模型URL
+                const urls = [
+                    'https://storage.googleapis.com/tfjs-models/tfjs/mnist_v1/model.json',
+                    'https://raw.githubusercontent.com/tensorflow/tfjs-examples/master/mnist/model.json',
+                ];
+
+                for (const url of urls) {
+                    try {
+                        showStatus('training', '⏳ 正在加载预训练模型...');
+                        const loadedModel = await tf.loadLayersModel(url, {
+                            timeout: 15000
+                        });
+                        // 验证模型
+                        const dummyInput = tf.zeros([1, 28, 28, 1]);
+                        const output = loadedModel.predict(dummyInput);
+                        dummyInput.dispose();
+                        output.dispose();
+                        return loadedModel;
+                    } catch (e) {
+                        console.warn(`预训练模型加载失败 (${url}):`, e.message);
+                        continue;
+                    }
+                }
+                return null;
+            }
+
+            function showStatus(type, message) {
+                statusText.textContent = message;
+                statusBadge.className = 'status-badge ' + type;
+            }
+
+            async function initializeModel() {
+                try {
+                    // 首先尝试加载预训练模型
+                    const pretrained = await loadPretrainedModel();
+                    if (pretrained) {
+                        model = pretrained;
+                        modelReady = true;
+                        btnPredict.disabled = false;
+                        showStatus('ready', '✅ 模型就绪，开始画数字吧！');
+                        console.log('✅ 使用预训练模型');
+                        return;
+                    }
+
+                    // 回退：在浏览器中训练
+                    console.log('⚠️ 预训练模型不可用，开始在浏览器中训练...');
+                    showStatus('training', '⏳ 正在浏览器中训练模型...');
+
+                    model = buildModel();
+                    const data = await loadMNISTData();
+                    await trainModel(model, data);
+
+                    modelReady = true;
+                    btnPredict.disabled = false;
+                    showStatus('ready', '✅ 模型训练完成，开始画数字吧！');
+                    console.log('✅ 模型训练完成');
+
+                } catch (err) {
+                    console.error('模型初始化失败:', err);
+                    showStatus('error', '❌ 模型加载失败，请刷新页面重试');
+                    // 尝试使用极简模型
+                    try {
+                        model = buildModel();
+                        // 使用随机权重，至少能给出一些输出
+                        modelReady = true;
+                        btnPredict.disabled = false;
+                        showStatus('ready', '⚠️ 使用未训练模型（准确率较低）');
+                    } catch (e2) {
+                        modelReady = false;
+                        btnPredict.disabled = true;
+                    }
+                }
+            }
+
+            // ==================== 键盘快捷键 ====================
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && modelReady && hasDrawn) {
+                    e.preventDefault();
+                    predict();
+                } else if (e.key === 'Delete' || (e.key === 'Backspace' && !e.target.closest('input,textarea'))) {
+                    e.preventDefault();
+                    clearCanvas();
+                }
+            });
+
+            // ==================== 启动应用 ====================
+            function init() {
+                initCanvas();
+                resetResults();
+                btnPredict.disabled = true;
+                showStatus('training', '⏳ 正在加载模型...');
+
+                // 异步初始化模型
+                initializeModel();
+
+                // 添加CSS动画
+                const shakeStyle = document.createElement('style');
+                shakeStyle.textContent = `
+                    @keyframes shake {
+                        0%, 100% { transform: translateX(0); }
+                        15% { transform: translateX(-8px); }
+                        30% { transform: translateX(8px); }
+                        45% { transform: translateX(-6px); }
+                        60% { transform: translateX(5px); }
+                        75% { transform: translateX(-3px); }
+                        90% { transform: translateX(2px); }
+                    }
+                `;
+                document.head.appendChild(shakeStyle);
+            }
+
+            // 页面加载完成后初始化
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+
+            console.log('🖊️  手写数字识别应用已就绪');
+            console.log('💡 提示：在画布上画数字 → 自动识别或点击「识别」按钮');
+            console.log('⌨️  快捷键：Enter=识别  Backspace=清除');
+        })();
+    </script>
+</body>
+</html>

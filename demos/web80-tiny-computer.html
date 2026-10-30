@@ -1,0 +1,1651 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web-80 幻想电脑</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --panel: #161b22;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --text-secondary: #8b949e;
+            --accent: #58a6ff;
+            --accent2: #7c3aed;
+            --danger: #f85149;
+            --success: #3fb950;
+            --warning: #d2991d;
+            --highlight: #1f2937;
+            --font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Monaco', 'Courier New', monospace;
+            --font-sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0e13;
+            color: var(--text);
+            font-family: var(--font-sans);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            background-image:
+                radial-gradient(ellipse at 50% 30%, rgba(88, 166, 255, 0.04) 0%, transparent 70%),
+                radial-gradient(ellipse at 80% 70%, rgba(124, 58, 237, 0.03) 0%, transparent 60%);
+        }
+
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 1100px;
+            height: 96vh;
+            max-height: 800px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow:
+                0 20px 60px rgba(0, 0, 0, 0.6),
+                0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+                0 0 120px rgba(88, 166, 255, 0.06);
+            overflow: hidden;
+        }
+
+        /* 标题栏 */
+        .titlebar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            background: #1c2129;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .titlebar .logo {
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, #58a6ff, #7c3aed);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 900;
+            color: #fff;
+            font-family: var(--font-mono);
+            box-shadow: 0 2px 8px rgba(88, 166, 255, 0.3);
+            flex-shrink: 0;
+        }
+        .titlebar .title {
+            color: #e6edf3;
+            font-size: 14px;
+        }
+        .titlebar .version {
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-weight: 400;
+            margin-left: 4px;
+        }
+        .titlebar .badge {
+            margin-left: auto;
+            background: #1a3329;
+            color: #3fb950;
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 10px;
+            border: 1px solid #238636;
+            letter-spacing: 0.3px;
+            font-weight: 500;
+        }
+
+        /* 主体布局 */
+        .body-layout {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            gap: 0;
+        }
+
+        /* 左侧面板 - 屏幕 */
+        .screen-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 16px 20px;
+            gap: 10px;
+            background: #0d1117;
+            border-right: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .screen-wrapper {
+            position: relative;
+            border: 3px solid #1a1f2b;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow:
+                0 0 0 1px rgba(0, 0, 0, 0.8),
+                0 0 30px rgba(0, 0, 0, 0.5),
+                inset 0 0 60px rgba(0, 0, 0, 0.3);
+            background: #000;
+            line-height: 0;
+            transition: box-shadow 0.4s;
+        }
+        .screen-wrapper.running {
+            box-shadow:
+                0 0 0 1px rgba(0, 0, 0, 0.8),
+                0 0 30px rgba(0, 0, 0, 0.5),
+                0 0 50px rgba(88, 166, 255, 0.15),
+                inset 0 0 60px rgba(0, 0, 0, 0.3);
+        }
+        .screen-wrapper canvas {
+            display: block;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+        /* 扫描线覆盖 */
+        .scanlines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+            background: repeating-linear-gradient(0deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0, 0, 0, 0.06) 2px,
+                    rgba(0, 0, 0, 0.06) 4px);
+            border-radius: 5px;
+        }
+        .screen-label {
+            font-size: 10px;
+            color: var(--text-secondary);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+        .fps-display {
+            font-size: 10px;
+            color: #3fb950;
+            font-family: var(--font-mono);
+            letter-spacing: 0.5px;
+            background: #0d1b14;
+            padding: 3px 8px;
+            border-radius: 4px;
+            border: 1px solid #1a3a25;
+        }
+
+        /* 右侧面板 */
+        .right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            background: #12171f;
+        }
+        .editor-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            font-size: 11px;
+            color: var(--text-secondary);
+            letter-spacing: 0.4px;
+        }
+        .editor-header .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #3fb950;
+            flex-shrink: 0;
+        }
+        .editor-header .dot.stopped {
+            background: #f85149;
+        }
+        .code-editor-wrap {
+            flex: 1;
+            position: relative;
+            min-height: 0;
+            display: flex;
+        }
+        .line-numbers {
+            flex-shrink: 0;
+            width: 40px;
+            background: #0d1117;
+            color: #484f58;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            line-height: 1.65;
+            padding: 10px 6px 10px 10px;
+            text-align: right;
+            overflow: hidden;
+            border-right: 1px solid #1a1f2b;
+            user-select: none;
+            -webkit-user-select: none;
+            letter-spacing: 0;
+        }
+        .code-editor-wrap textarea {
+            flex: 1;
+            background: #0d1117;
+            color: #e6edf3;
+            border: none;
+            padding: 10px 14px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            line-height: 1.65;
+            resize: none;
+            outline: none;
+            tab-size: 2;
+            caret-color: #58a6ff;
+            letter-spacing: 0;
+            min-width: 0;
+        }
+        .code-editor-wrap textarea::selection {
+            background: #264f78;
+            color: #fff;
+        }
+        .code-editor-wrap textarea::-webkit-scrollbar {
+            width: 6px;
+        }
+        .code-editor-wrap textarea::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .code-editor-wrap textarea::-webkit-scrollbar-thumb {
+            background: #30363d;
+            border-radius: 3px;
+        }
+        .code-editor-wrap textarea::-webkit-scrollbar-thumb:hover {
+            background: #484f58;
+        }
+
+        /* 底部控制栏 */
+        .controls-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+            flex-wrap: wrap;
+            background: #1c2129;
+        }
+        .btn {
+            padding: 7px 16px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: var(--font-sans);
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+            transition: all 0.15s;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn-run {
+            background: #1a3329;
+            color: #3fb950;
+            border-color: #238636;
+        }
+        .btn-run:hover {
+            background: #1f4533;
+            box-shadow: 0 0 12px rgba(63, 185, 80, 0.2);
+        }
+        .btn-run:active {
+            background: #0d2b1a;
+            transform: scale(0.97);
+        }
+        .btn-stop {
+            background: #2d1a1f;
+            color: #f85149;
+            border-color: #8b2c2c;
+        }
+        .btn-stop:hover {
+            background: #3d1f25;
+            box-shadow: 0 0 12px rgba(248, 81, 73, 0.2);
+        }
+        .btn-stop:active {
+            background: #1f0f12;
+            transform: scale(0.97);
+        }
+        .btn-example {
+            background: #1a1f2b;
+            color: #c9d1d9;
+            border-color: #30363d;
+        }
+        .btn-example:hover {
+            background: #252d3a;
+            border-color: #58a6ff;
+        }
+        .btn-reset {
+            background: #1a1f2b;
+            color: #8b949e;
+            border-color: #30363d;
+            font-size: 11px;
+        }
+        .btn-reset:hover {
+            color: #e6edf3;
+            border-color: #6e7681;
+        }
+
+        select {
+            padding: 7px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: var(--font-sans);
+            font-size: 12px;
+            background: #0d1117;
+            color: #c9d1d9;
+            outline: none;
+            transition: all 0.15s;
+            letter-spacing: 0.3px;
+        }
+        select:hover {
+            border-color: #58a6ff;
+        }
+        select option {
+            background: #161b22;
+            color: #c9d1d9;
+        }
+
+        /* 调色板 */
+        .palette-row {
+            display: flex;
+            gap: 3px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .palette-swatch {
+            width: 16px;
+            height: 16px;
+            border-radius: 2px;
+            cursor: pointer;
+            border: 1.5px solid transparent;
+            transition: all 0.12s;
+            flex-shrink: 0;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+        }
+        .palette-swatch:hover {
+            border-color: #fff;
+            transform: scale(1.3);
+            z-index: 2;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.7);
+        }
+        .palette-label {
+            font-size: 9px;
+            color: var(--text-secondary);
+            letter-spacing: 0.5px;
+            margin-right: 4px;
+            flex-shrink: 0;
+        }
+
+        /* 错误提示 */
+        .error-toast {
+            position: fixed;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2d1a1f;
+            color: #f85149;
+            border: 1px solid #8b2c2c;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-family: var(--font-mono);
+            z-index: 100;
+            max-width: 90%;
+            text-align: center;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+            animation: slideDown 0.3s ease;
+            letter-spacing: 0.2px;
+            line-height: 1.5;
+        }
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+        .error-toast.hide {
+            animation: fadeOut 0.3s ease forwards;
+        }
+        @keyframes fadeOut {
+            to {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-20px);
+            }
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .main-container {
+                height: 100vh;
+                max-height: 100vh;
+                border-radius: 0;
+                border: none;
+            }
+            .body-layout {
+                flex-direction: column;
+            }
+            .screen-panel {
+                flex-direction: row;
+                padding: 8px 10px;
+                gap: 8px;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                flex-shrink: 0;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            .screen-wrapper canvas {
+                width: auto !important;
+                height: 140px !important;
+            }
+            .screen-wrapper {
+                border-width: 2px;
+                border-radius: 6px;
+            }
+            .right-panel {
+                min-height: 250px;
+                flex: 1;
+            }
+            .code-editor-wrap textarea {
+                font-size: 11px;
+                line-height: 1.5;
+            }
+            .line-numbers {
+                font-size: 11px;
+                width: 32px;
+                padding: 10px 4px 10px 6px;
+            }
+            .btn {
+                padding: 5px 10px;
+                font-size: 10px;
+            }
+            .palette-swatch {
+                width: 12px;
+                height: 12px;
+            }
+            .controls-bar {
+                gap: 4px;
+                padding: 6px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <!-- 标题栏 -->
+        <div class="titlebar">
+            <div class="logo">W8</div>
+            <span class="title">Web-80 幻想电脑</span>
+            <span class="version">v1.0</span>
+            <span class="badge">● 60 FPS</span>
+        </div>
+
+        <!-- 主体 -->
+        <div class="body-layout">
+            <!-- 屏幕面板 -->
+            <div class="screen-panel">
+                <span class="screen-label">▸ 显示屏幕 ◂</span>
+                <div class="screen-wrapper" id="screenWrapper">
+                    <canvas id="displayCanvas" width="480" height="272"></canvas>
+                    <div class="scanlines"></div>
+                </div>
+                <span class="fps-display" id="fpsDisplay">FPS: --</span>
+            </div>
+
+            <!-- 右侧面板 -->
+            <div class="right-panel">
+                <div class="editor-header">
+                    <div class="dot stopped" id="statusDot"></div>
+                    <span id="statusText">就绪 - 编辑代码后点击运行</span>
+                </div>
+                <div class="code-editor-wrap">
+                    <div class="line-numbers" id="lineNumbers">1</div>
+                    <textarea id="codeEditor" spellcheck="false" placeholder="// 在此编写代码..."></textarea>
+                </div>
+                <div class="controls-bar">
+                    <button class="btn btn-run" id="btnRun" title="运行代码 (Ctrl+Enter)">▶ 运行</button>
+                    <button class="btn btn-stop" id="btnStop" title="停止运行 (Esc)">■ 停止</button>
+                    <span style="color:#30363d;">|</span>
+                    <span class="palette-label">调色板:</span>
+                    <div class="palette-row" id="paletteRow"></div>
+                    <span style="color:#30363d;margin-left:4px;">|</span>
+                    <select id="exampleSelect">
+                        <option value="">📂 加载示例...</option>
+                        <option value="bounce">弹跳球</option>
+                        <option value="particles">粒子喷泉</option>
+                        <option value="snake">贪吃蛇</option>
+                        <option value="life">生命游戏</option>
+                        <option value="draw">鼠标画板</option>
+                        <option value="starfield">星空飞行</option>
+                        <option value="clock">像素时钟</option>
+                    </select>
+                    <button class="btn btn-reset" id="btnReset" title="重置屏幕">↺ 清屏</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 错误提示容器 -->
+    <div id="errorToast" style="display:none;"></div>
+
+    <script>
+        (function() {
+            // ==================== 常量与配置 ====================
+            const SCREEN_W = 240;
+            const SCREEN_H = 136;
+            const SCALE = 2; // 显示放大倍数
+            const FPS_TARGET = 60;
+            const FRAME_INTERVAL = 1000 / FPS_TARGET;
+
+            // Sweetie 16 调色板 (TIC-80默认)
+            const PALETTE_HEX = [
+                '#1a1c2c', '#5d275d', '#b13e53', '#ef7d57', '#ffcd75', '#a7f070',
+                '#38b764', '#257179', '#29366f', '#3b5dc9', '#41a6f6', '#73eff7',
+                '#f4f4f4', '#94b0c2', '#566c86', '#333c57'
+            ];
+
+            // 将hex转换为RGB数组
+            const PALETTE_RGB = PALETTE_HEX.map(h => [
+                parseInt(h.slice(1, 3), 16),
+                parseInt(h.slice(3, 5), 16),
+                parseInt(h.slice(5, 7), 16)
+            ]);
+
+            // ==================== DOM元素 ====================
+            const displayCanvas = document.getElementById('displayCanvas');
+            const displayCtx = displayCanvas.getContext('2d');
+            const screenWrapper = document.getElementById('screenWrapper');
+            const codeEditor = document.getElementById('codeEditor');
+            const lineNumbers = document.getElementById('lineNumbers');
+            const btnRun = document.getElementById('btnRun');
+            const btnStop = document.getElementById('btnStop');
+            const btnReset = document.getElementById('btnReset');
+            const exampleSelect = document.getElementById('exampleSelect');
+            const fpsDisplay = document.getElementById('fpsDisplay');
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            const errorToast = document.getElementById('errorToast');
+            const paletteRow = document.getElementById('paletteRow');
+
+            // ==================== 离屏Canvas (实际分辨率) ====================
+            const offscreenCanvas = document.createElement('canvas');
+            offscreenCanvas.width = SCREEN_W;
+            offscreenCanvas.height = SCREEN_H;
+            const offCtx = offscreenCanvas.getContext('2d');
+            // 禁用抗锯齿
+            offCtx.imageSmoothingEnabled = false;
+
+            // ==================== 精灵数据存储 ====================
+            // 16个精灵，每个8x8像素，每像素1字节(颜色索引0-15)
+            const SPRITE_COUNT = 16;
+            const SPRITE_W = 8;
+            const SPRITE_H = 8;
+            const spriteData = new Uint8Array(SPRITE_COUNT * SPRITE_W * SPRITE_H);
+
+            // 初始化一些默认精灵图案
+            function initDefaultSprites() {
+                // 精灵0: 全部透明(颜色0)
+                // 精灵1: 实心方块(颜色15 - 白色)
+                for (let i = 0; i < 64; i++) spriteData[1 * 64 + i] = 15;
+                // 精灵2: 空心方块
+                for (let y = 0; y < 8; y++) {
+                    for (let x = 0; x < 8; x++) {
+                        if (x === 0 || x === 7 || y === 0 || y === 7) {
+                            spriteData[2 * 64 + y * 8 + x] = 12;
+                        }
+                    }
+                }
+                // 精灵3: 小圆点
+                const cx = 3.5,
+                    cy = 3.5,
+                    r = 2.5;
+                for (let y = 0; y < 8; y++) {
+                    for (let x = 0; x < 8; x++) {
+                        if ((x - cx) * (x - cx) + (y - cy) * (y - cy) <= r * r) {
+                            spriteData[3 * 64 + y * 8 + x] = 10;
+                        }
+                    }
+                }
+                // 精灵4: 三角形(向上)
+                for (let y = 0; y < 8; y++) {
+                    for (let x = 0; x < 8; x++) {
+                        if (x >= 3 - y && x <= 4 + y && y < 6) {
+                            spriteData[4 * 64 + y * 8 + x] = 14;
+                        }
+                    }
+                }
+                // 精灵5: 菱形
+                for (let y = 0; y < 8; y++) {
+                    for (let x = 0; x < 8; x++) {
+                        if (Math.abs(x - 3.5) + Math.abs(y - 3.5) <= 3) {
+                            spriteData[5 * 64 + y * 8 + x] = 9;
+                        }
+                    }
+                }
+                // 精灵6: X形
+                for (let y = 0; y < 8; y++) {
+                    for (let x = 0; x < 8; x++) {
+                        if (Math.abs(x - y) <= 1 || Math.abs(x + y - 7) <= 1) {
+                            spriteData[6 * 64 + y * 8 + x] = 7;
+                        }
+                    }
+                }
+                // 精灵7: 小爱心
+                const heartShape = [
+                    [0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 1, 0, 0, 1, 0, 0, 0],
+                    [1, 1, 1, 1, 1, 1, 1, 0],
+                    [1, 1, 1, 1, 1, 1, 1, 0],
+                    [0, 1, 1, 1, 1, 1, 0, 0],
+                    [0, 0, 1, 1, 1, 0, 0, 0],
+                    [0, 0, 0, 1, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0],
+                ];
+                for (let y = 0; y < 8; y++) {
+                    for (let x = 0; x < 8; x++) {
+                        if (heartShape[y][x]) spriteData[7 * 64 + y * 8 + x] = 3;
+                    }
+                }
+            }
+            initDefaultSprites();
+
+            // ==================== 输入状态 ====================
+            const keys = {};
+            const keysPrev = {};
+            const mouseState = { x: 0, y: 0, pressed: false, pressedPrev: false };
+
+            // 键码映射 (TIC-80风格)
+            // 0:上 1:下 2:左 3:右 4:Z/A 5:X/B 6:A/X 7:S/Y
+            const KEY_MAP = {
+                'ArrowUp': 0,
+                'ArrowDown': 1,
+                'ArrowLeft': 2,
+                'ArrowRight': 3,
+                'KeyZ': 4,
+                'KeyX': 5,
+                'KeyA': 6,
+                'KeyS': 7,
+                'KeyW': 0,
+                'KeyD': 3,
+                'Space': 4,
+                'Enter': 5,
+            };
+
+            function updateKeys() {
+                for (let i = 0; i < 8; i++) {
+                    keysPrev[i] = keys[i] || false;
+                }
+                mouseState.pressedPrev = mouseState.pressed;
+            }
+
+            // ==================== 音频 ====================
+            let audioCtx = null;
+
+            function getAudioCtx() {
+                if (!audioCtx) {
+                    audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                return audioCtx;
+            }
+
+            function sfx(freq, duration, type = 'square', vol = 0.08) {
+                try {
+                    const ctx = getAudioCtx();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(vol, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(ctx.currentTime);
+                    osc.stop(ctx.currentTime + duration);
+                } catch (e) {
+                    // 静默处理
+                }
+            }
+
+            // ==================== API函数(暴露给用户代码) ====================
+            function cls(colorIndex) {
+                const c = PALETTE_RGB[Math.min(15, Math.max(0, colorIndex | 0))];
+                offCtx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
+                offCtx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+            }
+
+            function pix(x, y, colorIndex) {
+                x = x | 0;
+                y = y | 0;
+                if (x < 0 || x >= SCREEN_W || y < 0 || y >= SCREEN_H) return;
+                const c = PALETTE_RGB[Math.min(15, Math.max(0, colorIndex | 0))];
+                offCtx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
+                offCtx.fillRect(x, y, 1, 1);
+            }
+
+            function line(x1, y1, x2, y2, colorIndex) {
+                const c = PALETTE_RGB[Math.min(15, Math.max(0, colorIndex | 0))];
+                offCtx.strokeStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
+                offCtx.lineWidth = 1;
+                offCtx.beginPath();
+                offCtx.moveTo(x1 | 0, y1 | 0);
+                offCtx.lineTo(x2 | 0, y2 | 0);
+                offCtx.stroke();
+            }
+
+            function rect(x, y, w, h, colorIndex) {
+                const c = PALETTE_RGB[Math.min(15, Math.max(0, colorIndex | 0))];
+                offCtx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
+                offCtx.fillRect(x | 0, y | 0, w | 0, h | 0);
+            }
+
+            function rectb(x, y, w, h, colorIndex) {
+                const c = PALETTE_RGB[Math.min(15, Math.max(0, colorIndex | 0))];
+                offCtx.strokeStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
+                offCtx.lineWidth = 1;
+                offCtx.strokeRect(x | 0, y | 0, w | 0, h | 0);
+            }
+
+            function circ(x, y, r, colorIndex) {
+                const c = PALETTE_RGB[Math.min(15, Math.max(0, colorIndex | 0))];
+                offCtx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
+                offCtx.beginPath();
+                offCtx.arc(x | 0, y | 0, Math.max(0, r | 0), 0, Math.PI * 2);
+                offCtx.fill();
+            }
+
+            function circb(x, y, r, colorIndex) {
+                const c = PALETTE_RGB[Math.min(15, Math.max(0, colorIndex | 0))];
+                offCtx.strokeStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
+                offCtx.lineWidth = 1;
+                offCtx.beginPath();
+                offCtx.arc(x | 0, y | 0, Math.max(0, r | 0), 0, Math.PI * 2);
+                offCtx.stroke();
+            }
+
+            function print(text, x, y, colorIndex, scale = 1) {
+                const c = PALETTE_RGB[Math.min(15, Math.max(0, colorIndex | 0))];
+                offCtx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
+                offCtx.font = `${8*scale}px monospace`;
+                offCtx.textBaseline = 'top';
+                offCtx.textAlign = 'left';
+                offCtx.fillText(String(text), x | 0, y | 0);
+            }
+
+            function spr(id, x, y, colorkey = 0, scale = 1, flip = 0, rotate = 0) {
+                id = Math.min(SPRITE_COUNT - 1, Math.max(0, id | 0));
+                x = x | 0;
+                y = y | 0;
+                scale = Math.max(1, scale | 0);
+                colorkey = colorkey | 0;
+                const baseAddr = id * 64;
+                for (let sy = 0; sy < SPRITE_H; sy++) {
+                    for (let sx = 0; sx < SPRITE_W; sx++) {
+                        let colorIdx = spriteData[baseAddr + sy * SPRITE_W + sx];
+                        if (colorIdx === colorkey && colorkey >= 0) continue;
+                        const c = PALETTE_RGB[Math.min(15, colorIdx)];
+                        offCtx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
+                        let dx = sx,
+                            dy = sy;
+                        if (flip & 1) dx = SPRITE_W - 1 - sx; // 水平翻转
+                        if (flip & 2) dy = SPRITE_H - 1 - sy; // 垂直翻转
+                        if (rotate === 1) { // 90度旋转
+                            const tmp = dx;
+                            dx = SPRITE_H - 1 - dy;
+                            dy = tmp;
+                        } else if (rotate === 2) { // 180度
+                            dx = SPRITE_W - 1 - dx;
+                            dy = SPRITE_H - 1 - dy;
+                        } else if (rotate === 3) { // 270度
+                            const tmp = dx;
+                            dx = dy;
+                            dy = SPRITE_W - 1 - tmp;
+                        }
+                        if (scale === 1) {
+                            offCtx.fillRect(x + dx, y + dy, 1, 1);
+                        } else {
+                            offCtx.fillRect(x + dx * scale, y + dy * scale, scale, scale);
+                        }
+                    }
+                }
+            }
+
+            function btn(id) {
+                return !!(keys[id | 0]);
+            }
+
+            function btnp(id) {
+                return !!(keys[id | 0] && !keysPrev[id | 0]);
+            }
+
+            function mouse() {
+                return {
+                    x: mouseState.x,
+                    y: mouseState.y,
+                    btn: mouseState.pressed,
+                    btnp: mouseState.pressed && !mouseState.pressedPrev
+                };
+            }
+
+            function poke(addr, value) {
+                addr = addr | 0;
+                value = value | 0;
+                if (addr >= 0 && addr < spriteData.length) {
+                    spriteData[addr] = value & 0x0F;
+                }
+            }
+
+            function peek(addr) {
+                addr = addr | 0;
+                if (addr >= 0 && addr < spriteData.length) {
+                    return spriteData[addr];
+                }
+                return 0;
+            }
+
+            function color(index) {
+                return PALETTE_HEX[Math.min(15, Math.max(0, index | 0))];
+            }
+
+            // ==================== 将API暴露到全局作用域 ====================
+            const apiFunctions = {
+                cls,
+                pix,
+                line,
+                rect,
+                rectb,
+                circ,
+                circb,
+                print,
+                spr,
+                btn,
+                btnp,
+                mouse,
+                poke,
+                peek,
+                color,
+                sfx,
+                SCREEN_W,
+                SCREEN_H,
+                PALETTE: PALETTE_HEX,
+                TIC: null // 用户定义的TIC函数
+            };
+
+            // ==================== 主循环管理 ====================
+            let animationFrameId = null;
+            let isRunning = false;
+            let frameCount = 0;
+            let fpsCalcTime = performance.now();
+            let currentFPS = 0;
+            let lastFrameTime = 0;
+            let userTICFunction = null;
+            let userCodeContext = {};
+
+            function resetScreenState() {
+                offCtx.fillStyle = '#1a1c2c';
+                offCtx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+                for (let i = 0; i < 8; i++) {
+                    keys[i] = false;
+                    keysPrev[i] = false;
+                }
+                mouseState.pressed = false;
+                mouseState.pressedPrev = false;
+                mouseState.x = 0;
+                mouseState.y = 0;
+                frameCount = 0;
+                fpsCalcTime = performance.now();
+                currentFPS = 0;
+                lastFrameTime = 0;
+                initDefaultSprites();
+            }
+
+            function renderToDisplay() {
+                displayCtx.imageSmoothingEnabled = false;
+                displayCtx.clearRect(0, 0, displayCanvas.width, displayCanvas.height);
+                displayCtx.drawImage(offscreenCanvas, 0, 0, displayCanvas.width, displayCanvas.height);
+            }
+
+            function gameLoop(timestamp) {
+                if (!isRunning) return;
+                if (!lastFrameTime) lastFrameTime = timestamp;
+                const elapsed = timestamp - lastFrameTime;
+
+                // 帧率计算
+                frameCount++;
+                if (timestamp - fpsCalcTime >= 1000) {
+                    currentFPS = Math.round(frameCount / ((timestamp - fpsCalcTime) / 1000));
+                    frameCount = 0;
+                    fpsCalcTime = timestamp;
+                    fpsDisplay.textContent = 'FPS: ' + currentFPS;
+                }
+
+                try {
+                    updateKeys();
+                    if (typeof userTICFunction === 'function') {
+                        userTICFunction();
+                    }
+                    renderToDisplay();
+                } catch (e) {
+                    showError('运行时错误: ' + e.message + '\n行: ' + (e.lineNumber || '?'));
+                    stopExecution();
+                    return;
+                }
+
+                lastFrameTime = timestamp;
+                animationFrameId = requestAnimationFrame(gameLoop);
+            }
+
+            function startExecution() {
+                stopExecution();
+                resetScreenState();
+
+                const code = codeEditor.value.trim();
+                if (!code) {
+                    showError('请先编写一些代码！');
+                    return;
+                }
+
+                // 构建执行上下文 - 将API注入
+                const contextVars = {};
+                for (const [name, fn] of Object.entries(apiFunctions)) {
+                    if (name !== 'TIC') contextVars[name] = fn;
+                }
+                contextVars.TIC = null;
+                contextVars.console = { log: (...args) => console.log('[Web-80]', ...args) };
+
+                try {
+                    // 使用Function构造函数执行用户代码
+                    const varNames = Object.keys(contextVars);
+                    const varValues = Object.values(contextVars);
+                    const wrappedCode = `
+                        "use strict";
+                        ${code}
+                        return { TIC: typeof TIC === 'function' ? TIC : null };
+                    `;
+                    const userFunc = new Function(...varNames, wrappedCode);
+                    const result = userFunc(...varValues);
+
+                    if (result && typeof result.TIC === 'function') {
+                        userTICFunction = result.TIC;
+                        isRunning = true;
+                        lastFrameTime = 0;
+                        frameCount = 0;
+                        fpsCalcTime = performance.now();
+                        currentFPS = 0;
+                        fpsDisplay.textContent = 'FPS: --';
+                        screenWrapper.classList.add('running');
+                        statusDot.classList.remove('stopped');
+                        statusDot.style.background = '#3fb950';
+                        statusText.textContent = '运行中...';
+                        animationFrameId = requestAnimationFrame(gameLoop);
+                    } else {
+                        // 没有TIC函数，只执行一次渲染
+                        userTICFunction = null;
+                        isRunning = false;
+                        updateKeys();
+                        // 如果代码中直接调用了绘图函数，渲染一次
+                        renderToDisplay();
+                        screenWrapper.classList.remove('running');
+                        statusDot.classList.add('stopped');
+                        statusDot.style.background = '#d2991d';
+                        statusText.textContent = '代码已执行(无TIC循环) - 查看屏幕';
+                        showError('提示: 未找到TIC函数。请定义 function TIC() { ... } 来创建游戏循环。', true);
+                    }
+                } catch (e) {
+                    showError('代码错误: ' + e.message);
+                    stopExecution();
+                    renderToDisplay();
+                }
+            }
+
+            function stopExecution() {
+                isRunning = false;
+                userTICFunction = null;
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
+                }
+                screenWrapper.classList.remove('running');
+                statusDot.classList.add('stopped');
+                statusDot.style.background = '#f85149';
+                statusText.textContent = '已停止';
+                fpsDisplay.textContent = 'FPS: --';
+                lastFrameTime = 0;
+                renderToDisplay();
+            }
+
+            function showError(msg, isWarning = false) {
+                errorToast.textContent = msg;
+                errorToast.style.display = 'block';
+                errorToast.style.background = isWarning ? '#1a1f2b' : '#2d1a1f';
+                errorToast.style.color = isWarning ? '#d2991d' : '#f85149';
+                errorToast.style.borderColor = isWarning ? '#5c4a1a' : '#8b2c2c';
+                errorToast.classList.remove('hide');
+                clearTimeout(errorToast._timeout);
+                errorToast._timeout = setTimeout(() => {
+                    errorToast.classList.add('hide');
+                    setTimeout(() => { errorToast.style.display = 'none';
+                        errorToast.classList.remove('hide'); }, 300);
+                }, isWarning ? 2500 : 4000);
+            }
+
+            // ==================== 示例代码 ====================
+            const examples = {
+                bounce: `// 弹跳球示例
+        let bx = 120, by = 68;
+        let vx = 2, vy = 1.5;
+        let ballColor = 10;
+        let trail = [];
+
+        function TIC() {
+          cls(0);
+          
+          // 绘制拖尾
+          for (let i = 0; i < trail.length; i++) {
+            let t = trail[i];
+            let alpha = Math.floor((i / trail.length) * 6);
+            circ(t.x, t.y, 5, alpha + 1);
+          }
+          
+          // 更新位置
+          bx += vx;
+          by += vy;
+          
+          // 碰撞检测
+          if (bx <= 6 || bx >= SCREEN_W - 6) {
+            vx = -vx;
+            ballColor = (ballColor + 1) % 16;
+            if (ballColor === 0) ballColor = 1;
+            sfx(300 + ballColor * 40, 0.08);
+          }
+          if (by <= 6 || by >= SCREEN_H - 6) {
+            vy = -vy;
+            ballColor = (ballColor + 1) % 16;
+            if (ballColor === 0) ballColor = 1;
+            sfx(200 + ballColor * 30, 0.06);
+          }
+          
+          // 添加拖尾
+          trail.push({x: Math.floor(bx), y: Math.floor(by)});
+          if (trail.length > 20) trail.shift();
+          
+          // 绘制球
+          circ(bx, by, 6, ballColor);
+          circ(bx - 2, by - 2, 2, 15);
+          
+          print("弹跳球", 4, 4, 12);
+        }`,
+
+                particles: `// 粒子喷泉
+        let particles = [];
+        let mx = 120, my = 100;
+
+        function TIC() {
+          cls(0);
+          
+          // 鼠标或自动移动发射源
+          let m = mouse();
+          if (m.btn) {
+            mx = m.x;
+            my = m.y;
+          } else {
+            mx = 120 + Math.sin(frameCount * 0.03) * 80;
+            my = 100 + Math.cos(frameCount * 0.05) * 30;
+          }
+          
+          // 发射粒子
+          for (let i = 0; i < 3; i++) {
+            particles.push({
+              x: mx,
+              y: my,
+              vx: (Math.random() - 0.5) * 3,
+              vy: -Math.random() * 4 - 1,
+              life: 40 + Math.random() * 30,
+              color: 2 + Math.floor(Math.random() * 13)
+            });
+          }
+          
+          // 更新和绘制粒子
+          for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.08;
+            p.life--;
+            if (p.life <= 0 || p.y > SCREEN_H + 10) {
+              particles.splice(i, 1);
+              continue;
+            }
+            let alpha = Math.floor(p.life / 70 * 15);
+            pix(p.x, p.y, Math.min(15, p.color));
+            if (p.life > 10) pix(p.x + 1, p.y, Math.min(15, p.color));
+          }
+          
+          // 发射源
+          circ(mx, my, 3, 15);
+          circ(mx, my, 2, 10);
+          print("粒子:" + particles.length, 4, 4, 12);
+        }`,
+
+                snake: `// 贪吃蛇
+        let snake = [{x:20, y:10}, {x:19, y:10}, {x:18, y:10}];
+        let dir = {x:1, y:0};
+        let food = {x:30, y:20};
+        let tick = 0;
+        let speed = 8;
+        let score = 0;
+        let gameOver = false;
+
+        function spawnFood() {
+          food.x = 2 + Math.floor(Math.random() * (SCREEN_W/8 - 4));
+          food.y = 2 + Math.floor(Math.random() * (SCREEN_H/8 - 4));
+          food.x *= 8;
+          food.y *= 8;
+        }
+
+        function TIC() {
+          cls(0);
+          
+          if (gameOver) {
+            print("游戏结束! 得分:" + score, 60, 55, 3);
+            print("按Z键重新开始", 60, 70, 12);
+            if (btnp(4)) {
+              snake = [{x:20, y:10}, {x:19, y:10}, {x:18, y:10}];
+              dir = {x:1, y:0};
+              score = 0;
+              gameOver = false;
+              spawnFood();
+            }
+            return;
+          }
+          
+          // 输入
+          if (btnp(0) && dir.y === 0) { dir = {x:0, y:-1}; }
+          if (btnp(1) && dir.y === 0) { dir = {x:0, y:1}; }
+          if (btnp(2) && dir.x === 0) { dir = {x:-1, y:0}; }
+          if (btnp(3) && dir.x === 0) { dir = {x:1, y:0}; }
+          
+          tick++;
+          if (tick >= speed) {
+            tick = 0;
+            let head = {x: snake[0].x + dir.x * 8, y: snake[0].y + dir.y * 8};
+            
+            // 边界检测
+            if (head.x < 0 || head.x >= SCREEN_W || head.y < 0 || head.y >= SCREEN_H) {
+              gameOver = true;
+              sfx(100, 0.3);
+              return;
+            }
+            // 自身碰撞
+            for (let s of snake) {
+              if (s.x === head.x && s.y === head.y) {
+                gameOver = true;
+                sfx(100, 0.3);
+                return;
+              }
+            }
+            
+            snake.unshift(head);
+            if (head.x === food.x && head.y === food.y) {
+              score += 10;
+              speed = Math.max(2, speed - 1);
+              sfx(500, 0.1);
+              spawnFood();
+            } else {
+              snake.pop();
+            }
+          }
+          
+          // 绘制食物
+          rect(food.x + 1, food.y + 1, 6, 6, 3);
+          // 绘制蛇
+          for (let i = 0; i < snake.length; i++) {
+            let s = snake[i];
+            let c = i === 0 ? 10 : 11;
+            rect(s.x + 1, s.y + 1, 6, 6, c);
+          }
+          print("得分:" + score, 4, 4, 15);
+        }
+        spawnFood();`,
+
+                life: `// 康威生命游戏
+        let grid = [];
+        const GW = 60, GH = 34;
+        const CS = 4;
+
+        function initGrid() {
+          for (let y = 0; y < GH; y++) {
+            grid[y] = [];
+            for (let x = 0; x < GW; x++) {
+              grid[y][x] = Math.random() < 0.3 ? 1 : 0;
+            }
+          }
+        }
+
+        function countNeighbors(gx, gy) {
+          let count = 0;
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              if (dx === 0 && dy === 0) continue;
+              let nx = (gx + dx + GW) % GW;
+              let ny = (gy + dy + GH) % GH;
+              count += grid[ny][nx];
+            }
+          }
+          return count;
+        }
+
+        let genTick = 0;
+        function TIC() {
+          cls(0);
+          genTick++;
+          if (genTick > 6) {
+            genTick = 0;
+            let newGrid = [];
+            for (let y = 0; y < GH; y++) {
+              newGrid[y] = [];
+              for (let x = 0; x < GW; x++) {
+                let n = countNeighbors(x, y);
+                if (grid[y][x] === 1) {
+                  newGrid[y][x] = (n === 2 || n === 3) ? 1 : 0;
+                } else {
+                  newGrid[y][x] = (n === 3) ? 1 : 0;
+                }
+              }
+            }
+            grid = newGrid;
+          }
+          
+          // 绘制
+          for (let y = 0; y < GH; y++) {
+            for (let x = 0; x < GW; x++) {
+              if (grid[y][x]) {
+                rect(x * CS, y * CS, CS, CS, 10);
+              }
+            }
+          }
+          rect(0, 0, GW*CS, GH*CS, 13); // 边框
+          print("生命游戏", 4, SCREEN_H - 12, 15);
+        }
+        initGrid();`,
+
+                draw: `// 鼠标画板
+        let drawing = [];
+        let brushColor = 10;
+        let brushSize = 2;
+
+        function TIC() {
+          cls(0);
+          
+          let m = mouse();
+          
+          // 颜色选择
+          for (let i = 0; i < 16; i++) {
+            rect(i * 15, 0, 14, 12, i);
+            if (m.btn && m.x >= i*15 && m.x < i*15+14 && m.y < 12) {
+              brushColor = i;
+              sfx(400 + i * 20, 0.05);
+            }
+          }
+          // 当前颜色指示器
+          rectb(brushColor * 15 - 1, -1, 16, 14, 15);
+          
+          // 画笔大小
+          print("大小:" + brushSize + " (↑↓调整)", 4, 16, 12);
+          if (btnp(0)) brushSize = Math.min(8, brushSize + 1);
+          if (btnp(1)) brushSize = Math.max(1, brushSize - 1);
+          if (btnp(4)) { drawing = []; sfx(200, 0.15); } // 清除
+          
+          // 绘制
+          if (m.btn && m.y > 14) {
+            for (let dy = -brushSize+1; dy < brushSize; dy++) {
+              for (let dx = -brushSize+1; dx < brushSize; dx++) {
+                drawing.push({x: m.x + dx, y: m.y + dy, c: brushColor});
+              }
+            }
+            if (drawing.length > 5000) drawing.splice(0, drawing.length - 5000);
+          }
+          
+          for (let d of drawing) {
+            pix(d.x, d.y, d.c);
+          }
+          
+          // 光标
+          if (m.y > 14) {
+            rectb(m.x - brushSize + 1, m.y - brushSize + 1, brushSize*2-1, brushSize*2-1, 15);
+          }
+          print("按住鼠标绘画 Z=清除", 4, SCREEN_H - 10, 12);
+        }`,
+
+                starfield: `// 星空飞行
+        let stars = [];
+        for (let i = 0; i < 120; i++) {
+          stars.push({
+            x: Math.random() * SCREEN_W,
+            y: Math.random() * SCREEN_H,
+            z: Math.random() * 8 + 0.5,
+            c: 12 + Math.floor(Math.random() * 4)
+          });
+        }
+
+        function TIC() {
+          cls(0);
+          
+          let cx = SCREEN_W / 2;
+          let cy = SCREEN_H / 2;
+          
+          for (let s of stars) {
+            s.z -= 0.04;
+            if (s.z <= 0.1) {
+              s.z = 8;
+              s.x = Math.random() * SCREEN_W;
+              s.y = Math.random() * SCREEN_H;
+            }
+            
+            let sx = cx + (s.x - cx) / s.z;
+            let sy = cy + (s.y - cy) / s.z;
+            let brightness = Math.floor((1 - s.z / 8) * 4);
+            let colorIdx = 12 + brightness;
+            
+            if (sx >= 0 && sx < SCREEN_W && sy >= 0 && sy < SCREEN_H) {
+              let size = Math.max(1, Math.floor((1 - s.z / 8) * 3));
+              if (size === 1) pix(sx, sy, colorIdx);
+              else rect(sx, sy, size, size, colorIdx);
+            }
+          }
+          
+          print("星空飞行", 4, 4, 15);
+          print("恒星:" + stars.length, 4, 14, 12);
+        }`,
+
+                clock: `// 像素时钟
+        let prevSec = -1;
+
+        function TIC() {
+          cls(0);
+          
+          let now = new Date();
+          let h = now.getHours();
+          let m = now.getMinutes();
+          let s = now.getSeconds();
+          let ms = now.getMilliseconds();
+          
+          // 表盘
+          circ(120, 65, 55, 1);
+          circb(120, 65, 55, 13);
+          circ(120, 65, 3, 15);
+          
+          // 刻度
+          for (let i = 0; i < 60; i++) {
+            let angle = (i / 60) * Math.PI * 2 - Math.PI / 2;
+            let inner = i % 5 === 0 ? 48 : 52;
+            let x1 = 120 + Math.cos(angle) * inner;
+            let y1 = 65 + Math.sin(angle) * inner;
+            let x2 = 120 + Math.cos(angle) * 54;
+            let y2 = 65 + Math.sin(angle) * 54;
+            line(x1, y1, x2, y2, i % 5 === 0 ? 15 : 8);
+          }
+          
+          // 时针
+          let hAngle = ((h % 12) + m / 60) / 12 * Math.PI * 2 - Math.PI / 2;
+          line(120, 65, 120 + Math.cos(hAngle) * 30, 65 + Math.sin(hAngle) * 30, 15);
+          
+          // 分针
+          let mAngle = (m + s / 60) / 60 * Math.PI * 2 - Math.PI / 2;
+          line(120, 65, 120 + Math.cos(mAngle) * 42, 65 + Math.sin(mAngle) * 42, 12);
+          
+          // 秒针
+          let sAngle = (s + ms / 1000) / 60 * Math.PI * 2 - Math.PI / 2;
+          line(120, 65, 120 + Math.cos(sAngle) * 48, 65 + Math.sin(sAngle) * 48, 3);
+          
+          // 数字时间
+          let timeStr = h.toString().padStart(2,'0') + ':' + 
+                        m.toString().padStart(2,'0') + ':' + 
+                        s.toString().padStart(2,'0');
+          print(timeStr, 80, 10, 15);
+          print("Web-80 Clock", 78, 120, 8);
+          
+          if (s !== prevSec) {
+            sfx(800, 0.03, 'sine', 0.03);
+            prevSec = s;
+          }
+        }`
+            };
+
+            // ==================== UI事件处理 ====================
+            btnRun.addEventListener('click', startExecution);
+            btnStop.addEventListener('click', stopExecution);
+            btnReset.addEventListener('click', () => {
+                stopExecution();
+                resetScreenState();
+                renderToDisplay();
+                statusText.textContent = '屏幕已重置';
+                statusDot.style.background = '#8b949e';
+                setTimeout(() => {
+                    statusText.textContent = '就绪 - 编辑代码后点击运行';
+                    statusDot.style.background = '#f85149';
+                }, 1500);
+            });
+
+            exampleSelect.addEventListener('change', function() {
+                const key = this.value;
+                if (key && examples[key]) {
+                    codeEditor.value = examples[key];
+                    updateLineNumbers();
+                    this.value = '';
+                    statusText.textContent = '已加载示例: ' + key + ' - 点击运行';
+                }
+            });
+
+            // 更新行号
+            function updateLineNumbers() {
+                const lines = codeEditor.value.split('\n');
+                const count = Math.max(1, lines.length);
+                let html = '';
+                for (let i = 1; i <= count; i++) {
+                    html += i + '\n';
+                }
+                lineNumbers.textContent = html;
+                // 同步滚动
+                lineNumbers.scrollTop = codeEditor.scrollTop;
+            }
+
+            codeEditor.addEventListener('input', updateLineNumbers);
+            codeEditor.addEventListener('scroll', () => {
+                lineNumbers.scrollTop = codeEditor.scrollTop;
+            });
+            codeEditor.addEventListener('keydown', function(e) {
+                if (e.ctrlKey && e.key === 'Enter') {
+                    e.preventDefault();
+                    startExecution();
+                }
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    stopExecution();
+                }
+                // Tab键支持
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    const start = this.selectionStart;
+                    const end = this.selectionEnd;
+                    this.value = this.value.substring(0, start) + '  ' + this.value.substring(end);
+                    this.selectionStart = this.selectionEnd = start + 2;
+                    updateLineNumbers();
+                }
+            });
+
+            // 键盘事件 - 输入映射
+            window.addEventListener('keydown', function(e) {
+                if (e.target === codeEditor) return; // 编辑器中不处理
+                if (KEY_MAP.hasOwnProperty(e.code)) {
+                    keys[KEY_MAP[e.code]] = true;
+                    e.preventDefault();
+                }
+            });
+            window.addEventListener('keyup', function(e) {
+                if (e.target === codeEditor) return;
+                if (KEY_MAP.hasOwnProperty(e.code)) {
+                    keys[KEY_MAP[e.code]] = false;
+                    e.preventDefault();
+                }
+            });
+
+            // 鼠标事件 - 映射到屏幕坐标
+            function getScreenCoords(e) {
+                const rect = displayCanvas.getBoundingClientRect();
+                const sx = (e.clientX - rect.left) / rect.width * SCREEN_W;
+                const sy = (e.clientY - rect.top) / rect.height * SCREEN_H;
+                return { x: Math.floor(sx), y: Math.floor(sy) };
+            }
+
+            displayCanvas.addEventListener('mousedown', function(e) {
+                const coords = getScreenCoords(e);
+                mouseState.pressed = true;
+                mouseState.x = coords.x;
+                mouseState.y = coords.y;
+                e.preventDefault();
+            });
+            displayCanvas.addEventListener('mousemove', function(e) {
+                const coords = getScreenCoords(e);
+                mouseState.x = coords.x;
+                mouseState.y = coords.y;
+            });
+            displayCanvas.addEventListener('mouseup', function(e) {
+                mouseState.pressed = false;
+            });
+            displayCanvas.addEventListener('mouseleave', function(e) {
+                mouseState.pressed = false;
+            });
+
+            // 触摸事件
+            displayCanvas.addEventListener('touchstart', function(e) {
+                if (e.touches.length > 0) {
+                    const coords = getScreenCoords(e.touches[0]);
+                    mouseState.pressed = true;
+                    mouseState.x = coords.x;
+                    mouseState.y = coords.y;
+                }
+                e.preventDefault();
+            }, { passive: false });
+            displayCanvas.addEventListener('touchmove', function(e) {
+                if (e.touches.length > 0) {
+                    const coords = getScreenCoords(e.touches[0]);
+                    mouseState.x = coords.x;
+                    mouseState.y = coords.y;
+                }
+                e.preventDefault();
+            }, { passive: false });
+            displayCanvas.addEventListener('touchend', function(e) {
+                mouseState.pressed = false;
+                e.preventDefault();
+            });
+
+            // ==================== 初始化调色板显示 ====================
+            function buildPaletteUI() {
+                paletteRow.innerHTML = '';
+                PALETTE_HEX.forEach((hex, i) => {
+                    const swatch = document.createElement('span');
+                    swatch.className = 'palette-swatch';
+                    swatch.style.backgroundColor = hex;
+                    swatch.title = `颜色 ${i}: ${hex}`;
+                    swatch.addEventListener('click', () => {
+                        // 在编辑器中插入颜色索引
+                        const cursorPos = codeEditor.selectionStart;
+                        const textBefore = codeEditor.value.substring(0, cursorPos);
+                        const textAfter = codeEditor.value.substring(codeEditor.selectionEnd);
+                        codeEditor.value = textBefore + i + textAfter;
+                        codeEditor.selectionStart = codeEditor.selectionEnd = cursorPos + String(
+                        i).length;
+                        codeEditor.focus();
+                        updateLineNumbers();
+                    });
+                    paletteRow.appendChild(swatch);
+                });
+            }
+            buildPaletteUI();
+
+            // ==================== 初始设置 ====================
+            function init() {
+                // 加载默认示例
+                codeEditor.value = examples['bounce'];
+                updateLineNumbers();
+                // 初始渲染空屏幕
+                resetScreenState();
+                renderToDisplay();
+                statusText.textContent = '就绪 - 编辑代码后点击运行 (Ctrl+Enter)';
+                statusDot.classList.add('stopped');
+                statusDot.style.background = '#f85149';
+            }
+            init();
+
+            // ==================== 窗口大小调整 ====================
+            function handleResize() {
+                // 在移动端调整canvas显示大小
+                const wrapperWidth = screenWrapper.clientWidth;
+                if (wrapperWidth < 490) {
+                    const scale = Math.min(1, wrapperWidth / 490);
+                    displayCanvas.style.width = (490 * scale) + 'px';
+                    displayCanvas.style.height = (272 * scale) + 'px';
+                } else {
+                    displayCanvas.style.width = '';
+                    displayCanvas.style.height = '';
+                }
+            }
+            window.addEventListener('resize', handleResize);
+            handleResize();
+
+            // ==================== 全局错误处理 ====================
+            window.addEventListener('error', function(e) {
+                if (e.target === window) {
+                    console.error('全局错误:', e.message);
+                }
+            });
+
+            // ==================== 在页面卸载时停止 ====================
+            window.addEventListener('beforeunload', () => {
+                stopExecution();
+            });
+
+            console.log('%c🖥️ Web-80 幻想电脑已就绪 %c| %c240x136 %c| %c16色 %c| %c60FPS',
+                'color:#58a6ff;font-size:16px;',
+                '',
+                'color:#a7f070;',
+                '',
+                'color:#ffcd75;',
+                '',
+                'color:#73eff7;');
+            console.log('%c可用API: cls, pix, line, rect, rectb, circ, circb, print, spr, btn, btnp, mouse, poke, peek, color, sfx',
+                'color:#8b949e;font-size:11px;');
+            console.log('%c定义 function TIC() { ... } 来创建游戏循环', 'color:#d2991d;');
+            console.log('%c按 Ctrl+Enter 运行 | Esc 停止', 'color:#3fb950;');
+        })();
+    </script>
+</body>
+</html>

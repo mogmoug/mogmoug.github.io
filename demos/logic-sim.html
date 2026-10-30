@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>逻辑电路模拟器</title>
+    <style>
+        :root {
+            --bg: #1a1d23;
+            --panel-bg: #21252b;
+            --canvas-bg: #1e2128;
+            --text: #cdd6f4;
+            --text-secondary: #a0a8c0;
+            --border: #3a3f4b;
+            --accent: #5c9ce6;
+            --hover: #2a2d35;
+            --danger: #e0556a;
+            --grid-dot: #2a2d35;
+            --port-empty: #5a5f6b;
+            --signal-high: #3dd68c;
+            --signal-low: #e0556a;
+            --wire-high: #3dd68c;
+            --wire-low: #c44d5a;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 顶部工具栏 */
+        .toolbar {
+            background: var(--panel-bg);
+            border-bottom: 1px solid var(--border);
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            z-index: 10;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+            min-height: 56px;
+        }
+        .toolbar .brand {
+            font-weight: 700;
+            font-size: 1.1em;
+            color: #fff;
+            margin-right: 8px;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+        .toolbar .brand .icon-chip {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, #5c9ce6, #3dd68c);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+        .toolbar .divider {
+            width: 1px;
+            height: 26px;
+            background: var(--border);
+            margin: 0 6px;
+            border-radius: 1px;
+        }
+        .tool-btn {
+            padding: 8px 13px;
+            border: 1.5px solid var(--border);
+            background: var(--panel-bg);
+            color: var(--text);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 500;
+            transition: all 0.18s ease;
+            white-space: nowrap;
+            letter-spacing: 0.3px;
+            position: relative;
+        }
+        .tool-btn:hover {
+            background: var(--hover);
+            border-color: #555;
+            transform: translateY(-1px);
+        }
+        .tool-btn:active {
+            transform: scale(0.96);
+            transition: transform 0.08s ease;
+        }
+        .tool-btn.active {
+            border-color: var(--accent);
+            background: #1e2d44;
+            color: #fff;
+            box-shadow: 0 0 12px rgba(92, 156, 230, 0.25);
+            font-weight: 600;
+        }
+        .tool-btn.input-btn {
+            border-left: 3px solid #74b9ff;
+        }
+        .tool-btn.output-btn {
+            border-left: 3px solid #8899aa;
+        }
+        .tool-btn.gate-and {
+            border-left: 3px solid #ff9f43;
+        }
+        .tool-btn.gate-or {
+            border-left: 3px solid #a29bfe;
+        }
+        .tool-btn.gate-not {
+            border-left: 3px solid #00b894;
+        }
+        .tool-btn.gate-nand {
+            border-left: 3px solid #fd79a8;
+        }
+        .tool-btn.gate-nor {
+            border-left: 3px solid #6c5ce7;
+        }
+        .tool-btn.gate-xor {
+            border-left: 3px solid #fdcb6e;
+        }
+        .tool-btn.danger-btn {
+            border-color: var(--danger);
+            color: var(--danger);
+            font-weight: 600;
+        }
+        .tool-btn.danger-btn:hover {
+            background: #3d1f24;
+            border-color: #e0556a;
+            box-shadow: 0 0 14px rgba(224, 85, 106, 0.3);
+        }
+        .tool-btn.clear-btn {
+            border-color: #888;
+            color: #ccc;
+        }
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.78em;
+            font-weight: 500;
+            letter-spacing: 0.4px;
+            margin-left: auto;
+            white-space: nowrap;
+            background: #252a33;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            transition: all 0.3s ease;
+        }
+        .status-badge .dot {
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            margin-right: 6px;
+            background: #3dd68c;
+            animation: pulse-dot 2s infinite;
+        }
+        @keyframes pulse-dot {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.4;
+            }
+        }
+
+        /* 画布容器 */
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            cursor: default;
+            background: var(--canvas-bg);
+            background-image: radial-gradient(circle, var(--grid-dot) 1px, transparent 1px);
+            background-size: 22px 22px;
+        }
+        .canvas-container.crosshair {
+            cursor: crosshair;
+        }
+        .canvas-container.grabbing {
+            cursor: grabbing;
+        }
+        .canvas-container.wiring {
+            cursor: crosshair;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 提示浮层 */
+        .tooltip {
+            position: fixed;
+            pointer-events: none;
+            background: #1a1d23e8;
+            color: #cdd6f4;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.75em;
+            border: 1px solid #444;
+            white-space: nowrap;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.15s;
+            letter-spacing: 0.3px;
+            backdrop-filter: blur(4px);
+        }
+        .tooltip.visible {
+            opacity: 1;
+        }
+
+        /* 响应式 */
+        @media (max-width: 900px) {
+            .toolbar {
+                gap: 4px;
+                padding: 8px 10px;
+                min-height: 48px;
+            }
+            .tool-btn {
+                padding: 6px 9px;
+                font-size: 0.75em;
+                border-radius: 6px;
+            }
+            .toolbar .brand {
+                font-size: 0.9em;
+                margin-right: 2px;
+            }
+            .toolbar .divider {
+                margin: 0 2px;
+                height: 20px;
+            }
+            .status-badge {
+                font-size: 0.7em;
+                padding: 4px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 工具栏 -->
+    <div class="toolbar" id="toolbar">
+        <span class="brand">
+            <span class="icon-chip">🔌</span>逻辑电路模拟器
+        </span>
+        <span class="divider"></span>
+        <button class="tool-btn input-btn" data-tool="INPUT" title="放置输入开关 (快捷键: 1)">🔘 输入开关</button>
+        <button class="tool-btn output-btn" data-tool="OUTPUT" title="放置输出指示灯 (快捷键: 2)">💡 输出灯</button>
+        <span class="divider"></span>
+        <button class="tool-btn gate-and" data-tool="AND" title="与门 AND (快捷键: 3)">AND</button>
+        <button class="tool-btn gate-or" data-tool="OR" title="或门 OR (快捷键: 4)">OR</button>
+        <button class="tool-btn gate-not" data-tool="NOT" title="非门 NOT (快捷键: 5)">NOT</button>
+        <button class="tool-btn gate-nand" data-tool="NAND" title="与非门 NAND (快捷键: 6)">NAND</button>
+        <button class="tool-btn gate-nor" data-tool="NOR" title="或非门 NOR (快捷键: 7)">NOR</button>
+        <button class="tool-btn gate-xor" data-tool="XOR" title="异或门 XOR (快捷键: 8)">XOR</button>
+        <span class="divider"></span>
+        <button class="tool-btn clear-btn" id="btnClear" title="清除所有组件和连线">🗑 清空画布</button>
+        <button class="tool-btn danger-btn" id="btnDelete" title="删除选中的组件 (快捷键: Delete)">✕ 删除选中</button>
+        <span class="status-badge" id="statusBadge">
+            <span class="dot"></span>就绪 - 选择组件放置或移动
+        </span>
+    </div>
+
+    <!-- 画布 -->
+    <div class="canvas-container" id="canvasContainer">
+        <canvas id="mainCanvas"></canvas>
+    </div>
+
+    <!-- 提示浮层 -->
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        (function() {
+            // ==================== DOM元素 ====================
+            const canvasContainer = document.getElementById('canvasContainer');
+            const canvas = document.getElementById('mainCanvas');
+            const ctx = canvas.getContext('2d');
+            const tooltip = document.getElementById('tooltip');
+            const statusBadge = document.getElementById('statusBadge');
+            const toolbarButtons = document.querySelectorAll('.tool-btn[data-tool]');
+            const btnClear = document.getElementById('btnClear');
+            const btnDelete = document.getElementById('btnDelete');
+
+            // ==================== 常量 ====================
+            const GRID_SIZE = 22;
+            const PORT_RADIUS = 7;
+            const PORT_HOVER_RADIUS = 10;
+            const COMPONENT_TYPES = ['INPUT', 'OUTPUT', 'AND', 'OR', 'NOT', 'NAND', 'NOR', 'XOR'];
+            const GATE_COLORS = {
+                'INPUT': { fill: '#2d4a6b', stroke: '#74b9ff', text: '#74b9ff', label: 'IN' },
+                'OUTPUT': { fill: '#2d3538', stroke: '#8899aa', text: '#b0c0d0', label: 'OUT' },
+                'AND': { fill: '#3d2e1f', stroke: '#ff9f43', text: '#ffb870', label: '&' },
+                'OR': { fill: '#2e2840', stroke: '#a29bfe', text: '#beb6ff', label: '≥1' },
+                'NOT': { fill: '#1f3530', stroke: '#00b894', text: '#3dd6a8', label: '1' },
+                'NAND': { fill: '#3d2430', stroke: '#fd79a8', text: '#ff9dc0', label: '&' },
+                'NOR': { fill: '#2a2540', stroke: '#6c5ce7', text: '#9d94f0', label: '≥1' },
+                'XOR': { fill: '#3d3520', stroke: '#fdcb6e', text: '#ffe090', label: '=1' },
+            };
+            const MAX_PROPAGATION_ITERATIONS = 100;
+
+            // ==================== 状态 ====================
+            let components = [];
+            let wires = [];
+            let nextComponentId = 1;
+            let selectedComponentId = null;
+            let selectedWireIndex = null;
+            let currentTool = null; // null=选择模式, 或组件类型字符串
+            let isDragging = false;
+            let dragTarget = null; // {type:'component', id, offsetX, offsetY} 或 {type:'wire-start', compId, portIdx}
+            let dragStartPos = null;
+            let mousePos = { x: 0, y: 0 };
+            let hoveredPort = null; // {compId, portType:'input'|'output', portIdx}
+            let hoveredComponentId = null;
+            let tempWire = null; // 拖拽连线时的临时线 {fromX, fromY, toX, toY}
+            let hasMovedSinceDown = false;
+            const DRAG_THRESHOLD = 3;
+
+            // ==================== 工具函数 ====================
+            function getComponentById(id) {
+                return components.find(c => c.id === id);
+            }
+
+            function getPortPosition(comp, portType, portIdx) {
+                const totalInputs = comp.type === 'NOT' ? 1 : (comp.type === 'INPUT' ? 0 : (comp.type ===
+                    'OUTPUT' ? 1 : 2));
+                const totalOutputs = comp.type === 'OUTPUT' ? 0 : 1;
+                const w = comp.width;
+                const h = comp.height;
+
+                if (portType === 'input') {
+                    if (totalInputs === 0) return null;
+                    const spacing = h / (totalInputs + 1);
+                    const py = comp.y + spacing * (portIdx + 1);
+                    return { x: comp.x, y: py };
+                } else if (portType === 'output') {
+                    if (totalOutputs === 0) return null;
+                    return { x: comp.x + w, y: comp.y + h / 2 };
+                }
+                return null;
+            }
+
+            function getComponentPortCount(comp) {
+                const totalInputs = comp.type === 'NOT' ? 1 : (comp.type === 'INPUT' ? 0 : (comp.type === 'OUTPUT' ?
+                    1 : 2));
+                const totalOutputs = comp.type === 'OUTPUT' ? 0 : 1;
+                return { inputs: totalInputs, outputs: totalOutputs };
+            }
+
+            function findPortAtPosition(px, py) {
+                // 检查所有组件的所有端口
+                let closest = null;
+                let closestDist = PORT_HOVER_RADIUS;
+                for (const comp of components) {
+                    const { inputs, outputs } = getComponentPortCount(comp);
+                    for (let i = 0; i < inputs; i++) {
+                        const pos = getPortPosition(comp, 'input', i);
+                        if (!pos) continue;
+                        const dist = Math.hypot(px - pos.x, py - pos.y);
+                        if (dist < closestDist) {
+                            closest = { compId: comp.id, portType: 'input', portIdx: i };
+                            closestDist = dist;
+                        }
+                    }
+                    for (let i = 0; i < outputs; i++) {
+                        const pos = getPortPosition(comp, 'output', i);
+                        if (!pos) continue;
+                        const dist = Math.hypot(px - pos.x, py - pos.y);
+                        if (dist < closestDist) {
+                            closest = { compId: comp.id, portType: 'output', portIdx: i };
+                            closestDist = dist;
+                        }
+                    }
+                }
+                return closest;
+            }
+
+            function findComponentAtPosition(px, py) {
+                // 从上到下检查（后放置的在上层）
+                for (let i = components.length - 1; i >= 0; i--) {
+                    const comp = components[i];
+                    if (px >= comp.x && px <= comp.x + comp.width &&
+                        py >= comp.y && py <= comp.y + comp.height) {
+                        return comp;
+                    }
+                }
+                return null;
+            }
+
+            function findWireAtPosition(px, py) {
+                const threshold = 8;
+                let closestIdx = -1;
+                let closestDist = threshold;
+                for (let i = 0; i < wires.length; i++) {
+                    const wire = wires[i];
+                    const srcComp = getComponentById(wire.fromCompId);
+                    const dstComp = getComponentById(wire.toCompId);
+                    if (!srcComp || !dstComp) continue;
+                    const fromPos = getPortPosition(srcComp, 'output', wire.fromPortIdx);
+                    const toPos = getPortPosition(dstComp, 'input', wire.toPortIdx);
+                    if (!fromPos || !toPos) continue;
+
+                    // 采样贝塞尔曲线
+                    const samples = 20;
+                    for (let s = 0; s <= samples; s++) {
+                        const t = s / samples;
+                        const cx = fromPos.x + Math.abs(toPos.x - fromPos.x) * 0.5;
+                        const cy = fromPos.y;
+                        const bx = (1 - t) * (1 - t) * fromPos.x + 2 * (1 - t) * t * cx + t * t * toPos.x;
+                        const by = (1 - t) * (1 - t) * fromPos.y + 2 * (1 - t) * t * cy + t * t * toPos.y;
+                        const dist = Math.hypot(px - bx, py - by);
+                        if (dist < closestDist) {
+                            closestDist = dist;
+                            closestIdx = i;
+                        }
+                    }
+                }
+                return closestIdx;
+            }
+
+            function isInputPortOccupied(compId, portIdx) {
+                return wires.some(w => w.toCompId === compId && w.toPortIdx === portIdx);
+            }
+
+            // ==================== 信号传播 ====================
+            function propagateSignals() {
+                // 初始化所有组件输出
+                const outputs = new Map(); // compId -> value (0或1)
+                for (const comp of components) {
+                    if (comp.type === 'INPUT') {
+                        outputs.set(comp.id, comp.userValue);
+                    } else {
+                        outputs.set(comp.id, 0); // 默认0
+                    }
+                }
+
+                // 构建依赖图：对于每条连线，dst依赖src
+                // 使用事件驱动传播
+                const queue = [];
+                const inQueue = new Set();
+
+                // 初始：所有INPUT组件触发
+                for (const comp of components) {
+                    if (comp.type === 'INPUT') {
+                        // 找到所有连接到该INPUT输出的连线
+                        for (const wire of wires) {
+                            if (wire.fromCompId === comp.id) {
+                                if (!inQueue.has(wire.toCompId)) {
+                                    queue.push(wire.toCompId);
+                                    inQueue.add(wire.toCompId);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 也把没有输入连线的组件加入（它们的输入为0，需要计算）
+                for (const comp of components) {
+                    if (comp.type !== 'INPUT' && comp.type !== 'OUTPUT') {
+                        const { inputs } = getComponentPortCount(comp);
+                        let hasAllInputsConnected = true;
+                        for (let i = 0; i < inputs; i++) {
+                            if (!isInputPortOccupied(comp.id, i)) {
+                                hasAllInputsConnected = false;
+                                break;
+                            }
+                        }
+                        if (!hasAllInputsConnected && !inQueue.has(comp.id)) {
+                            queue.push(comp.id);
+                            inQueue.add(comp.id);
+                        }
+                    }
+                    if (comp.type === 'OUTPUT' && !inQueue.has(comp.id)) {
+                        queue.push(comp.id);
+                        inQueue.add(comp.id);
+                    }
+                }
+
+                let iterations = 0;
+                while (queue.length > 0 && iterations < MAX_PROPAGATION_ITERATIONS) {
+                    iterations++;
+                    const compId = queue.shift();
+                    inQueue.delete(compId);
+                    const comp = getComponentById(compId);
+                    if (!comp) continue;
+
+                    const oldOutput = outputs.get(compId);
+                    let newOutput = 0;
+                    const { inputs } = getComponentPortCount(comp);
+
+                    if (comp.type === 'OUTPUT') {
+                        // 查找连接到该OUTPUT输入的连线
+                        const wire = wires.find(w => w.toCompId === compId && w.toPortIdx === 0);
+                        if (wire) {
+                            newOutput = outputs.get(wire.fromCompId) ?? 0;
+                        } else {
+                            newOutput = 0;
+                        }
+                    } else if (comp.type === 'AND') {
+                        const in0 = getInputValue(compId, 0, outputs);
+                        const in1 = getInputValue(compId, 1, outputs);
+                        newOutput = (in0 && in1) ? 1 : 0;
+                    } else if (comp.type === 'OR') {
+                        const in0 = getInputValue(compId, 0, outputs);
+                        const in1 = getInputValue(compId, 1, outputs);
+                        newOutput = (in0 || in1) ? 1 : 0;
+                    } else if (comp.type === 'NOT') {
+                        const in0 = getInputValue(compId, 0, outputs);
+                        newOutput = in0 ? 0 : 1;
+                    } else if (comp.type === 'NAND') {
+                        const in0 = getInputValue(compId, 0, outputs);
+                        const in1 = getInputValue(compId, 1, outputs);
+                        newOutput = (in0 && in1) ? 0 : 1;
+                    } else if (comp.type === 'NOR') {
+                        const in0 = getInputValue(compId, 0, outputs);
+                        const in1 = getInputValue(compId, 1, outputs);
+                        newOutput = (in0 || in1) ? 0 : 1;
+                    } else if (comp.type === 'XOR') {
+                        const in0 = getInputValue(compId, 0, outputs);
+                        const in1 = getInputValue(compId, 1, outputs);
+                        newOutput = (in0 !== in1) ? 1 : 0;
+                    }
+
+                    outputs.set(compId, newOutput);
+
+                    // 如果输出改变，传播到下游
+                    if (newOutput !== oldOutput) {
+                        for (const wire of wires) {
+                            if (wire.fromCompId === compId) {
+                                if (!inQueue.has(wire.toCompId)) {
+                                    queue.push(wire.toCompId);
+                                    inQueue.add(wire.toCompId);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 更新组件显示值
+                for (const comp of components) {
+                    comp.outputValue = outputs.get(comp.id) ?? 0;
+                }
+
+                // 如果达到最大迭代次数，可能是振荡电路
+                if (iterations >= MAX_PROPAGATION_ITERATIONS) {
+                    console.warn('信号传播达到最大迭代次数，可能存在振荡回路');
+                }
+            }
+
+            function getInputValue(compId, portIdx, outputs) {
+                const wire = wires.find(w => w.toCompId === compId && w.toPortIdx === portIdx);
+                if (wire) {
+                    return outputs.get(wire.fromCompId) ?? 0;
+                }
+                return 0; // 未连接默认为0
+            }
+
+            // ==================== 组件操作 ====================
+            function createComponent(type, x, y) {
+                const comp = {
+                    id: nextComponentId++,
+                    type: type,
+                    x: x,
+                    y: y,
+                    width: type === 'OUTPUT' ? 44 : (type === 'INPUT' ? 60 : 72),
+                    height: type === 'OUTPUT' ? 44 : (type === 'INPUT' ? 40 : 50),
+                    userValue: 0, // INPUT的切换值
+                    outputValue: 0, // 计算后的输出值
+                };
+                components.push(comp);
+                selectedComponentId = comp.id;
+                selectedWireIndex = null;
+                propagateSignals();
+                return comp;
+            }
+
+            function deleteComponent(compId) {
+                // 删除所有相关连线
+                wires = wires.filter(w => w.fromCompId !== compId && w.toCompId !== compId);
+                components = components.filter(c => c.id !== compId);
+                if (selectedComponentId === compId) selectedComponentId = null;
+                selectedWireIndex = null;
+                propagateSignals();
+            }
+
+            function deleteWire(index) {
+                if (index >= 0 && index < wires.length) {
+                    wires.splice(index, 1);
+                    selectedWireIndex = null;
+                    propagateSignals();
+                }
+            }
+
+            function addWire(fromCompId, fromPortIdx, toCompId, toPortIdx) {
+                // 检查是否已存在相同连接
+                const existing = wires.findIndex(w =>
+                    w.toCompId === toCompId && w.toPortIdx === toPortIdx
+                );
+                if (existing >= 0) {
+                    // 替换
+                    wires[existing] = { fromCompId, fromPortIdx, toCompId, toPortIdx };
+                } else {
+                    wires.push({ fromCompId, fromPortIdx, toCompId, toPortIdx });
+                }
+                selectedWireIndex = null;
+                propagateSignals();
+            }
+
+            function clearAll() {
+                components = [];
+                wires = [];
+                selectedComponentId = null;
+                selectedWireIndex = null;
+                nextComponentId = 1;
+                propagateSignals();
+            }
+
+            // ==================== 渲染 ====================
+            function resizeCanvas() {
+                const rect = canvasContainer.getBoundingClientRect();
+                const dpr = window.devicePixelRatio || 1;
+                const w = rect.width;
+                const h = rect.height;
+                if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+                    canvas.width = w * dpr;
+                    canvas.height = h * dpr;
+                    canvas.style.width = w + 'px';
+                    canvas.style.height = h + 'px';
+                    ctx.setTransform(1, 0, 0, 1, 0, 0);
+                    ctx.scale(dpr, dpr);
+                }
+                return { w, h };
+            }
+
+            function drawGrid(w, h) {
+                // 网格已通过CSS背景实现，此处可选额外绘制
+                // 保持轻量，使用CSS径向渐变背景
+            }
+
+            function drawComponent(comp) {
+                const colors = GATE_COLORS[comp.type] || GATE_COLORS['AND'];
+                const isSelected = comp.id === selectedComponentId;
+                const x = comp.x;
+                const y = comp.y;
+                const w = comp.width;
+                const h = comp.height;
+                const radius = comp.type === 'OUTPUT' ? w / 2 : 8;
+
+                // 阴影
+                ctx.shadowColor = isSelected ? 'rgba(92,156,230,0.5)' : 'rgba(0,0,0,0.3)';
+                ctx.shadowBlur = isSelected ? 16 : 8;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 2;
+
+                // 主体
+                ctx.beginPath();
+                if (comp.type === 'OUTPUT') {
+                    ctx.arc(x + w / 2, y + h / 2, radius, 0, Math.PI * 2);
+                } else {
+                    ctx.roundRect(x, y, w, h, radius);
+                }
+                ctx.fillStyle = colors.fill;
+                ctx.fill();
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+                ctx.shadowOffsetY = 0;
+
+                // 边框
+                ctx.strokeStyle = isSelected ? '#5c9ce6' : colors.stroke;
+                ctx.lineWidth = isSelected ? 2.5 : 1.8;
+                ctx.stroke();
+
+                // 如果选中，额外发光边框
+                if (isSelected) {
+                    ctx.strokeStyle = 'rgba(92,156,230,0.55)';
+                    ctx.lineWidth = 5;
+                    ctx.globalAlpha = 0.4;
+                    ctx.stroke();
+                    ctx.globalAlpha = 1;
+                    ctx.lineWidth = 2.5;
+                    ctx.strokeStyle = '#5c9ce6';
+                    ctx.stroke();
+                }
+
+                // NOT门的反相圈（输出端小圆）
+                if (comp.type === 'NOT' || comp.type === 'NAND' || comp.type === 'NOR') {
+                    const outPos = getPortPosition(comp, 'output', 0);
+                    if (outPos) {
+                        ctx.beginPath();
+                        ctx.arc(outPos.x - 10, outPos.y, 4, 0, Math.PI * 2);
+                        ctx.fillStyle = colors.fill;
+                        ctx.fill();
+                        ctx.strokeStyle = colors.stroke;
+                        ctx.lineWidth = 1.5;
+                        ctx.stroke();
+                    }
+                }
+
+                // 标签
+                ctx.fillStyle = colors.text;
+                ctx.font = '600 12px "Segoe UI","PingFang SC","Microsoft YaHei",sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                let label = colors.label;
+                if (comp.type === 'INPUT') label = 'IN';
+                if (comp.type === 'OUTPUT') label = '';
+                if (comp.type === 'NAND') label = '&';
+                if (comp.type === 'NOR') label = '≥1';
+                const textX = comp.type === 'OUTPUT' ? x + w / 2 : x + w / 2;
+                const textY = comp.type === 'OUTPUT' ? y + h / 2 : y + h / 2;
+                ctx.fillText(label, textX, textY);
+
+                // OUTPUT的值显示
+                if (comp.type === 'OUTPUT') {
+                    const val = comp.outputValue;
+                    ctx.fillStyle = val ? '#3dd68c' : '#e0556a';
+                    ctx.font = 'bold 10px "Segoe UI","PingFang SC","Microsoft YaHei",sans-serif';
+                    ctx.fillText(val ? '1' : '0', textX, textY + 1);
+                }
+
+                // INPUT的值显示
+                if (comp.type === 'INPUT') {
+                    const val = comp.userValue;
+                    ctx.fillStyle = val ? '#3dd68c' : '#e0556a';
+                    ctx.font = 'bold 11px "Segoe UI","PingFang SC","Microsoft YaHei",sans-serif';
+                    ctx.fillText(val ? '1' : '0', textX, textY - 16);
+                }
+            }
+
+            function drawPort(comp, portType, portIdx) {
+                const pos = getPortPosition(comp, portType, portIdx);
+                if (!pos) return;
+
+                const isConnected = portType === 'input' ?
+                    isInputPortOccupied(comp.id, portIdx) :
+                    wires.some(w => w.fromCompId === comp.id && w.fromPortIdx === portIdx);
+
+                const isHovered = hoveredPort &&
+                    hoveredPort.compId === comp.id &&
+                    hoveredPort.portType === portType &&
+                    hoveredPort.portIdx === portIdx;
+
+                const radius = isHovered ? PORT_RADIUS + 2 : PORT_RADIUS;
+
+                // 外圈光晕（悬停时）
+                if (isHovered) {
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, radius + 5, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+                    ctx.fill();
+                }
+
+                // 主体
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+                if (isConnected) {
+                    const val = portType === 'input' ?
+                        (getInputValueFromWire(comp.id, portIdx)) :
+                        comp.outputValue;
+                    ctx.fillStyle = val ? '#3dd68c' : '#e0556a';
+                } else {
+                    ctx.fillStyle = '#3a3d45';
+                }
+                ctx.fill();
+                ctx.strokeStyle = isHovered ? '#fff' : '#6a6e78';
+                ctx.lineWidth = isHovered ? 2.5 : 1.8;
+                ctx.stroke();
+
+                // 悬停时亮环
+                if (isHovered) {
+                    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+                    ctx.lineWidth = 3;
+                    ctx.globalAlpha = 0.5;
+                    ctx.stroke();
+                    ctx.globalAlpha = 1;
+                }
+            }
+
+            function getInputValueFromWire(compId, portIdx) {
+                const wire = wires.find(w => w.toCompId === compId && w.toPortIdx === portIdx);
+                if (wire) {
+                    const srcComp = getComponentById(wire.fromCompId);
+                    return srcComp ? srcComp.outputValue : 0;
+                }
+                return 0;
+            }
+
+            function drawWire(wire, index) {
+                const srcComp = getComponentById(wire.fromCompId);
+                const dstComp = getComponentById(wire.toCompId);
+                if (!srcComp || !dstComp) return;
+                const fromPos = getPortPosition(srcComp, 'output', wire.fromPortIdx);
+                const toPos = getPortPosition(dstComp, 'input', wire.toPortIdx);
+                if (!fromPos || !toPos) return;
+
+                const isSelected = index === selectedWireIndex;
+                const signalVal = srcComp.outputValue;
+
+                const cx = fromPos.x + Math.abs(toPos.x - fromPos.x) * 0.5;
+                const cy = fromPos.y;
+
+                ctx.beginPath();
+                ctx.moveTo(fromPos.x, fromPos.y);
+                ctx.quadraticCurveTo(cx, cy, toPos.x, toPos.y);
+
+                if (isSelected) {
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 3.5;
+                    ctx.shadowColor = 'rgba(255,255,255,0.6)';
+                    ctx.shadowBlur = 10;
+                    ctx.stroke();
+                    ctx.shadowColor = 'transparent';
+                    ctx.shadowBlur = 0;
+                }
+
+                ctx.strokeStyle = signalVal ? '#3dd68c' : '#c44d5a';
+                ctx.lineWidth = isSelected ? 2.8 : 2;
+                ctx.stroke();
+
+                // 信号流动小点（高电平时）
+                if (signalVal && !isSelected) {
+                    const t = (Date.now() / 1200) % 1;
+                    const bx = (1 - t) * (1 - t) * fromPos.x + 2 * (1 - t) * t * cx + t * t * toPos.x;
+                    const by = (1 - t) * (1 - t) * fromPos.y + 2 * (1 - t) * t * cy + t * t * toPos.y;
+                    ctx.beginPath();
+                    ctx.arc(bx, by, 3.5, 0, Math.PI * 2);
+                    ctx.fillStyle = '#3dd68c';
+                    ctx.fill();
+                    ctx.fillStyle = 'rgba(61,214,140,0.5)';
+                    ctx.arc(bx, by, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            function drawTempWire() {
+                if (!tempWire) return;
+                const fx = tempWire.fromX;
+                const fy = tempWire.fromY;
+                const tx = tempWire.toX;
+                const ty = tempWire.toY;
+                const cx = fx + Math.abs(tx - fx) * 0.5;
+                const cy = fy;
+
+                ctx.beginPath();
+                ctx.moveTo(fx, fy);
+                ctx.quadraticCurveTo(cx, cy, tx, ty);
+                ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([6, 4]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            function drawPlacementPreview() {
+                if (!currentTool || isDragging || dragTarget) return;
+                const comp = {
+                    type: currentTool,
+                    x: mousePos.x - (currentTool === 'OUTPUT' ? 22 : currentTool === 'INPUT' ? 30 : 36),
+                    y: mousePos.y - (currentTool === 'OUTPUT' ? 22 : currentTool === 'INPUT' ? 20 : 25),
+                    width: currentTool === 'OUTPUT' ? 44 : (currentTool === 'INPUT' ? 60 : 72),
+                    height: currentTool === 'OUTPUT' ? 44 : (currentTool === 'INPUT' ? 40 : 50),
+                    outputValue: 0,
+                    userValue: 0,
+                    id: -1,
+                };
+                ctx.globalAlpha = 0.55;
+                drawComponent(comp);
+                ctx.globalAlpha = 1;
+            }
+
+            function render() {
+                const { w, h } = resizeCanvas();
+                ctx.clearRect(0, 0, w, h);
+
+                // 绘制连线
+                for (let i = 0; i < wires.length; i++) {
+                    drawWire(wires[i], i);
+                }
+
+                // 绘制临时连线
+                drawTempWire();
+
+                // 绘制组件
+                for (const comp of components) {
+                    drawComponent(comp);
+                }
+
+                // 绘制端口
+                for (const comp of components) {
+                    const { inputs, outputs } = getComponentPortCount(comp);
+                    for (let i = 0; i < inputs; i++) {
+                        drawPort(comp, 'input', i);
+                    }
+                    for (let i = 0; i < outputs; i++) {
+                        drawPort(comp, 'output', i);
+                    }
+                }
+
+                // 放置预览
+                drawPlacementPreview();
+
+                // 如果有选中的组件，绘制轻微的脉冲动画指示
+                if (selectedComponentId && !isDragging) {
+                    const comp = getComponentById(selectedComponentId);
+                    if (comp) {
+                        const pulse = Math.sin(Date.now() / 600) * 0.3 + 0.7;
+                        ctx.strokeStyle = `rgba(92,156,230,${pulse})`;
+                        ctx.lineWidth = 3;
+                        ctx.setLineDash([4, 4]);
+                        ctx.beginPath();
+                        if (comp.type === 'OUTPUT') {
+                            ctx.roundRect(comp.x - 6, comp.y - 6, comp.width + 12, comp.height + 12, comp.width / 2 + 6);
+                        } else {
+                            ctx.roundRect(comp.x - 6, comp.y - 6, comp.width + 12, comp.height + 12, 10);
+                        }
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                    }
+                }
+            }
+
+            function animationLoop() {
+                render();
+                requestAnimationFrame(animationLoop);
+            }
+
+            // ==================== 事件处理 ====================
+            function getCanvasPos(e) {
+                const rect = canvas.getBoundingClientRect();
+                return {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top,
+                };
+            }
+
+            function updateCursor() {
+                if (isDragging && dragTarget && dragTarget.type === 'wire-start') {
+                    canvasContainer.classList.add('wiring');
+                    canvasContainer.classList.remove('crosshair', 'grabbing');
+                } else if (isDragging && dragTarget && dragTarget.type === 'component') {
+                    canvasContainer.classList.add('grabbing');
+                    canvasContainer.classList.remove('crosshair', 'wiring');
+                } else if (currentTool && !isDragging) {
+                    canvasContainer.classList.add('crosshair');
+                    canvasContainer.classList.remove('grabbing', 'wiring');
+                } else if (hoveredPort && hoveredPort.portType === 'output') {
+                    canvasContainer.classList.add('wiring');
+                    canvasContainer.classList.remove('crosshair', 'grabbing');
+                } else {
+                    canvasContainer.classList.remove('crosshair', 'grabbing', 'wiring');
+                }
+            }
+
+            function updateStatusBadge(text) {
+                statusBadge.innerHTML = `<span class="dot"></span>${text}`;
+            }
+
+            function updateTooltip(text, x, y) {
+                if (text) {
+                    tooltip.textContent = text;
+                    tooltip.classList.add('visible');
+                    tooltip.style.left = (x + 16) + 'px';
+                    tooltip.style.top = (y - 36) + 'px';
+                } else {
+                    tooltip.classList.remove('visible');
+                }
+            }
+
+            canvasContainer.addEventListener('mousemove', (e) => {
+                const pos = getCanvasPos(e);
+                mousePos = pos;
+
+                // 更新悬停端口
+                hoveredPort = findPortAtPosition(pos.x, pos.y);
+                hoveredComponentId = null;
+                if (!hoveredPort) {
+                    const comp = findComponentAtPosition(pos.x, pos.y);
+                    if (comp) hoveredComponentId = comp.id;
+                }
+
+                // 更新光标
+                updateCursor();
+
+                // 拖拽中
+                if (isDragging && dragTarget) {
+                    const dx = pos.x - dragStartPos.x;
+                    const dy = pos.y - dragStartPos.y;
+                    if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
+                        hasMovedSinceDown = true;
+                    }
+                    if (dragTarget.type === 'component' && hasMovedSinceDown) {
+                        const comp = getComponentById(dragTarget.id);
+                        if (comp) {
+                            comp.x = pos.x - dragTarget.offsetX;
+                            comp.y = pos.y - dragTarget.offsetY;
+                            // 对齐网格
+                            comp.x = Math.round(comp.x / GRID_SIZE) * GRID_SIZE;
+                            comp.y = Math.round(comp.y / GRID_SIZE) * GRID_SIZE;
+                        }
+                    }
+                    if (dragTarget.type === 'wire-start') {
+                        tempWire = {
+                            fromX: dragTarget.startX,
+                            fromY: dragTarget.startY,
+                            toX: pos.x,
+                            toY: pos.y,
+                        };
+                    }
+                }
+
+                // 更新提示
+                if (hoveredPort && !isDragging) {
+                    const comp = getComponentById(hoveredPort.compId);
+                    const typeName = comp ? comp.type : '';
+                    const portLabel = hoveredPort.portType === 'input' ? '输入' : '输出';
+                    updateTooltip(`${typeName} - ${portLabel}端口 #${hoveredPort.portIdx + 1}`, e.clientX, e.clientY);
+                } else if (hoveredComponentId && !isDragging) {
+                    const comp = getComponentById(hoveredComponentId);
+                    if (comp && comp.type === 'INPUT') {
+                        updateTooltip(`点击切换值 (当前: ${comp.userValue})`, e.clientX, e.clientY);
+                    } else if (comp) {
+                        updateTooltip(`${comp.type} - 拖拽移动 | 右键删除`, e.clientX, e.clientY);
+                    } else {
+                        updateTooltip(null);
+                    }
+                } else if (currentTool && !isDragging) {
+                    updateTooltip(`点击放置 ${currentTool} 组件`, e.clientX, e.clientY);
+                } else {
+                    updateTooltip(null);
+                }
+            });
+
+            canvasContainer.addEventListener('mousedown', (e) => {
+                if (e.button !== 0) return; // 只响应左键
+                const pos = getCanvasPos(e);
+                mousePos = pos;
+                dragStartPos = { x: pos.x, y: pos.y };
+                hasMovedSinceDown = false;
+                isDragging = true;
+                tempWire = null;
+
+                // 检查是否在端口上（优先输出端口用于连线）
+                const port = findPortAtPosition(pos.x, pos.y);
+                if (port && port.portType === 'output') {
+                    const comp = getComponentById(port.compId);
+                    const portPos = getPortPosition(comp, 'output', port.portIdx);
+                    if (portPos) {
+                        dragTarget = {
+                            type: 'wire-start',
+                            compId: port.compId,
+                            portIdx: port.portIdx,
+                            startX: portPos.x,
+                            startY: portPos.y,
+                        };
+                        tempWire = { fromX: portPos.x, fromY: portPos.y, toX: pos.x, toY: pos.y };
+                        updateCursor();
+                        return;
+                    }
+                }
+
+                // 检查是否在组件上
+                const comp = findComponentAtPosition(pos.x, pos.y);
+                if (comp) {
+                    dragTarget = {
+                        type: 'component',
+                        id: comp.id,
+                        offsetX: pos.x - comp.x,
+                        offsetY: pos.y - comp.y,
+                    };
+                    selectedComponentId = comp.id;
+                    selectedWireIndex = null;
+                    updateCursor();
+                    updateStatusBadge(`已选中: ${comp.type} (拖拽移动 | 右键或Delete删除)`);
+                    return;
+                }
+
+                // 检查是否在线附近
+                const wireIdx = findWireAtPosition(pos.x, pos.y);
+                if (wireIdx >= 0) {
+                    selectedWireIndex = wireIdx;
+                    selectedComponentId = null;
+                    dragTarget = null;
+                    isDragging = false;
+                    updateStatusBadge(`已选中连线 (按Delete删除)`);
+                    return;
+                }
+
+                // 点击空白
+                selectedComponentId = null;
+                selectedWireIndex = null;
+                dragTarget = null;
+                isDragging = false;
+                updateStatusBadge('就绪 - 选择组件放置或移动');
+                updateCursor();
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const pos = getCanvasPos(e);
+                mousePos = pos;
+                if (dragTarget && dragTarget.type === 'wire-start' && tempWire) {
+                    tempWire.toX = pos.x;
+                    tempWire.toY = pos.y;
+                }
+            });
+
+            window.addEventListener('mouseup', (e) => {
+                if (!isDragging) return;
+                const pos = getCanvasPos(e);
+                mousePos = pos;
+
+                if (dragTarget && dragTarget.type === 'wire-start') {
+                    // 尝试完成连线
+                    const targetPort = findPortAtPosition(pos.x, pos.y);
+                    if (targetPort && targetPort.portType === 'input' && targetPort.compId !== dragTarget.compId) {
+                        addWire(dragTarget.compId, dragTarget.portIdx, targetPort.compId, targetPort.portIdx);
+                        updateStatusBadge('连线创建成功');
+                    } else if (targetPort && targetPort.portType === 'input' && targetPort.compId === dragTarget
+                        .compId) {
+                        updateStatusBadge('⚠ 不能连接到同一组件');
+                    } else {
+                        updateStatusBadge('连线已取消 (需拖到输入端口)');
+                    }
+                } else if (dragTarget && dragTarget.type === 'component' && !hasMovedSinceDown) {
+                    // 点击（未拖拽）- 处理INPUT切换
+                    const comp = getComponentById(dragTarget.id);
+                    if (comp && comp.type === 'INPUT') {
+                        comp.userValue = comp.userValue ? 0 : 1;
+                        propagateSignals();
+                        updateStatusBadge(`输入开关切换为: ${comp.userValue}`);
+                    }
+                }
+
+                if (dragTarget && dragTarget.type === 'component' && hasMovedSinceDown) {
+                    propagateSignals();
+                    updateStatusBadge('组件已移动');
+                }
+
+                isDragging = false;
+                dragTarget = null;
+                tempWire = null;
+                hasMovedSinceDown = false;
+                updateCursor();
+            });
+
+            canvasContainer.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                const pos = getCanvasPos(e);
+
+                // 检查是否在组件上
+                const comp = findComponentAtPosition(pos.x, pos.y);
+                if (comp) {
+                    deleteComponent(comp.id);
+                    updateStatusBadge(`已删除组件: ${comp.type}`);
+                    return;
+                }
+
+                // 检查是否在连线上
+                const wireIdx = findWireAtPosition(pos.x, pos.y);
+                if (wireIdx >= 0) {
+                    deleteWire(wireIdx);
+                    updateStatusBadge('已删除连线');
+                    return;
+                }
+            });
+
+            document.addEventListener('keydown', (e) => {
+                // 快捷键
+                const key = e.key.toLowerCase();
+                const toolMap = {
+                    '1': 'INPUT',
+                    '2': 'OUTPUT',
+                    '3': 'AND',
+                    '4': 'OR',
+                    '5': 'NOT',
+                    '6': 'NAND',
+                    '7': 'NOR',
+                    '8': 'XOR',
+                };
+
+                if (toolMap[key] && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                    e.preventDefault();
+                    setTool(toolMap[key]);
+                    return;
+                }
+
+                if (key === 'escape') {
+                    e.preventDefault();
+                    setTool(null);
+                    selectedComponentId = null;
+                    selectedWireIndex = null;
+                    updateStatusBadge('已取消选择');
+                    return;
+                }
+
+                if ((key === 'delete' || key === 'backspace') && !e.ctrlKey && !e.metaKey) {
+                    e.preventDefault();
+                    if (selectedWireIndex !== null) {
+                        deleteWire(selectedWireIndex);
+                        updateStatusBadge('已删除连线');
+                    } else if (selectedComponentId !== null) {
+                        const comp = getComponentById(selectedComponentId);
+                        if (comp) {
+                            deleteComponent(selectedComponentId);
+                            updateStatusBadge(`已删除组件: ${comp.type}`);
+                        }
+                    }
+                    return;
+                }
+            });
+
+            // ==================== 工具栏事件 ====================
+            function setTool(toolType) {
+                if (currentTool === toolType) {
+                    currentTool = null;
+                } else {
+                    currentTool = toolType;
+                }
+                updateToolButtons();
+                updateCursor();
+                if (currentTool) {
+                    updateStatusBadge(`放置模式: ${currentTool} - 点击画布放置 (Esc取消)`);
+                } else {
+                    updateStatusBadge('选择模式 - 拖拽移动 | 从输出端口拖线');
+                }
+            }
+
+            function updateToolButtons() {
+                toolbarButtons.forEach(btn => {
+                    const toolType = btn.getAttribute('data-tool');
+                    if (toolType === currentTool) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+            }
+
+            toolbarButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const toolType = btn.getAttribute('data-tool');
+                    setTool(toolType);
+                });
+            });
+
+            btnClear.addEventListener('click', () => {
+                if (components.length === 0 && wires.length === 0) return;
+                if (confirm('确定要清空画布上的所有组件和连线吗？此操作不可恢复。')) {
+                    clearAll();
+                    updateStatusBadge('画布已清空');
+                }
+            });
+
+            btnDelete.addEventListener('click', () => {
+                if (selectedWireIndex !== null) {
+                    deleteWire(selectedWireIndex);
+                    updateStatusBadge('已删除连线');
+                } else if (selectedComponentId !== null) {
+                    const comp = getComponentById(selectedComponentId);
+                    if (comp) {
+                        deleteComponent(selectedComponentId);
+                        updateStatusBadge(`已删除组件: ${comp.type}`);
+                    }
+                } else {
+                    updateStatusBadge('⚠ 请先选中组件或连线');
+                }
+            });
+
+            // 点击画布空白处放置组件
+            canvasContainer.addEventListener('click', (e) => {
+                if (isDragging || hasMovedSinceDown) return;
+                if (dragTarget) return; // 已经在mousedown中处理
+                if (!currentTool) return;
+                // 检查是否点击在已有组件上
+                const pos = getCanvasPos(e);
+                const comp = findComponentAtPosition(pos.x, pos.y);
+                if (comp) return; // 点击在组件上，不放置
+                const wireIdx = findWireAtPosition(pos.x, pos.y);
+                if (wireIdx >= 0) return; // 点击在连线上
+
+                // 放置新组件
+                const newComp = createComponent(
+                    currentTool,
+                    pos.x - (currentTool === 'OUTPUT' ? 22 : currentTool === 'INPUT' ? 30 : 36),
+                    pos.y - (currentTool === 'OUTPUT' ? 22 : currentTool === 'INPUT' ? 20 : 25)
+                );
+                // 对齐网格
+                newComp.x = Math.round(newComp.x / GRID_SIZE) * GRID_SIZE;
+                newComp.y = Math.round(newComp.y / GRID_SIZE) * GRID_SIZE;
+                propagateSignals();
+                updateStatusBadge(`已放置: ${currentTool} (ID:${newComp.id})`);
+                // 放置后保持工具选择，方便连续放置
+                // 如需取消，按Esc或再次点击工具按钮
+            });
+
+            // 窗口大小变化
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+            });
+
+            // 触摸事件（基础支持）
+            canvasContainer.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    const touch = e.touches[0];
+                    const mouseEvent = new MouseEvent('mousedown', {
+                        clientX: touch.clientX,
+                        clientY: touch.clientY,
+                        button: 0,
+                    });
+                    canvasContainer.dispatchEvent(mouseEvent);
+                }
+            }, { passive: false });
+
+            canvasContainer.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 1) {
+                    const touch = e.touches[0];
+                    const mouseEvent = new MouseEvent('mousemove', {
+                        clientX: touch.clientX,
+                        clientY: touch.clientY,
+                    });
+                    canvasContainer.dispatchEvent(mouseEvent);
+                }
+            }, { passive: false });
+
+            canvasContainer.addEventListener('touchend', (e) => {
+                const mouseEvent = new MouseEvent('mouseup', { button: 0 });
+                window.dispatchEvent(mouseEvent);
+            });
+
+            // ==================== 初始化 ====================
+            function init() {
+                resizeCanvas();
+                updateToolButtons();
+                updateCursor();
+                updateStatusBadge('就绪 - 从工具栏选择组件放置，或拖拽输出端口连线');
+
+                // 放置一些示例组件
+                const demoInput1 = createComponent('INPUT', 80, 140);
+                demoInput1.userValue = 1;
+                const demoInput2 = createComponent('INPUT', 80, 240);
+                demoInput2.userValue = 0;
+                const demoAnd = createComponent('AND', 220, 170);
+                const demoOutput = createComponent('OUTPUT', 370, 178);
+                addWire(demoInput1.id, 0, demoAnd.id, 0);
+                addWire(demoInput2.id, 0, demoAnd.id, 1);
+                addWire(demoAnd.id, 0, demoOutput.id, 0);
+                selectedComponentId = null;
+                selectedWireIndex = null;
+                propagateSignals();
+                updateStatusBadge('示例电路已加载 - AND门: 1 AND 0 = 0 (输出灯为红色)');
+            }
+
+            init();
+            animationLoop();
+
+            console.log('🔌 逻辑电路模拟器已就绪');
+            console.log('  - 点击工具栏按钮选择组件类型，在画布上放置');
+            console.log('  - 从输出端口(右侧圆点)拖拽到输入端口(左侧圆点)创建连线');
+            console.log('  - 拖拽组件移动 | 点击INPUT切换值 | 右键删除');
+            console.log('  - 快捷键: 1-8选择工具 | Delete删除选中 | Esc取消');
+            console.log('  - 绿色=高电平(1) | 红色=低电平(0)');
+        })();
+    </script>
+</body>
+</html>

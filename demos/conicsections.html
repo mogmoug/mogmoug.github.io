@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>圆锥曲线 - 主要结论图形演示</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.27.0/plotly.min.js">
+    </script>
+    <style>
+        :root {
+            --bg: #f5f0eb;
+            --card-bg: #fffefb;
+            --text: #2c2416;
+            --text-secondary: #5c5242;
+            --border: #e0d8cc;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.07);
+            --accent-circle: #3b7dd8;
+            --accent-ellipse: #2d9d6f;
+            --accent-hyperbola: #d94535;
+            --accent-parabola: #7b3fb8;
+            --gold: #c4933a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 20px 16px 40px;
+            background-image:
+                radial-gradient(ellipse at 20% 10%, rgba(180, 160, 130, 0.15) 0%, transparent 60%),
+                radial-gradient(ellipse at 75% 85%, rgba(160, 140, 110, 0.12) 0%, transparent 55%);
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 28px;
+            padding: 24px 16px 10px;
+        }
+        .page-header h1 {
+            font-size: clamp(1.6rem, 3vw, 2.2rem);
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            color: #1e1810;
+            margin-bottom: 6px;
+        }
+        .page-header .subtitle {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+            letter-spacing: 0.02em;
+        }
+        .page-header .divider {
+            display: inline-block;
+            width: 60px;
+            height: 3px;
+            background: var(--gold);
+            border-radius: 2px;
+            margin-top: 10px;
+            opacity: 0.7;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 22px;
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 0 4px;
+        }
+
+        @media (max-width: 900px) {
+            .grid-container {
+                grid-template-columns: 1fr;
+                gap: 18px;
+                max-width: 600px;
+            }
+        }
+
+        .chart-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 16px 14px 10px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            transition: transform 0.25s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .chart-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.11);
+        }
+        .chart-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+        }
+        .chart-card.card-circle::before {
+            background: var(--accent-circle);
+        }
+        .chart-card.card-ellipse::before {
+            background: var(--accent-ellipse);
+        }
+        .chart-card.card-hyperbola::before {
+            background: var(--accent-hyperbola);
+        }
+        .chart-card.card-parabola::before {
+            background: var(--accent-parabola);
+        }
+
+        .chart-card .card-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+            padding: 0 6px;
+        }
+        .card-circle .card-label {
+            color: var(--accent-circle);
+        }
+        .card-ellipse .card-label {
+            color: var(--accent-ellipse);
+        }
+        .card-hyperbola .card-label {
+            color: var(--accent-hyperbola);
+        }
+        .card-parabola .card-label {
+            color: var(--accent-parabola);
+        }
+
+        .chart-wrap {
+            width: 100%;
+            height: 440px;
+            min-height: 380px;
+            position: relative;
+            z-index: 1;
+        }
+
+        @media (max-width: 600px) {
+            .chart-wrap {
+                height: 340px;
+                min-height: 300px;
+            }
+            .chart-card {
+                padding: 10px 6px 6px;
+                border-radius: 12px;
+            }
+            .page-header h1 {
+                font-size: 1.35rem;
+            }
+        }
+
+        .legend-hint {
+            font-size: 0.78rem;
+            color: #8a7e6e;
+            text-align: center;
+            margin-top: 4px;
+            letter-spacing: 0.02em;
+        }
+
+        .footer-note {
+            text-align: center;
+            margin-top: 32px;
+            font-size: 0.85rem;
+            color: #a09686;
+            letter-spacing: 0.03em;
+        }
+        .footer-note span {
+            color: #7a6e5c;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="page-header">
+        <h1>圆锥曲线 · 主要结论演示</h1>
+        <p class="subtitle">圆 &nbsp;·&nbsp; 椭圆 &nbsp;·&nbsp; 双曲线 &nbsp;·&nbsp; 抛物线</p>
+        <div class="divider"></div>
+    </header>
+
+    <div class="grid-container">
+        <!-- 圆 -->
+        <div class="chart-card card-circle">
+            <div class="card-label">🔵 圆 Circle</div>
+            <div id="chart-circle" class="chart-wrap"></div>
+            <p class="legend-hint">x² + y² = r² &nbsp;|&nbsp; 到定点（圆心）距离相等</p>
+        </div>
+
+        <!-- 椭圆 -->
+        <div class="chart-card card-ellipse">
+            <div class="card-label">🟢 椭圆 Ellipse</div>
+            <div id="chart-ellipse" class="chart-wrap"></div>
+            <p class="legend-hint">x²/a² + y²/b² = 1 &nbsp;|&nbsp; PF₁ + PF₂ = 2a（常数）</p>
+        </div>
+
+        <!-- 双曲线 -->
+        <div class="chart-card card-hyperbola">
+            <div class="card-label">🔴 双曲线 Hyperbola</div>
+            <div id="chart-hyperbola" class="chart-wrap"></div>
+            <p class="legend-hint">x²/a² − y²/b² = 1 &nbsp;|&nbsp; |PF₁ − PF₂| = 2a（常数）</p>
+        </div>
+
+        <!-- 抛物线 -->
+        <div class="chart-card card-parabola">
+            <div class="card-label">🟣 抛物线 Parabola</div>
+            <div id="chart-parabola" class="chart-wrap"></div>
+            <p class="legend-hint">y² = 2px &nbsp;|&nbsp; 到焦点距离 = 到准线距离</p>
+        </div>
+    </div>
+
+    <p class="footer-note">
+        <span>💡 提示：</span>悬停查看坐标 &nbsp;|&nbsp; 拖拽缩放 &nbsp;|&nbsp; 双击重置视图 &nbsp;|&nbsp;
+        所有图表均保持<strong>等比例坐标轴</strong>以真实反映几何形状
+    </p>
+
+    <script>
+        (function() {
+            // ============ 通用配置 ============
+            const plotConfig = {
+                responsive: true,
+                displayModeBar: true,
+                modeBarButtonsToRemove: [
+                    'lasso2d', 'select2d', 'autoScale2d',
+                    'toggleSpikelines', 'hoverClosestCartesian',
+                    'hoverCompareCartesian'
+                ],
+                displaylogo: false,
+                toImageButtonOptions: {
+                    format: 'png',
+                    filename: '圆锥曲线',
+                    scale: 2
+                }
+            };
+
+            const commonLayoutDefaults = {
+                paper_bgcolor: 'rgba(255,254,251,0.01)',
+                plot_bgcolor: 'rgba(250,248,242,0.5)',
+                font: {
+                    family: "'Segoe UI','PingFang SC','Microsoft YaHei','Noto Sans SC',sans-serif",
+                    size: 12,
+                    color: '#4a3f30'
+                },
+                margin: { l: 52, r: 30, t: 38, b: 48 },
+                hovermode: 'closest',
+                hoverlabel: {
+                    bgcolor: '#fffef9',
+                    bordercolor: '#c8bda8',
+                    font: { size: 11, color: '#3a3026' }
+                },
+                xaxis: {
+                    zeroline: true,
+                    zerolinecolor: '#d5cbb8',
+                    zerolinewidth: 1,
+                    gridcolor: '#e8e0d4',
+                    gridwidth: 0.6,
+                    showline: true,
+                    linecolor: '#bfb49e',
+                    linewidth: 1,
+                    ticks: 'inside',
+                    tickcolor: '#bfb49e',
+                    tickwidth: 0.8,
+                    ticklen: 5,
+                    mirror: true,
+                    title: { standoff: 6 }
+                },
+                yaxis: {
+                    zeroline: true,
+                    zerolinecolor: '#d5cbb8',
+                    zerolinewidth: 1,
+                    gridcolor: '#e8e0d4',
+                    gridwidth: 0.6,
+                    showline: true,
+                    linecolor: '#bfb49e',
+                    linewidth: 1,
+                    ticks: 'inside',
+                    tickcolor: '#bfb49e',
+                    tickwidth: 0.8,
+                    ticklen: 5,
+                    mirror: true,
+                    scaleanchor: 'x',
+                    scaleratio: 1,
+                    title: { standoff: 6 }
+                }
+            };
+
+            function deepClone(obj) {
+                return JSON.parse(JSON.stringify(obj));
+            }
+
+            // ============ 1. 圆 ============
+            function buildCircleChart() {
+                const r = 5;
+                const nPts = 400;
+                const tArr = [];
+                const xArr = [];
+                const yArr = [];
+                for (let i = 0; i <= nPts; i++) {
+                    const t = (i / nPts) * 2 * Math.PI;
+                    tArr.push(t);
+                    xArr.push(r * Math.cos(t));
+                    yArr.push(r * Math.sin(t));
+                }
+
+                // 曲线
+                const traceCurve = {
+                    x: xArr,
+                    y: yArr,
+                    mode: 'lines',
+                    name: '圆 x²+y²=25',
+                    line: { color: '#3b7dd8', width: 2.8 },
+                    hovertemplate: '(%{x:.3f}, %{y:.3f})<extra></extra>'
+                };
+
+                // 圆心
+                const traceCenter = {
+                    x: [0],
+                    y: [0],
+                    mode: 'markers+text',
+                    name: '圆心 O(0,0)',
+                    marker: { color: '#1a3a6e', size: 10, symbol: 'circle-open', line: { width: 2.5,
+                            color: '#1a3a6e' } },
+                    text: ['O'],
+                    textposition: 'bottom right',
+                    textfont: { size: 13, color: '#1a3a6e', family: 'serif', style: 'italic' },
+                    hovertemplate: '圆心 O(0,0)<extra></extra>'
+                };
+
+                // 半径示意线段 (从圆心到圆上一点)
+                const angleRadius = Math.PI / 5;
+                const rx = r * Math.cos(angleRadius);
+                const ry = r * Math.sin(angleRadius);
+                const traceRadius = {
+                    x: [0, rx],
+                    y: [0, ry],
+                    mode: 'lines+markers',
+                    name: '半径 r=5',
+                    line: { color: '#e8a840', width: 1.8, dash: 'dash' },
+                    marker: { size: [0, 7], color: [null, '#e8a840'], symbol: [null, 'circle'],
+                        line: { width: 1.5, color: '#c48a2c' } },
+                    hovertemplate: '(%{x:.3f}, %{y:.3f})<extra>半径端点</extra>'
+                };
+
+                // 半径标注
+                const traceRadiusLabel = {
+                    x: [rx / 2],
+                    y: [ry / 2],
+                    mode: 'text',
+                    text: ['r=5'],
+                    textfont: { size: 11, color: '#c48a2c', family: 'serif' },
+                    textposition: 'top left',
+                    showlegend: false,
+                    hoverinfo: 'none'
+                };
+
+                const layout = deepClone(commonLayoutDefaults);
+                layout.title = { text: '<b>圆</b> &nbsp; x² + y² = 25 &nbsp; (r=5)', font: { size: 15,
+                        color: '#1a3a6e' } };
+                layout.xaxis.title = { text: 'x', font: { size: 12 } };
+                layout.yaxis.title = { text: 'y', font: { size: 12 } };
+                layout.xaxis.range = [-6.8, 6.8];
+                layout.yaxis.range = [-6.8, 6.8];
+                layout.showlegend = true;
+                layout.legend = { x: 0.02, y: 0.98, xanchor: 'left', yanchor: 'top', bgcolor: 'rgba(255,254,249,0.85)',
+                    bordercolor: '#d5cbb8', borderwidth: 0.8, font: { size: 10.5 } };
+
+                const data = [traceCurve, traceRadius, traceCenter, traceRadiusLabel];
+                Plotly.newPlot('chart-circle', data, layout, plotConfig);
+            }
+
+            // ============ 2. 椭圆 ============
+            function buildEllipseChart() {
+                const a = 5,
+                    b = 3,
+                    c = Math.sqrt(a * a - b * b);
+                const nPts = 400;
+                const xArr = [];
+                const yArr = [];
+                for (let i = 0; i <= nPts; i++) {
+                    const t = (i / nPts) * 2 * Math.PI;
+                    xArr.push(a * Math.cos(t));
+                    yArr.push(b * Math.sin(t));
+                }
+
+                // 曲线
+                const traceCurve = {
+                    x: xArr,
+                    y: yArr,
+                    mode: 'lines',
+                    name: '椭圆 x²/25+y²/9=1',
+                    line: { color: '#2d9d6f', width: 2.8 },
+                    hovertemplate: '(%{x:.3f}, %{y:.3f})<extra></extra>'
+                };
+
+                // 焦点 F1, F2
+                const traceFoci = {
+                    x: [-c, c],
+                    y: [0, 0],
+                    mode: 'markers+text',
+                    name: '焦点 F₁, F₂',
+                    marker: { color: '#c73e1d', size: 11, symbol: 'x-thin', line: { width: 2.5, color: '#8b1a0e' } },
+                    text: ['F₁', 'F₂'],
+                    textposition: ['top left', 'top right'],
+                    textfont: { size: 12, color: '#8b1a0e', family: 'serif', style: 'italic' },
+                    hovertemplate: '焦点 F(%{x:.1f}, 0)<extra></extra>'
+                };
+
+                // 中心
+                const traceCenter = {
+                    x: [0],
+                    y: [0],
+                    mode: 'markers+text',
+                    name: '中心 O',
+                    marker: { color: '#1a5c3a', size: 9, symbol: 'circle-open', line: { width: 2, color: '#1a5c3a' } },
+                    text: ['O'],
+                    textposition: 'bottom right',
+                    textfont: { size: 12, color: '#1a5c3a', family: 'serif', style: 'italic' },
+                    hovertemplate: '中心 O(0,0)<extra></extra>',
+                    showlegend: false
+                };
+
+                // 顶点
+                const traceVertices = {
+                    x: [-a, a, 0, 0],
+                    y: [0, 0, -b, b],
+                    mode: 'markers',
+                    name: '顶点 (±5,0), (0,±3)',
+                    marker: { color: '#1a5c3a', size: 7, symbol: 'diamond', line: { width: 1.2, color: '#0f3d24' } },
+                    hovertemplate: '顶点(%{x:.1f}, %{y:.1f})<extra></extra>'
+                };
+
+                // 椭圆上一点P到两焦点的连线 (展示PF1+PF2=2a)
+                const px = 0,
+                    py = b;
+                const tracePF1 = {
+                    x: [px, -c],
+                    y: [py, 0],
+                    mode: 'lines',
+                    name: 'PF₁=5',
+                    line: { color: '#e8965c', width: 1.6, dash: 'dot' },
+                    hovertemplate: 'PF₁ = 5<extra></extra>',
+                    showlegend: true
+                };
+                const tracePF2 = {
+                    x: [px, c],
+                    y: [py, 0],
+                    mode: 'lines',
+                    name: 'PF₂=5',
+                    line: { color: '#e8965c', width: 1.6, dash: 'dot' },
+                    hovertemplate: 'PF₂ = 5<extra></extra>',
+                    showlegend: true
+                };
+                const traceP = {
+                    x: [px],
+                    y: [py],
+                    mode: 'markers+text',
+                    name: 'P(0,3)',
+                    marker: { color: '#e8965c', size: 9, symbol: 'circle', line: { width: 2, color: '#b86a30' } },
+                    text: ['P'],
+                    textposition: 'top right',
+                    textfont: { size: 12, color: '#b86a30', family: 'serif', style: 'italic' },
+                    hovertemplate: 'P(0,3)<br>PF₁+PF₂=10=2a<extra></extra>'
+                };
+
+                const layout = deepClone(commonLayoutDefaults);
+                layout.title = { text: '<b>椭圆</b> &nbsp; x²/25 + y²/9 = 1 &nbsp; (a=5, b=3, c=4)',
+                font: { size: 15, color: '#1a5c3a' } };
+                layout.xaxis.title = { text: 'x', font: { size: 12 } };
+                layout.yaxis.title = { text: 'y', font: { size: 12 } };
+                layout.xaxis.range = [-7, 7];
+                layout.yaxis.range = [-5.5, 5.5];
+                layout.showlegend = true;
+                layout.legend = { x: 0.02, y: 0.98, xanchor: 'left', yanchor: 'top', bgcolor: 'rgba(255,254,249,0.85)',
+                    bordercolor: '#d5cbb8', borderwidth: 0.8, font: { size: 10 } };
+
+                const data = [traceCurve, tracePF1, tracePF2, traceFoci, traceVertices, traceP, traceCenter];
+                Plotly.newPlot('chart-ellipse', data, layout, plotConfig);
+            }
+
+            // ============ 3. 双曲线 ============
+            function buildHyperbolaChart() {
+                const a = 3,
+                    b = 4,
+                    c = Math.sqrt(a * a + b * b);
+                const nPts = 300;
+                const tRange = 1.65;
+                const xRight = [],
+                    yRight = [];
+                const xLeft = [],
+                    yLeft = [];
+                for (let i = 0; i <= nPts; i++) {
+                    const t = -tRange + (i / nPts) * 2 * tRange;
+                    const ct = Math.cosh(t);
+                    const st = Math.sinh(t);
+                    xRight.push(a * ct);
+                    yRight.push(b * st);
+                    xLeft.push(-a * ct);
+                    yLeft.push(b * st);
+                }
+
+                // 右支
+                const traceRight = {
+                    x: xRight,
+                    y: yRight,
+                    mode: 'lines',
+                    name: '双曲线右支',
+                    line: { color: '#d94535', width: 2.8 },
+                    hovertemplate: '(%{x:.3f}, %{y:.3f})<extra>右支</extra>'
+                };
+                // 左支
+                const traceLeft = {
+                    x: xLeft,
+                    y: yLeft,
+                    mode: 'lines',
+                    name: '双曲线左支',
+                    line: { color: '#d94535', width: 2.8 },
+                    hovertemplate: '(%{x:.3f}, %{y:.3f})<extra>左支</extra>',
+                    showlegend: false
+                };
+
+                // 渐近线
+                const asympX = [-7, 7];
+                const asympY1 = asympX.map(x => (b / a) * x);
+                const asympY2 = asympX.map(x => -(b / a) * x);
+                const traceAsymp1 = {
+                    x: asympX,
+                    y: asympY1,
+                    mode: 'lines',
+                    name: '渐近线 y=(4/3)x',
+                    line: { color: '#b86a30', width: 1.4, dash: 'dash' },
+                    hovertemplate: '渐近线<extra></extra>'
+                };
+                const traceAsymp2 = {
+                    x: asympX,
+                    y: asympY2,
+                    mode: 'lines',
+                    name: '渐近线 y=−(4/3)x',
+                    line: { color: '#b86a30', width: 1.4, dash: 'dash' },
+                    hovertemplate: '渐近线<extra></extra>',
+                    showlegend: false
+                };
+
+                // 焦点
+                const traceFoci = {
+                    x: [-c, c],
+                    y: [0, 0],
+                    mode: 'markers+text',
+                    name: '焦点 F₁(−5,0), F₂(5,0)',
+                    marker: { color: '#7b1a10', size: 11, symbol: 'x-thin', line: { width: 2.5, color: '#4a0804' } },
+                    text: ['F₁', 'F₂'],
+                    textposition: ['bottom left', 'bottom right'],
+                    textfont: { size: 12, color: '#7b1a10', family: 'serif', style: 'italic' },
+                    hovertemplate: '焦点(%{x:.1f}, 0)<extra></extra>'
+                };
+
+                // 顶点
+                const traceVertices = {
+                    x: [-a, a],
+                    y: [0, 0],
+                    mode: 'markers+text',
+                    name: '顶点 (±3,0)',
+                    marker: { color: '#7b1a10', size: 8, symbol: 'diamond', line: { width: 1.5, color: '#4a0804' } },
+                    text: ['A₁', 'A₂'],
+                    textposition: ['top left', 'top right'],
+                    textfont: { size: 11, color: '#7b1a10', family: 'serif', style: 'italic' },
+                    hovertemplate: '顶点(%{x:.1f}, 0)<extra></extra>'
+                };
+
+                // 中心
+                const traceCenter = {
+                    x: [0],
+                    y: [0],
+                    mode: 'markers+text',
+                    name: '中心 O',
+                    marker: { color: '#4a0804', size: 8, symbol: 'circle-open', line: { width: 2, color: '#4a0804' } },
+                    text: ['O'],
+                    textposition: 'top left',
+                    textfont: { size: 12, color: '#4a0804', family: 'serif', style: 'italic' },
+                    hovertemplate: '中心 O(0,0)<extra></extra>',
+                    showlegend: false
+                };
+
+                const layout = deepClone(commonLayoutDefaults);
+                layout.title = { text: '<b>双曲线</b> &nbsp; x²/9 − y²/16 = 1 &nbsp; (a=3, b=4, c=5)',
+                    font: { size: 15, color: '#6b1a10' } };
+                layout.xaxis.title = { text: 'x', font: { size: 12 } };
+                layout.yaxis.title = { text: 'y', font: { size: 12 } };
+                layout.xaxis.range = [-7.5, 7.5];
+                layout.yaxis.range = [-8.5, 8.5];
+                layout.showlegend = true;
+                layout.legend = { x: 0.02, y: 0.98, xanchor: 'left', yanchor: 'top', bgcolor: 'rgba(255,254,249,0.85)',
+                    bordercolor: '#d5cbb8', borderwidth: 0.8, font: { size: 10 } };
+
+                const data = [traceRight, traceLeft, traceAsymp1, traceAsymp2, traceFoci, traceVertices, traceCenter];
+                Plotly.newPlot('chart-hyperbola', data, layout, plotConfig);
+            }
+
+            // ============ 4. 抛物线 ============
+            function buildParabolaChart() {
+                const p = 4;
+                const halfFocal = p / 2;
+                const nPts = 500;
+                const yRange = 7;
+                const yArr = [];
+                const xArr = [];
+                for (let i = 0; i <= nPts; i++) {
+                    const y = -yRange + (i / nPts) * 2 * yRange;
+                    yArr.push(y);
+                    xArr.push((y * y) / (2 * p));
+                }
+
+                // 曲线
+                const traceCurve = {
+                    x: xArr,
+                    y: yArr,
+                    mode: 'lines',
+                    name: '抛物线 y²=8x',
+                    line: { color: '#7b3fb8', width: 2.8 },
+                    hovertemplate: '(%{x:.3f}, %{y:.3f})<extra></extra>'
+                };
+
+                // 焦点
+                const traceFocus = {
+                    x: [halfFocal],
+                    y: [0],
+                    mode: 'markers+text',
+                    name: '焦点 F(2,0)',
+                    marker: { color: '#d97706', size: 11, symbol: 'x-thin', line: { width: 2.5, color: '#92400e' } },
+                    text: ['F'],
+                    textposition: 'top left',
+                    textfont: { size: 13, color: '#92400e', family: 'serif', style: 'italic' },
+                    hovertemplate: '焦点 F(2,0)<extra></extra>'
+                };
+
+                // 准线 x = -2
+                const directrixY = [-yRange, yRange];
+                const directrixX = [-halfFocal, -halfFocal];
+                const traceDirectrix = {
+                    x: directrixX,
+                    y: directrixY,
+                    mode: 'lines',
+                    name: '准线 x=−2',
+                    line: { color: '#b85c20', width: 1.6, dash: 'dash' },
+                    hovertemplate: '准线 x=−2<extra></extra>'
+                };
+
+                // 顶点
+                const traceVertex = {
+                    x: [0],
+                    y: [0],
+                    mode: 'markers+text',
+                    name: '顶点 O(0,0)',
+                    marker: { color: '#4a1d6e', size: 9, symbol: 'diamond', line: { width: 1.8, color: '#2d0a4a' } },
+                    text: ['O'],
+                    textposition: 'top right',
+                    textfont: { size: 12, color: '#4a1d6e', family: 'serif', style: 'italic' },
+                    hovertemplate: '顶点 O(0,0)<extra></extra>'
+                };
+
+                // 展示性质：抛物线上一点P到焦点和准线距离相等
+                const py = 4;
+                const px = (py * py) / (2 * p);
+                const tracePtoFocus = {
+                    x: [px, halfFocal],
+                    y: [py, 0],
+                    mode: 'lines',
+                    name: 'P到焦点 d=4',
+                    line: { color: '#e8a840', width: 1.6, dash: 'dot' },
+                    hovertemplate: '距离=4<extra></extra>'
+                };
+                const tracePtoDirectrix = {
+                    x: [px, -halfFocal],
+                    y: [py, py],
+                    mode: 'lines',
+                    name: 'P到准线 d=4',
+                    line: { color: '#e8a840', width: 1.6, dash: 'dot' },
+                    hovertemplate: '距离=4<extra></extra>'
+                };
+                const traceP = {
+                    x: [px],
+                    y: [py],
+                    mode: 'markers+text',
+                    name: 'P(2,4)',
+                    marker: { color: '#e8a840', size: 9, symbol: 'circle', line: { width: 2, color: '#b87a20' } },
+                    text: ['P'],
+                    textposition: 'top right',
+                    textfont: { size: 12, color: '#b87a20', family: 'serif', style: 'italic' },
+                    hovertemplate: 'P(2,4)<br>到焦点距离=4<br>到准线距离=4<extra></extra>'
+                };
+
+                const layout = deepClone(commonLayoutDefaults);
+                layout.title = { text: '<b>抛物线</b> &nbsp; y² = 8x &nbsp; (p=4, 焦点在(2,0))', font: { size: 15,
+                        color: '#4a1d6e' } };
+                layout.xaxis.title = { text: 'x', font: { size: 12 } };
+                layout.yaxis.title = { text: 'y', font: { size: 12 } };
+                layout.xaxis.range = [-3.5, 8.5];
+                layout.yaxis.range = [-7.5, 7.5];
+                layout.showlegend = true;
+                layout.legend = { x: 0.02, y: 0.98, xanchor: 'left', yanchor: 'top', bgcolor: 'rgba(255,254,249,0.85)',
+                    bordercolor: '#d5cbb8', borderwidth: 0.8, font: { size: 10 } };
+
+                const data = [traceCurve, traceDirectrix, tracePtoFocus, tracePtoDirectrix, traceFocus, traceVertex,
+                    traceP
+                ];
+                Plotly.newPlot('chart-parabola', data, layout, plotConfig);
+            }
+
+            // ============ 初始化所有图表 ============
+            function initAllCharts() {
+                buildCircleChart();
+                buildEllipseChart();
+                buildHyperbolaChart();
+                buildParabolaChart();
+            }
+
+            // DOM加载完成后初始化
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initAllCharts);
+            } else {
+                initAllCharts();
+            }
+
+            // 窗口大小变化时重新渲染
+            let resizeTimeout;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(() => {
+                    initAllCharts();
+                }, 350);
+            });
+        })();
+    </script>
+</body>
+</html>

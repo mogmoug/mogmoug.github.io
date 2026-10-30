@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>晚风里的信</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #0a0910;
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    color: #eae6f5;
+    overflow: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse at 50% 8%, rgba(124, 92, 255, .28), transparent 62%),
+      radial-gradient(ellipse at 15% 85%, rgba(255, 108, 168, .16), transparent 58%),
+      radial-gradient(ellipse at 88% 72%, rgba(72, 198, 255, .13), transparent 58%);
+    pointer-events: none;
+    animation: breathe 12s ease-in-out infinite alternate;
+  }
+
+  @keyframes breathe {
+    from { opacity: .75; }
+    to   { opacity: 1; }
+  }
+
+  .card {
+    position: relative;
+    width: min(430px, 92vw);
+    height: min(690px, 90vh);
+    padding: 30px 26px 22px;
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, .045);
+    border: 1px solid rgba(255, 255, 255, .09);
+    border-radius: 28px;
+    backdrop-filter: blur(26px);
+    -webkit-backdrop-filter: blur(26px);
+    box-shadow: 0 30px 90px rgba(0, 0, 0, .65), inset 0 1px 0 rgba(255,255,255,.08);
+    z-index: 1;
+  }
+
+  /* ── 顶部 ── */
+  .head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+    flex-shrink: 0;
+  }
+
+  .disc {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background:
+      radial-gradient(circle at center, #1a1730 0 7px, transparent 7px),
+      repeating-radial-gradient(circle at center, #2c2750 0 2px, #221e3d 2px 4px);
+    border: 1px solid rgba(255,255,255,.12);
+    box-shadow: 0 0 24px rgba(124, 92, 255, .45);
+    position: relative;
+  }
+
+  .disc.spin { animation: spin 5s linear infinite; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .disc::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, transparent 0 70%, rgba(180,150,255,.5) 88%, transparent 100%);
+    mix-blend-mode: screen;
+  }
+
+  .title h1 {
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    background: linear-gradient(100deg, #fff, #c9b8ff 55%, #ffb6d9);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .title p {
+    margin-top: 4px;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    color: rgba(255,255,255,.35);
+  }
+
+  /* ── 歌词 ── */
+  .lyrics {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: none;
+    padding: 40px 6px;
+    text-align: center;
+    mask-image: linear-gradient(180deg, transparent 0%, #000 18%, #000 82%, transparent 100%);
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 18%, #000 82%, transparent 100%);
+  }
+
+  .lyrics::-webkit-scrollbar { display: none; }
+
+  .line {
+    font-size: 17px;
+    line-height: 2.15;
+    letter-spacing: 3px;
+    color: rgba(255,255,255,.22);
+    transition: color .45s ease, transform .45s ease, text-shadow .45s ease;
+    padding: 5px 0;
+    white-space: nowrap;
+  }
+
+  .line.active {
+    color: #fff;
+    transform: scale(1.1);
+    text-shadow: 0 0 22px rgba(168, 132, 255, .85), 0 0 46px rgba(168, 132, 255, .35);
+    font-weight: 600;
+  }
+
+  .line.past { color: rgba(255,255,255,.32); }
+
+  /* ── 进度条 ── */
+  .progress {
+    height: 3px;
+    border-radius: 3px;
+    background: rgba(255,255,255,.1);
+    overflow: hidden;
+    flex-shrink: 0;
+    margin-bottom: 18px;
+  }
+
+  .progress i {
+    display: block;
+    height: 100%;
+    width: 0%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #8a6bff, #d78bff, #ff9ecb);
+    box-shadow: 0 0 12px rgba(160, 120, 255, .8);
+    transition: width .1s linear;
+  }
+
+  /* ── 控制 ── */
+  .controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    flex-shrink: 0;
+    padding-bottom: 4px;
+  }
+
+  .btn {
+    border: none;
+    cursor: pointer;
+    background: none;
+    color: rgba(255,255,255,.55);
+    font-size: 13px;
+    letter-spacing: 1px;
+    transition: color .25s, transform .15s;
+  }
+
+  .btn:hover { color: #fff; }
+
+  .btn:active { transform: scale(.94); }
+
+  .play {
+    width: 62px; height: 62px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(145deg, #8f6bff, #c86bff);
+    box-shadow: 0 10px 34px rgba(130, 90, 255, .55), inset 0 1px 0 rgba(255,255,255,.35);
+    color: #fff;
+    font-size: 20px;
+    padding-left: 4px;
+    transition: transform .18s, box-shadow .25s;
+  }
+
+  .play:hover {
+    box-shadow: 0 12px 42px rgba(150, 100, 255, .8), inset 0 1px 0 rgba(255,255,255,.4);
+  }
+
+  .play:active { transform: scale(.93); }
+
+  .play.playing { padding-left: 0; font-size: 18px; }
+
+  .hint {
+    text-align: center;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: rgba(255,255,255,.2);
+    margin-top: 12px;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="head">
+    <div class="disc" id="disc"></div>
+    <div class="title">
+      <h1>晚风里的信</h1>
+      <p>ORIGINAL · 轻音乐</p>
+    </div>
+  </div>
+
+  <div class="lyrics" id="lyrics"></div>
+
+  <div class="progress"><i id="bar"></i></div>
+
+  <div class="controls">
+    <button class="btn" id="restart">↺ 重播</button>
+    <button class="btn play" id="playBtn">▶</button>
+    <button class="btn" id="muteBtn">♪ 音量</button>
+  </div>
+
+  <div class="hint">点击播放，戴上耳机效果更佳</div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════
+   音高表
+   ══════════════════════════════════════════ */
+const F = {
+  'C2':65.41, 'F2':87.31, 'G2':98.00, 'A2':110.00, 'B2':123.47,
+  'C3':130.81,'D3':146.83,'E3':164.81,'F3':174.61,'G3':196.00,'A3':220.00,'B3':246.94,
+  'C4':261.63,'D4':293.66,'E4':329.63,'F4':349.23,'G4':392.00,'A4':440.00,'B4':493.88,
+  'C5':523.25,'D5':587.33,'E5':659.25,'F5':698.46,'G5':783.99,'A5':880.00
+};
+
+const CHORD = {
+  'C':  ['C4','E4','G4'],
+  'G':  ['B3','D4','G4'],
+  'Am': ['A3','C4','E4'],
+  'F':  ['F3','A3','C4']
+};
+
+const BASS = { 'C':'C3', 'G':'G2', 'Am':'A2', 'F':'F2' };
+
+/* ══════════════════════════════════════════
+   歌曲结构
+   mel = [音名, 时值(拍), 歌词]
+   ══════════════════════════════════════════ */
+const SONG = [
+  /* ── 前奏 ── */
+  { c:'C',  mel:[['E4',1],['G4',1],['C5',2]] },
+  { c:'G',  mel:[['D5',1],['B4',1],['G4',2]] },
+  { c:'Am', mel:[['A4',1],['C5',1],['E5',2]] },
+  { c:'F',  mel:[['F4',1],['A4',1],['C5',2]] },
+
+  /* ── 主歌一 ── */
+  { c:'C',  mel:[['E4',.5,'晚'],['G4',.5,'风'],['A4',.5,'吹'],['G4',.5,'过'],['E4',.5,'旧'],['D4',.5,'窗'],['E4',1,'台']] },
+  { c:'G',  mel:[['D4',.5,'月'],['E4',.5,'牙'],['G4',.5,'挂'],['G4',.5,'在'],['A4',.5,'屋'],['G4',.5,'檐'],['G4',1,'外']] },
+  { c:'Am', mel:[['A4',.5,'我'],['C5',.5,'写'],['C5',.5,'下'],['B4',.5,'那'],['A4',.5,'句'],['G4',.5,'对'],['A4',1,'白']] },
+  { c:'F',  mel:[['F4',.5,'又'],['G4',.5,'轻'],['A4',.5,'轻'],['A4',.5,'划'],['G4',.5,'掉'],['F4',.5,'重'],['F4',1,'来']] },
+
+  /* ── 副歌 ── */
+  { c:'C',  mel:[['C5',.5,'把'],['C5',.5,'思'],['E5',1,'念'],['G5',.5,'折'],['E5',.5,'成'],['D5',.5,'纸'],['C5',.5,'船']] },
+  { c:'G',  mel:[['G4',.5,'放'],['B4',.5,'它'],['D5',1,'漂'],['E5',.5,'向'],['D5',.5,'你'],['B4',.5,'的'],['G4',.5,'岸']] },
+  { c:'Am', mel:[['A4',.5,'如'],['C5',.5,'果'],['E5',1,'风'],['D5',.5,'还'],['C5',.5,'记'],['B4',.5,'得'],['A4',.5,'我']] },
+  { c:'F',  mel:[['F4',.5,'请'],['A4',.5,'替'],['C5',1,'我'],['D5',.5,'说'],['C5',.5,'声'],['A4',.5,'晚'],['C5',.5,'安']] },
+
+  /* ── 主歌二 ── */
+  { c:'C',  mel:[['E4',.5,'街'],['G4',.5,'灯'],['A4',.5,'把'],['G4',.5,'影'],['E4',.5,'子'],['D4',.5,'拉'],['E4',1,'长']] },
+  { c:'G',  mel:[['D4',.5,'心'],['E4',.5,'事'],['G4',.5,'在'],['G4',.5,'夜'],['A4',.5,'里'],['G4',.5,'发'],['G4',1,'烫']] },
+  { c:'Am', mel:[['A4',.5,'我'],['C5',.5,'把'],['C5',.5,'想'],['B4',.5,'念'],['A4',.5,'写'],['G4',.5,'成'],['A4',1,'行']] },
+  { c:'F',  mel:[['F4',.5,'却'],['G4',.5,'不'],['A4',.5,'知'],['A4',.5,'寄'],['G4',.5,'往'],['F4',.5,'何'],['F4',1,'方']] },
+
+  /* ── 副歌（重复） ── */
+  { c:'C',  mel:[['C5',.5,'把'],['C5',.5,'思'],['E5',1,'念'],['G5',.5,'折'],['E5',.5,'成'],['D5',.5,'纸'],['C5',.5,'船']] },
+  { c:'G',  mel:[['G4',.5,'放'],['B4',.5,'它'],['D5',1,'漂'],['E5',.5,'向'],['D5',.5,'你'],['B4',.5,'的'],['G4',.5,'岸']] },
+  { c:'Am', mel:[['A4',.5,'如'],['C5',.5,'果'],['E5',1,'风'],['D5',.5,'还'],['C5',.5,'记'],['B4',.5,'得'],['A4',.5,'我']] },
+  { c:'F',  mel:[['F4',.5,'请'],['A4',.5,'替'],['C5',1,'我'],['D5',.5,'说'],['C5',.5,'声'],['A4',.5,'晚'],['C5',.5,'安']] },
+
+  /* ── 尾声 ── */
+  { c:'G',  mel:[['B4',1,'晚'],['D5',1,'安'],['G4',2]] },
+  { c:'C',  mel:[['C5',4]] }
+];
+
+/* ══════════════════════════════════════════
+   时间计算
+   ══════════════════════════════════════════ */
+const BPM  = 76;
+const BEAT = 60 / BPM;          // 一拍秒数
+const BAR  = 4 * BEAT;          // 一小节秒数
+const TOTAL = SONG.length * BAR;
+
+/* 歌词行（每小节一行） */
+const LINES = [];
+SONG.forEach((bar, i) => {
+  const t = bar.mel.map(n => n[2] || '').join('').trim();
+  if (t) LINES.push({ text: t, time: i * BAR });
+});
+
+/* ══════════════════════════════════════════
+   音频引擎
+   ══════════════════════════════════════════ */
+let ctx = null, master = null;
+let isPlaying = false;
+let songStart = 0;
+let pausedAt  = 0;
+let rafId = null;
+let activeNodes = new Set();
+
+function initAudio() {
+  if (ctx) return;
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+  // 总输出：压缩器 + 增益
+  const comp = ctx.createDynamicsCompressor();
+  comp.threshold.value = -14;
+  comp.knee.value = 22;
+  comp.ratio.value = 4;
+  comp.attack.value = 0.006;
+  comp.release.value = 0.22;
+
+  master = ctx.createGain();
+  master.gain.value = 0.85;
+
+  master.connect(comp);
+  comp.connect(ctx.destination);
+}
+
+/* 单个音 */
+function tone(freq, when, dur, opt = {}) {
+  const {
+    type = 'triangle', vol = 0.2, atk = 0.015,
+    rel = 0.22, cutoff = 2600
+  } = opt;
+
+  const t = Math.max(when, ctx.currentTime + 0.008);
+  if (t > ctx.currentTime + 30) return;   // 太远的不排
+
+  const osc  = ctx.createOscillator();
+  const gain = ctx.createGain();
+  const flt  = ctx.createBiquadFilter();
+
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, t);
+
+  flt.type = 'lowpass';
+  flt.frequency.setValueAtTime(cutoff, t);
+  flt.Q.setValueAtTime(0.6, t);
+
+  const peak = vol;
+  gain.gain.setValueAtTime(0.0001, t);
+  gain.gain.linearRampToValueAtTime(peak, t + atk);
+  gain.gain.linearRampToValueAtTime(peak * 0.62, t + Math.max(atk + 0.02, dur * 0.7));
+  gain.gain.linearRampToValueAtTime(0.0001, t + dur + rel);
+
+  osc.connect(flt);
+  flt.connect(gain);
+  gain.connect(master);
+
+  osc.start(t);
+  osc.stop(t + dur + rel + 0.06);
+
+  activeNodes.add(osc);
+  osc.onended = () => activeNodes.delete(osc);
+}
+
+/* 和弦垫 */
+function pad(chord, when, dur) {
+  CHORD[chord].forEach((n, i) => {
+    tone(F[n], when + i * 0.014, dur * 0.88, {
+      type: 'sine', vol: 0.075, atk: 0.09, rel: 0.6, cutoff: 1500
+    });
+  });
+}
+
+/* 贝斯 */
+function bass(chord, when, dur) {
+  tone(F[BASS[chord]], when, dur * 0.8, {
+    type: 'sine', vol: 0.17, atk: 0.03, rel: 0.32, cutoff: 700
+  });
+}
+
+/* 主旋律 */
+function lead(freq, when, dur) {
+  tone(freq, when, dur, {
+    type: 'triangle', vol: 0.155, atk: 0.012, rel: 0.26, cutoff: 3200
+  });
+}
+
+/* 排布整首歌（从 from 秒开始） */
+function schedule(from) {
+  const t0 = ctx.currentTime + 0.07;
+  songStart = t0 - from;
+
+  SONG.forEach((bar, bi) => {
+    const barSongT = bi * BAR;
+    const at = songStart + barSongT;
+
+    // 整小节已经过去 → 跳过
+    if (at + BAR < ctx.currentTime) return;
+
+    // 和弦 + 贝斯
+    if (at > ctx.currentTime - 0.15) {
+      const st = Math.max(at, ctx.currentTime + 0.02);
+      pad(bar.c, st, BAR);
+      bass(bar.c, st, BAR);
+    }
+
+    // 旋律
+    let off = 0;
+    bar.mel.forEach(([n, d]) => {
+      const noteAt = songStart + barSongT + off * BEAT;
+      const dur = d * BEAT;
+      const freq = F[n];
+      if (freq && noteAt + dur > ctx.currentTime) {
+        lead(freq, Math.max(noteAt, ctx.currentTime + 0.02), dur);
+      }
+      off += d;
+    });
+  });
+}
+
+/* ══════════════════════════════════════════
+   播放控制
+   ══════════════════════════════════════════ */
+const playBtn  = document.getElementById('playBtn');
+const barEl    = document.getElementById('bar');
+const lyricsEl = document.getElementById('lyrics');
+const discEl   = document.getElementById('disc');
+
+/* 生成歌词 DOM */
+const lineEls = LINES.map(l => {
+  const d = document.createElement('div');
+  d.className = 'line';
+  d.textContent = l.text;
+  lyricsEl.appendChild(d);
+  return d;
+});
+
+let curLine = -1;
+
+function updateLyrics(songTime) {
+  let idx = -1;
+  for (let i = 0; i < LINES.length; i++) {
+    if (songTime >= LINES[i].time - 0.18) idx = i;
+    else break;
+  }
+  if (idx === curLine) return;
+  curLine = idx;
+
+  lineEls.forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+    el.classList.toggle('past', i < idx);
+  });
+
+  if (idx >= 0 && lineEls[idx]) {
+    const el = lineEls[idx];
+    lyricsEl.scrollTo({
+      top: el.offsetTop - lyricsEl.clientHeight / 2 + el.clientHeight / 2,
+      behavior: 'smooth'
+    });
+  }
+}
+
+function loop() {
+  if (!isPlaying) return;
+
+  const songTime = ctx.currentTime - songStart;
+
+  if (songTime >= TOTAL) {
+    isPlaying = false;
+    pausedAt = 0;
+    activeNodes.forEach(n => { try { n.stop(); } catch (e) {} });
+    activeNodes.clear();
+    playBtn.textContent = '▶';
+    playBtn.classList.remove('playing');
+    discEl.classList.remove('spin');
+    barEl.style.width = '0%';
+    return;
+  }
+
+  barEl.style.width = Math.min(100, (songTime / TOTAL) * 100) + '%';
+  updateLyrics(songTime);
+  rafId = requestAnimationFrame(loop);
+}
+
+function start() {
+  initAudio();
+
+  const go = () => {
+    schedule(pausedAt);
+    isPlaying = true;
+    playBtn.textContent = '❙❙';
+    playBtn.classList.add('playing');
+    discEl.classList.add('spin');
+    cancelAnimationFrame(rafId);
+    loop();
+  };
+
+  if (ctx.state === 'suspended') {
+    ctx.resume().then(go);
+  } else {
+    go();
+  }
+}
+
+function stop() {
+  if (!isPlaying) return;
+  pausedAt = Math.max(0, ctx.currentTime - songStart);
+  activeNodes.forEach(n => { try { n.stop(); } catch (e) {} });
+  activeNodes.clear();
+  isPlaying = false;
+  cancelAnimationFrame(rafId);
+  playBtn.textContent = '▶';
+  playBtn.classList.remove('playing');
+  discEl.classList.remove('spin');
+}
+
+playBtn.addEventListener('click', () => {
+  if (isPlaying) stop();
+  else start();
+});
+
+document.getElementById('restart').addEventListener('click', () => {
+  const wasPlaying = isPlaying;
+  if (isPlaying) stop();
+  pausedAt = 0;
+  curLine = -1;
+  lineEls.forEach(el => el.classList.remove('active', 'past'));
+  lyricsEl.scrollTo({ top: 0, behavior: 'smooth' });
+  barEl.style.width = '0%';
+  if (wasPlaying) start();
+});
+
+/* 静音切换 */
+let muted = false;
+document.getElementById('muteBtn').addEventListener('click', e => {
+  if (!master) return;
+  muted = !muted;
+  master.gain.setTargetAtTime(muted ? 0 : 0.85, ctx.currentTime, 0.05);
+  e.currentTarget.textContent = muted ? '♪ 静音中' : '♪ 音量';
+  e.currentTarget.style.color = muted ? '#ff9ecb' : '';
+});
+
+/* 空格键播放/暂停 */
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space') {
+    e.preventDefault();
+    playBtn.click();
+  }
+});
+</script>
+</body>
+</html>

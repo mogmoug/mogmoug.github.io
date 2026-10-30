@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 刷题学习桌</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/mhchem.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f6fa;--panel:#fff;--border:#e8eaf1;--text:#1c2033;--muted:#828aa3;
+  --primary:#4f46e5;--primary-2:#6366f1;--primary-soft:#eef0ff;
+  --green:#0f9d58;--green-soft:#e9f7f0;--red:#e5484d;--red-soft:#fdecec;
+  --amber:#f79009;--radius:14px;
+  --shadow:0 1px 2px rgba(20,25,50,.05),0 8px 24px -14px rgba(20,25,50,.18);
+}
+html,body{height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  background:var(--bg);color:var(--text);font-size:15px;line-height:1.7;-webkit-font-smoothing:antialiased;
+}
+.app{display:flex;height:100vh;overflow:hidden}
+
+/* ---------- Sidebar ---------- */
+.sidebar{width:238px;flex-shrink:0;background:#151827;color:#a8afc8;display:flex;flex-direction:column;padding:18px 14px}
+.brand{display:flex;align-items:center;gap:10px;padding:6px 6px 20px}
+.logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:19px}
+.brand-name{color:#fff;font-weight:600;font-size:15px;line-height:1.3}
+.brand-sub{font-size:11px;color:#646b85}
+.nav{flex:1;display:flex;flex-direction:column;gap:4px;overflow-y:auto}
+.nav-label{font-size:11px;letter-spacing:.08em;color:#565d78;padding:14px 10px 6px;font-weight:600}
+.nav-item{display:flex;align-items:center;gap:9px;width:100%;padding:10px 12px;border:0;background:transparent;color:#a8afc8;
+  font-size:14px;font-family:inherit;border-radius:10px;cursor:pointer;text-align:left;transition:.15s}
+.nav-item:hover{background:#1e2235;color:#e4e7f2}
+.nav-item.active{background:linear-gradient(135deg,#4f46e5,#6366f1);color:#fff;box-shadow:0 6px 18px -8px #4f46e5}
+.sub-nav{display:none;flex-direction:column;gap:3px;margin-top:2px}
+.sub-nav.show{display:flex}
+.sub-item{padding:8px 12px 8px 34px;border:0;background:transparent;color:#8d94ad;font-size:13px;font-family:inherit;
+  border-radius:9px;cursor:pointer;text-align:left;transition:.15s;position:relative;line-height:1.4}
+.sub-item::before{content:"";position:absolute;left:18px;top:50%;width:4px;height:4px;border-radius:50%;background:#4a5070;transform:translateY(-50%)}
+.sub-item:hover{background:#1e2235;color:#c9cee0}
+.sub-item.active{background:#232842;color:#fff}
+.sub-item.active::before{background:#818cf8}
+.sidebar-bottom{padding-top:12px;border-top:1px solid #232842}
+.btn-ghost-dark{width:100%;padding:9px;border:1px solid #2b3050;background:transparent;color:#a8afc8;border-radius:10px;
+  font-size:13px;font-family:inherit;cursor:pointer;transition:.15s}
+.btn-ghost-dark:hover{background:#1e2235;color:#fff}
+
+/* ---------- Main ---------- */
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.topbar{height:56px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;background:#fff;border-bottom:1px solid var(--border)}
+.topbar-title{font-weight:600;font-size:15px}
+.topbar-right{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted)}
+.status-dot{width:7px;height:7px;border-radius:50%;background:#d0d4e0}
+.status-dot.on{background:var(--green);box-shadow:0 0 0 3px var(--green-soft)}
+.status-dot.off{background:var(--amber);box-shadow:0 0 0 3px #fdf3e2}
+
+.stage{flex:1;overflow-y:auto;padding:24px;scroll-behavior:smooth}
+.stage::-webkit-scrollbar{width:8px}
+.stage::-webkit-scrollbar-thumb{background:#d9dce6;border-radius:4px}
+.stage::-webkit-scrollbar-thumb:hover{background:#c3c7d6}
+
+/* ---------- Empty ---------- */
+.empty{max-width:540px;margin:50px auto;text-align:center;color:var(--muted)}
+.empty-icon{font-size:52px;margin-bottom:14px}
+.empty h2{font-size:19px;color:var(--text);margin-bottom:8px}
+.empty p{font-size:14px;margin-bottom:18px}
+.empty-tips{display:flex;flex-direction:column;gap:8px;text-align:left;background:#fff;border:1px solid var(--border);
+  border-radius:var(--radius);padding:16px 18px;font-size:13.5px;box-shadow:var(--shadow);color:#5f677e}
+
+/* ---------- Chat ---------- */
+.msg{display:flex;gap:12px;margin-bottom:20px;align-items:flex-start}
+.msg.user{flex-direction:row-reverse}
+.avatar{width:34px;height:34px;flex-shrink:0;border-radius:11px;display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:600;color:#fff}
+.msg.ai .avatar{background:linear-gradient(135deg,#6366f1,#8b5cf6)}
+.msg.user .avatar{background:#2f3550}
+.bubble{max-width:min(820px,86%);background:#fff;border:1px solid var(--border);border-radius:14px;
+  padding:14px 18px;box-shadow:var(--shadow);overflow-x:auto;min-width:0}
+.msg.user .bubble{background:var(--primary);border-color:var(--primary);color:#fff}
+.msg-img{max-width:240px;border-radius:10px;display:block;margin-bottom:8px;border:1px solid var(--border)}
+
+/* ---------- Markdown ---------- */
+.md{word-wrap:break-word;overflow-wrap:break-word}
+.md>*:first-child{margin-top:0}
+.md>*:last-child{margin-bottom:0}
+.md p{margin:8px 0}
+.md h1,.md h2,.md h3,.md h4{margin:16px 0 8px;font-weight:600;line-height:1.4}
+.md h1{font-size:19px}.md h2{font-size:17px}.md h3{font-size:15.5px}
+.md ul,.md ol{padding-left:22px;margin:8px 0}
+.md li{margin:4px 0}
+.md code{background:#f1f2f7;padding:2px 6px;border-radius:5px;font-size:13px;
+  font-family:ui-monospace,Menlo,Consolas,monospace}
+.md pre{background:#1a1e2e;color:#e4e7f2;padding:14px;border-radius:10px;overflow-x:auto;margin:10px 0}
+.md pre code{background:transparent;color:inherit;padding:0}
+.md blockquote{border-left:3px solid #d5d9e6;padding-left:12px;color:#5f677e;margin:10px 0}
+.md table{border-collapse:collapse;margin:10px 0;font-size:14px;display:block;overflow-x:auto}
+.md th,.md td{border:1px solid var(--border);padding:6px 10px;text-align:left}
+.md th{background:#f7f8fc;font-weight:600}
+.md svg{max-width:100%;height:auto;display:block;margin:10px auto}
+.md a{color:var(--primary)}
+.md hr{border:0;border-top:1px solid var(--border);margin:14px 0}
+.katex{font-size:1.04em}
+.katex-display{overflow-x:auto;overflow-y:hidden;padding:4px 0}
+.msg.user .md code{background:rgba(255,255,255,.2);color:#fff}
+
+/* ---------- Question Card ---------- */
+.qcard{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;
+  margin:16px 0;box-shadow:var(--shadow);color:var(--text)}
+.qcard-head{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
+.tag{font-size:11.5px;padding:3px 9px;border-radius:20px;background:#f1f2f7;color:#5f677e;font-weight:500;white-space:nowrap}
+.tag-type{background:var(--primary-soft);color:var(--primary)}
+.tag-diff{background:#fff4e5;color:#b25c00}
+.q-stem{font-size:15px;line-height:1.75;margin-bottom:6px}
+.q-figure{margin:12px 0;padding:12px;background:#fafbfe;border:1px solid var(--border);border-radius:10px;color:#1c2033;overflow-x:auto}
+
+.q-options{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.opt{display:flex;gap:10px;align-items:flex-start;padding:10px 13px;border:1.5px solid var(--border);
+  border-radius:10px;cursor:pointer;transition:.15s;background:#fcfcfe}
+.opt:hover{border-color:#c7cbf0;background:#f8f9ff}
+.opt input{margin-top:5px;accent-color:var(--primary);width:15px;height:15px;flex-shrink:0;cursor:pointer}
+.opt-key{font-weight:600;color:var(--primary);flex-shrink:0;min-width:16px}
+.opt-text{flex:1;min-width:0}
+.opt-text p{margin:0}
+.opt.correct{border-color:var(--green);background:var(--green-soft)}
+.opt.correct .opt-key{color:var(--green)}
+.opt.wrong{border-color:var(--red);background:var(--red-soft)}
+.opt.wrong .opt-key{color:var(--red)}
+.opt.locked{cursor:default}
+
+.q-fills{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.fill-row{display:flex;align-items:center;gap:10px}
+.fill-idx{font-size:13px;color:var(--muted);flex-shrink:0;min-width:42px}
+.fill-input,.q-textarea{flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;
+  font-size:14px;font-family:inherit;outline:none;transition:.15s;background:#fcfcfe;color:var(--text);min-width:0}
+.fill-input:focus,.q-textarea:focus{border-color:var(--primary);background:#fff;box-shadow:0 0 0 3px var(--primary-soft)}
+.q-textarea{width:100%;min-height:120px;resize:vertical;line-height:1.7;margin-top:14px}
+
+.qcard-foot{display:flex;gap:10px;margin-top:16px;align-items:center;flex-wrap:wrap}
+
+.btn-primary{padding:9px 20px;border:0;border-radius:9px;background:var(--primary);color:#fff;font-size:14px;
+  font-family:inherit;font-weight:500;cursor:pointer;transition:.15s}
+.btn-primary:hover:not(:disabled){background:var(--primary-2);box-shadow:0 6px 16px -8px var(--primary)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.btn-ghost{padding:9px 18px;border:1.5px solid var(--border);border-radius:9px;background:#fff;color:#5f677e;
+  font-size:14px;font-family:inherit;cursor:pointer;transition:.15s}
+.btn-ghost:hover{border-color:#c7cbf0;background:#f8f9ff;color:var(--primary)}
+
+.result{margin-top:16px;border-radius:11px;padding:14px 16px;font-size:14px;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.result.ok{background:var(--green-soft);border:1px solid #b7e4cd}
+.result.bad{background:var(--red-soft);border:1px solid #f5c2c4}
+.result.neutral{background:#f7f8fc;border:1px solid var(--border)}
+.result-title{font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.result.ok .result-title{color:var(--green)}
+.result.bad .result-title{color:var(--red)}
+.answer-box{background:#fff;border-radius:8px;padding:10px 13px;margin-top:8px;border:1px solid rgba(0,0,0,.06)}
+.answer-box .lbl{font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:600;letter-spacing:.03em}
+.answer-box .md p{margin:4px 0}
+
+/* ---------- Composer ---------- */
+.composer{flex-shrink:0;padding:14px 24px 20px;background:linear-gradient(to top,#f5f6fa 60%,rgba(245,246,250,0))}
+.composer-box{max-width:900px;margin:0 auto;background:#fff;border:1.5px solid var(--border);border-radius:16px;
+  padding:8px 8px 8px 12px;display:flex;align-items:flex-end;gap:8px;box-shadow:var(--shadow);transition:.15s}
+.composer-box:focus-within{border-color:var(--primary);box-shadow:0 0 0 4px var(--primary-soft),var(--shadow)}
+.composer-box textarea{flex:1;border:0;outline:none;resize:none;font-family:inherit;font-size:15px;line-height:1.6;
+  max-height:160px;padding:8px 0;background:transparent;color:var(--text);min-width:0}
+.icon-btn{width:36px;height:36px;flex-shrink:0;border:0;background:transparent;border-radius:9px;cursor:pointer;
+  font-size:17px;display:flex;align-items:center;justify-content:center;transition:.15s}
+.icon-btn:hover{background:#f1f2f7}
+.send-btn{flex-shrink:0;height:36px;padding:0 18px}
+.img-preview{max-width:900px;margin:0 auto 8px;position:relative;display:inline-block}
+.img-preview img{max-height:90px;border-radius:9px;border:1px solid var(--border);display:block}
+.img-preview button{position:absolute;top:-7px;right:-7px;width:21px;height:21px;border-radius:50%;border:0;
+  background:#2f3550;color:#fff;cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center}
+
+.drill-form{max-width:900px;margin:0 auto;background:#fff;border:1.5px solid var(--border);border-radius:16px;
+  padding:12px 14px;box-shadow:var(--shadow)}
+.drill-form textarea{width:100%;border:0;outline:none;resize:none;font-family:inherit;
+  font-size:14.5px;padding:8px 0;background:transparent;color:var(--text);line-height:1.6}
+.drill-row{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.drill-row select{padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;
+  font-family:inherit;background:#fcfcfe;color:var(--text);outline:none;cursor:pointer}
+.drill-row select:focus{border-color:var(--primary)}
+.drill-row .grow{flex:1;min-width:20px}
+.drill-sep{height:1px;background:var(--border);margin:6px 0}
+
+/* ---------- Streaming ---------- */
+.stream-preview{background:#fff;border:1px dashed #c7cbf0;border-radius:var(--radius);padding:16px 20px;
+  margin-bottom:14px;color:#4a5170;font-size:14.5px;box-shadow:var(--shadow)}
+.stream-preview .md pre{max-height:220px;overflow:auto}
+.typing{display:inline-flex;gap:3px;vertical-align:middle;margin-left:6px}
+.typing i{width:5px;height:5px;border-radius:50%;background:#a5aac6;animation:blink 1.2s infinite}
+.typing i:nth-child(2){animation-delay:.2s}
+.typing i:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,60%,100%{opacity:.25}30%{opacity:1}}
+
+/* ---------- Modal ---------- */
+.modal-mask{position:fixed;inset:0;background:rgba(18,21,38,.5);backdrop-filter:blur(3px);
+  display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
+.modal-mask.hidden{display:none}
+.modal{background:#fff;border-radius:18px;padding:26px 28px;width:100%;max-width:480px;box-shadow:0 24px 60px -20px rgba(0,0,0,.4);
+  max-height:90vh;overflow-y:auto}
+.modal h3{font-size:17px;margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.modal label{display:block;font-size:13px;font-weight:600;color:#5f677e;margin:14px 0 6px}
+.modal input{width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;
+  font-family:inherit;outline:none;transition:.15s;background:#fcfcfe;color:var(--text)}
+.modal input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft);background:#fff}
+.modal .hint{font-size:12px;color:var(--muted);margin-top:7px;line-height:1.6}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:24px}
+
+/* ---------- Toast ---------- */
+.toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:#1f2333;color:#fff;
+  padding:11px 22px;border-radius:11px;font-size:13.5px;z-index:200;box-shadow:0 12px 30px -10px rgba(0,0,0,.5);
+  animation:fade .25s ease;max-width:80vw;text-align:center}
+.toast.hidden{display:none}
+
+@media(max-width:860px){
+  .sidebar{width:64px;padding:14px 8px}
+  .brand div:not(.logo),.nav-label,.nav-item span:not(.ico),.sub-nav{display:none!important}
+  .nav-item{justify-content:center;padding:11px 0}
+  .btn-ghost-dark{font-size:0;padding:11px 0}
+  .btn-ghost-dark::before{content:"⚙";font-size:15px}
+  .stage,.composer{padding-left:14px;padding-right:14px}
+  .bubble{max-width:94%}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">🎓</div>
+      <div>
+        <div class="brand-name">AI 刷题学习桌</div>
+        <div class="brand-sub">DeepSeek Flash 驱动</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-label">学习模式</div>
+      <button class="nav-item active" data-mode="chat"><span class="ico">💬</span> 边聊边学</button>
+      <button class="nav-item" data-mode="drill"><span class="ico">📚</span> 沉浸刷题</button>
+      <div class="sub-nav" id="subNav">
+        <div class="nav-label">刷题方式</div>
+        <button class="sub-item active" data-drill="generate">按知识点生成题目</button>
+        <button class="sub-item" data-drill="adapt">按题目改编题目</button>
+        <button class="sub-item" data-drill="summary">按题目总结知识点</button>
+      </div>
+    </nav>
+    <div class="sidebar-bottom">
+      <button class="btn-ghost-dark" id="btnSettings">⚙️ 设置 API Key</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="pageTitle">边聊边学</div>
+      <div class="topbar-right">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">未配置</span>
+      </div>
+    </div>
+    <div class="stage" id="stage"></div>
+    <div class="composer" id="composer"></div>
+  </main>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" hidden>
+
+<div class="modal-mask hidden" id="settingsModal">
+  <div class="modal">
+    <h3>⚙️ 设置</h3>
+    <label>DeepSeek API Key</label>
+    <input type="password" id="inpKey" placeholder="sk-xxxxxxxxxxxxxxxx" autocomplete="off">
+    <p class="hint">🔒 Key 仅保存在当前浏览器的 localStorage，直接用于请求 DeepSeek 官方接口，不经过任何第三方服务器。共用电脑请用完后清除。</p>
+    <label>模型名称</label>
+    <input type="text" id="inpModel" placeholder="deepseek-flash">
+    <label>API 地址</label>
+    <input type="text" id="inpBase" placeholder="https://api.deepseek.com">
+    <p class="hint">若浏览器直连出现 CORS 错误，可改填自建反向代理地址（如 https://your-proxy.com/v1）。</p>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="btnCancel">取消</button>
+      <button class="btn-primary" id="btnSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+
+<script>
+/* =========================================================
+   1. 常量
+   ========================================================= */
+const TYPE_LABELS = {
+  single:'单选题', multiple:'多选题', indefinite:'不定项选择题',
+  fill:'填空题', short:'简答题', experiment:'实验题', essay:'解答题'
+};
+const TYPE_ALIAS = {
+  '单选题':'single','单选':'single','多选题':'multiple','多选':'multiple',
+  '不定项选择题':'indefinite','不定项':'indefinite','不定项选择':'indefinite',
+  '填空题':'fill','填空':'fill','简答题':'short','简答':'short',
+  '实验题':'experiment','实验':'experiment','大题':'essay','解答题':'essay','解答':'essay'
+};
+const LETTERS = 'ABCDEFGH';
+
+const QUESTION_SPEC = `# 出题规范（必须严格遵守）
+
+凡是出题，题目必须放在 \`\`\`json 代码块中，且严格符合以下结构：
+
+\`\`\`json
+{
+  "type": "question",
+  "questionType": "single",
+  "topic": "知识点名称",
+  "difficulty": 3,
+  "stem": "题干文字，支持 markdown 与 $公式$",
+  "svg": "",
+  "options": ["选项一的内容", "选项二的内容", "选项三的内容", "选项四的内容"],
+  "answers": ["C"],
+  "explanation": "详细解析"
+}
+\`\`\`
+
+## questionType 取值与要求
+- single 单选题：options 必须 4 个；answers 恰好 1 个字母
+- multiple 多选题：options 必须 4 个；answers 至少 2 个字母
+- indefinite 不定项选择题：options 必须 4 个；answers 至少 1 个字母
+- fill 填空题：无 options；answers 按空序，每空一个字符串
+- short 简答题：无 options；answers 为参考答案字符串数组
+- experiment 实验题：无 options；answers 按设问顺序，每个设问一个字符串
+- essay 解答题/大题：无 options；answers 为分步解答，每步一个字符串
+
+## 其它字段
+- difficulty：1~5 的整数，3 为中等难度
+- options：只写选项内容本身，不要带 "A." "B." 之类前缀
+- svg：当题目需要配图（物理情景、几何图形、电路图、函数图像、实验装置等）时，填写完整 SVG 代码字符串；不需要时填空字符串 ""
+  SVG 要求：必须含 viewBox；只用基础图形（path/circle/rect/line/polygon/text）；描边用 currentColor；不引用任何外部资源；宽度不超过 600
+- stem 与 explanation 中需要换行时使用 \\n 转义，不要出现裸换行符破坏 JSON
+- 数学、物理公式用 $...$（行内）或 $$...$$（独立成行）
+- 化学方程式用 $\\ce{...}$，例如 $\\ce{2H2 + O2 -> 2H2O}$
+
+## 风格要求
+- 讲解时用 markdown 组织，善用小标题、列表、加粗
+- 出题时一次只出一道（用户明确要求多道时除外）
+- 不要在 JSON 之外重复题目答案
+- 答案与解析必须准确，不确定的题目不要出`;
+
+const CHAT_SYSTEM = `你是「AI 刷题学习桌」的智能学习助手，面向中国初高中学生，覆盖数学、物理、化学、生物、语文、英语、政治、历史、地理等学科。
+
+# 你的职责
+1. 耐心讲解知识点与解题方法，思路清晰、循序渐进，多举例子。
+2. 讲解完成后，主动附上一道练习题，帮助学生检验学习效果。
+
+${QUESTION_SPEC}`;
+
+const DRILL_SYSTEM = `你是「AI 刷题学习桌」的命题助手，面向中国初高中学生。
+
+${QUESTION_SPEC}
+
+# 特别注意
+在沉浸刷题模式下，你只需要输出题目 JSON，不要输出任何讲解性文字。`;
+
+const SUMMARY_SYSTEM = `你是「AI 刷题学习桌」的知识点分析助手，面向中国初高中学生。
+
+你的任务是根据题目总结知识点，输出结构化的 markdown 报告，最后附上一道同类巩固练习题（放在 json 代码块中）。
+
+${QUESTION_SPEC}`;
+
+/* =========================================================
+   2. 状态
+   ========================================================= */
+const S = {
+  mode: 'chat',
+  drill: 'generate',
+  chat: [],
+  items: [],
+  qstore: {},
+  streamText: '',
+  loading: false,
+  pendingImg: null,
+  apiKey: localStorage.getItem('ds_api_key') || '',
+  model: localStorage.getItem('ds_model') || 'deepseek-flash',
+  baseUrl: localStorage.getItem('ds_base') || 'https://api.deepseek.com'
+};
+
+/* =========================================================
+   3. 基础工具
+   ========================================================= */
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function escapeAttr(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function hashStr(s) {
+  let h = 0;
+  const str = String(s);
+  for (let i = 0; i < str.length; i++) h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+function toast(msg, ms) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.add('hidden'), ms || 2200);
+}
+function sanitizeSvg(svg) {
+  return String(svg || '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<foreignObject[\s\S]*?<\/foreignObject>/gi, '')
+    .replace(/\son\w+\s*=\s*"[^"]*"/gi, '')
+    .replace(/\son\w+\s*=\s*'[^']*'/gi, '')
+    .replace(/\son\w+\s*=\s*[^\s>]+/gi, '')
+    .replace(/javascript:/gi, '');
+}
+function normAns(s) {
+  return String(s == null ? '' : s)
+    .replace(/\s+/g, '')
+    .replace(/[，。；：、,.;:!?！？"'"'（）()\[\]【】<>《》]/g, '')
+    .toLowerCase();
+}
+
+/* =========================================================
+   4. Markdown + 题目渲染
+   ========================================================= */
+function mdToHtml(text) {
+  if (!text) return '';
+  const svgs = [];
+  let s = String(text).replace(/<svg[\s\S]*?<\/svg>/gi, m => {
+    svgs.push(sanitizeSvg(m));
+    return '\n\n%%SVG' + (svgs.length - 1) + '%%\n\n';
+  });
+  let html;
+  try {
+    html = (window.marked && window.marked.parse)
+      ? marked.parse(s, { breaks: true, gfm: true })
+      : escapeHtml(s).replace(/\n/g, '<br>');
+  } catch (e) {
+    html = escapeHtml(s).replace(/\n/g, '<br>');
+  }
+  html = html.replace(/%%SVG(\d+)%%/g, (_, i) => '<div class="q-figure">' + svgs[+i] + '</div>');
+  return html;
+}
+
+function renderMath(root) {
+  if (!root || !window.renderMathInElement) return;
+  try {
+    renderMathInElement(root, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '\\[', right: '\\]', display: true },
+        { left: '$', right: '$', display: false },
+        { left: '\\(', right: '\\)', display: false }
+      ],
+      throwOnError: false,
+      ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code', 'option']
+    });
+  } catch (e) { /* ignore */ }
+}
+
+/* ---- 切分文本中的 json 代码块 ---- */
+function splitBlocks(text) {
+  const blocks = [];
+  const re = /```json\s*\n?([\s\S]*?)```/gi;
+  let last = 0, m;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) {
+      const t = text.slice(last, m.index);
+      if (t.trim()) blocks.push({ type: 'md', text: t });
+    }
+    blocks.push({ type: 'json', text: m[1] });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) {
+    const t = text.slice(last);
+    if (t.trim()) blocks.push({ type: 'md', text: t });
+  }
+  if (!blocks.length) blocks.push({ type: 'md', text: text });
+  return blocks;
+}
+
+function cleanJson(raw) {
+  const t = String(raw).trim()
+    .replace(/^```[a-zA-Z]*\s*/, '')
+    .replace(/```\s*$/, '')
+    .trim();
+  const iBrace = t.indexOf('{'), iBracket = t.indexOf('[');
+  if (iBracket >= 0 && (iBrace < 0 || iBracket < iBrace)) {
+    const end = t.lastIndexOf(']');
+    if (end > iBracket) return t.slice(iBracket, end + 1);
+  }
+  if (iBrace >= 0) {
+    const end = t.lastIndexOf('}');
+    if (end > iBrace) return t.slice(iBrace, end + 1);
+  }
+  return t;
+}
+
+function normalizeQuestion(o) {
+  if (!o || typeof o !== 'object' || Array.isArray(o)) return null;
+  let ct = o.questionType || o.type || '';
+  if (TYPE_ALIAS[ct]) ct = TYPE_ALIAS[ct];
+  if (!TYPE_LABELS[ct]) {
+    if (Array.isArray(o.options) && o.options.length) ct = 'single';
+    else if (Array.isArray(o.answers) && o.answers.length > 1) ct = 'fill';
+    else ct = 'short';
+  }
+  if (ct === 'question') ct = 'short';
+
+  const stem = o.stem || o.content || o.title || o.question || '';
+  if (!stem) return null;
+
+  let answers = o.answers != null ? o.answers : (o.answer != null ? o.answer : []);
+  if (!Array.isArray(answers)) answers = [answers];
+  answers = answers.map(a => (typeof a === 'string' ? a : JSON.stringify(a)));
+
+  const q = {
+    questionType: ct,
+    topic: o.topic || o.knowledge || '',
+    difficulty: Math.min(5, Math.max(1, Number(o.difficulty) || 3)),
+    stem: String(stem),
+    svg: typeof o.svg === 'string' ? o.svg : '',
+    options: Array.isArray(o.options) ? o.options.map(String) : [],
+    answers,
+    explanation: o.explanation || o.analysis || ''
+  };
+
+  if (['single', 'multiple', 'indefinite'].includes(ct)) {
+    if (q.options.length < 2) return null;
+    const letters = q.answers.map(a => String(a).trim().toUpperCase().replace(/[^A-Z]/g, '')).filter(Boolean);
+    if (!letters.length) return null;
+    q.answers = letters;
+    if (ct === 'single' && letters.length !== 1) q.questionType = 'indefinite';
+    if (ct === 'multiple' && letters.length < 2) q.questionType = 'indefinite';
+  }
+  if (ct === 'fill') {
+    if (!q.answers.length) q.answers = [''];
+  }
+  if (['short', 'experiment', 'essay'].includes(ct)) {
+    if (!q.answers.length) q.answers = ['（参考答案未给出）'];
+  }
+  return q;
+}
+
+/* ---- 题目卡片 ---- */
+function formatAnswer(q) {
+  if (['single', 'multiple', 'indefinite'].includes(q.questionType)) {
+    return '**' + (q.answers || []).join('、') + '**';
+  }
+  if (q.questionType === 'fill') {
+    return (q.answers || []).map((a, i) => '第 ' + (i + 1) + ' 空：**' + a + '**').join('\n\n');
+  }
+  return (q.answers || []).map((a, i) => '**(' + (i + 1) + ')** ' + a).join('\n\n');
+}
+
+function registerQuestion(q, seed) {
+  const qid = 'q_' + hashStr(seed);
+  if (!S.qstore[qid]) S.qstore[qid] = { q, user: [], checked: false, ok: null };
+  return qid;
+}
+
+function questionCardHtml(qid, entry) {
+  const q = entry.q;
+  const checked = !!entry.checked;
+  const user = entry.user || [];
+  const isChoice = ['single', 'multiple', 'indefinite'].includes(q.questionType);
+  const inputType = q.questionType === 'single' ? 'radio' : 'checkbox';
+  const correct = (q.answers || []).map(a => String(a).trim().toUpperCase());
+
+  let body = '';
+  if (isChoice) {
+    body = '<div class="q-options">' + q.options.map((o, i) => {
+      const L = LETTERS[i] || String(i);
+      let cls = 'opt';
+      if (checked) {
+        cls += ' locked';
+        if (correct.includes(L)) cls += ' correct';
+        else if (user.includes(L)) cls += ' wrong';
+      }
+      const sel = user.includes(L) ? ' checked' : '';
+      return '<label class="' + cls + '">' +
+        '<input type="' + inputType + '" name="' + qid + '" value="' + L + '"' + sel + (checked ? ' disabled' : '') + '>' +
+        '<span class="opt-key">' + L + '</span>' +
+        '<span class="opt-text">' + mdToHtml(String(o)) + '</span>' +
+        '</label>';
+    }).join('') + '</div>';
+  } else if (q.questionType === 'fill') {
+    const n = Math.max((q.answers || []).length, 1);
+    let rows = '';
+    for (let i = 0; i < n; i++) {
+      const v = user[i] || '';
+      rows += '<div class="fill-row"><span class="fill-idx">第 ' + (i + 1) + ' 空</span>' +
+        '<input class="fill-input" data-idx="' + i + '" value="' + escapeAttr(v) + '"' + (checked ? ' disabled' : '') + '></div>';
+    }
+    body = '<div class="q-fills">' + rows + '</div>';
+  } else {
+    const v = user[0] || '';
+    body = '<textarea class="q-textarea" placeholder="写下你的解答思路……"' + (checked ? ' disabled' : '') + '>' +
+      escapeHtml(v) + '</textarea>';
+  }
+
+  let foot = '';
+  if (!checked) {
+    foot = '<div class="qcard-foot">' +
+      '<button class="btn-primary" data-act="check">提交答案</button>' +
+      '<button class="btn-ghost" data-act="reveal">直接看解析</button>' +
+      '</div>';
+  } else {
+    foot = '<div class="qcard-foot"><button class="btn-ghost" data-act="reset">重做本题</button></div>';
+  }
+
+  let result = '';
+  if (checked) {
+    const ansText = formatAnswer(q);
+    let cls, title;
+    if (entry.ok === true) { cls = 'ok'; title = '✅ 回答正确'; }
+    else if (entry.ok === false) { cls = 'bad'; title = '❌ 回答错误'; }
+    else { cls = 'neutral'; title = '📝 主观题 · 请对照参考答案自评'; }
+
+    result = '<div class="result ' + cls + '">' +
+      '<div class="result-title">' + title + '</div>' +
+      '<div class="answer-box"><div class="lbl">参考答案</div><div class="md">' + mdToHtml(ansText) + '</div></div>' +
+      (q.explanation ? '<div class="answer-box"><div class="lbl">解析</div><div class="md">' + mdToHtml(q.explanation) + '</div></div>' : '') +
+      '</div>';
+  }
+
+  const svgHtml = q.svg ? '<div class="q-figure">' + sanitizeSvg(q.svg) + '</div>' : '';
+
+  return '<div class="qcard" data-qid="' + qid + '">' +
+    '<div class="qcard-head">' +
+    '<span class="tag tag-type">' + (TYPE_LABELS[q.questionType] || '题目') + '</span>' +
+    (q.topic ? '<span class="tag">' + escapeHtml(q.topic) + '</span>' : '') +
+    '<span class="tag tag-diff">难度 ' + '★'.repeat(q.difficulty) + '</span>' +
+    '</div>' +
+    '<div class="q-stem">' + mdToHtml(q.stem) + '</div>' +
+    svgHtml + body + foot + result +
+    '</div>';
+}
+
+function renderBlocks(text) {
+  const blocks = splitBlocks(text);
+  let html = '';
+  for (const b of blocks) {
+    if (b.type === 'json') {
+      let parsed = null;
+      try { parsed = JSON.parse(cleanJson(b.text)); } catch (e) { parsed = null; }
+      let arr = [];
+      if (Array.isArray(parsed)) arr = parsed;
+      else if (parsed && typeof parsed === 'object') arr = [parsed];
+
+      let rendered = 0;
+      for (let i = 0; i < arr.length; i++) {
+        const q = normalizeQuestion(arr[i]);
+        if (!q) continue;
+        const seed = hashStr(b.text + '#' + i);
+        const qid = registerQuestion(q, seed);
+        html += questionCardHtml(qid, S.qstore[qid]);
+        rendered++;
+      }
+      if (!rendered) {
+        html += mdToHtml('```json\n' + b.text + '\n```');
+      }
+    } else {
+      html += mdToHtml(b.text);
+    }
+  }
+  return html;
+}
+
+/* =========================================================
+   5. 答题逻辑
+   ========================================================= */
+function collectUser(qid, card, entry) {
+  const ct = entry.q.questionType;
+  if (['single', 'multiple', 'indefinite'].includes(ct)) {
+    entry.user = Array.from(card.querySelectorAll('input:checked')).map(i => i.value);
+  } else if (ct === 'fill') {
+    entry.user = Array.from(card.querySelectorAll('.fill-input')).map(i => i.value);
+  } else {
+    const t = card.querySelector('.q-textarea');
+    entry.user = t ? [t.value] : [''];
+  }
+}
+
+function checkAnswer(qid, card) {
+  const entry = S.qstore[qid];
+  if (!entry) return;
+  const q = entry.q;
+  const ct = q.questionType;
+  collectUser(qid, card, entry);
+
+  if (ct === 'multiple' && entry.user.length < 2) { toast('多选题至少选择两项'); return; }
+  if (ct === 'indefinite' && entry.user.length < 1) { toast('不定项选择题至少选择一项'); return; }
+  if (ct === 'single' && entry.user.length !== 1) { toast('请选择一个选项'); return; }
+
+  if (['single', 'multiple', 'indefinite'].includes(ct)) {
+    const correct = (q.answers || []).map(a => String(a).trim().toUpperCase()).sort();
+    const u = entry.user.map(a => String(a).toUpperCase()).sort();
+    entry.ok = u.length === correct.length && u.every((v, i) => v === correct[i]);
+  } else if (ct === 'fill') {
+    const correct = (q.answers || []).map(a => normAns(a));
+    const u = entry.user.map(a => normAns(a));
+    entry.ok = u.length === correct.length && correct.every((c, i) => c === u[i]);
+    if (!u.some(v => v)) { toast('请先填写答案'); return; }
+  } else {
+    const has = entry.user.some(v => v && v.trim());
+    if (!has) { toast('请先写下你的解答'); return; }
+    entry.ok = null;
+  }
+  entry.checked = true;
+  renderStage();
+}
+
+function resetAnswer(qid) {
+  const entry = S.qstore[qid];
+  if (!entry) return;
+  entry.checked = false;
+  entry.ok = null;
+  entry.user = [];
+  renderStage();
+}
+
+/* =========================================================
+   6. API 调用
+   ========================================================= */
+async function callDeepSeek(messages, onDelta) {
+  const url = S.baseUrl.replace(/\/+$/, '') + '/chat/completions';
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + S.apiKey,
+      'Accept': 'text/event-stream'
+    },
+    body: JSON.stringify({
+      model: S.model,
+      messages,
+      stream: true,
+      temperature: 0.7,
+      max_tokens: 4096
+    })
+  });
+
+  if (!res.ok) {
+    let detail = '';
+    try { detail = (await res.text()).slice(0, 400); } catch (e) { }
+    throw new Error('HTTP ' + res.status + (detail ? ' · ' + detail : ''));
+  }
+  if (!res.body) throw new Error('响应无数据流');
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder('utf-8');
+  let buf = '';
+  let full = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const lines = buf.split('\n');
+    buf = lines.pop();
+    for (const line of lines) {
+      const s = line.trim();
+      if (!s || s.startsWith(':')) continue;
+      if (!s.startsWith('data:')) continue;
+      const data = s.slice(5).trim();
+      if (data === '[DONE]') continue;
+      try {
+        const j = JSON.parse(data);
+        const d = j.choices && j.choices[0] && j.choices[0].delta && j.choices[0].delta.content;
+        if (d) { full += d; onDelta(full); }
+      } catch (e) { /* 忽略不完整片段 */ }
+    }
+  }
+  return full;
+}
+
+function buildChatMessages() {
+  const msgs = [{ role: 'system', content: CHAT_SYSTEM }];
+  const history = S.chat.filter(m => !m.streaming).slice(-16);
+  for (const m of history) {
+    if (m.role === 'user') {
+      if (m.images && m.images.length) {
+        const content = [];
+        if (m.text) content.push({ type: 'text', text: m.text });
+        for (const src of m.images) content.push({ type: 'image_url', image_url: { url: src } });
+        msgs.push({ role: 'user', content });
+      } else {
+        msgs.push({ role: 'user', content: m.text || '' });
+      }
+    } else {
+      msgs.push({ role: 'assistant', content: m.text || '' });
+    }
+  }
+  return msgs;
+}
+
+/* =========================================================
+   7. 流式更新（节流）
+   ========================================================= */
+let streamTimer = null;
+let streamPending = '';
+
+function pushStream(text) {
+  S.streamText = text;
+  streamPending = text;
+  if (streamTimer) return;
+  streamTimer = setTimeout(() => {
+    streamTimer = null;
+    doStreamUpdate(streamPending);
+  }, 90);
+}
+
+function doStreamUpdate(text) {
+  const stage = document.getElementById('stage');
+  if (!stage) return;
+
+  if (S.mode === 'chat') {
+    const list = document.getElementById('chatList');
+    if (!list) return;
+    const last = list.lastElementChild;
+    if (!last) return;
+    const target = last.querySelector('.md');
+    if (target) {
+      target.innerHTML = mdToHtml(text) + '<span class="typing"><i></i><i></i><i></i></span>';
+      renderMath(target);
+    }
+  } else {
+    let el = document.getElementById('drillStream');
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'stream-preview';
+      el.id = 'drillStream';
+      stage.appendChild(el);
+    }
+    el.innerHTML = '<div class="md">' + mdToHtml(text) + '</div><span class="typing"><i></i><i></i><i></i></span>';
+    renderMath(el);
+  }
+  scrollBottom();
+}
+
+function scrollBottom() {
+  const stage = document.getElementById('stage');
+  if (!stage) return;
+  stage.scrollTop = stage.scrollHeight;
+}
+
+/* =========================================================
+   8. 渲染
+   ========================================================= */
+function emptyChatHtml() {
+  return '<div class="empty">' +
+    '<div class="empty-icon">💬</div>' +
+    '<h2>边聊边学</h2>' +
+    '<p>告诉我哪个知识点比较薄弱，我来讲解并出题检验</p>' +
+    '<div class="empty-tips">' +
+    '<div>· 「我不太懂楞次定律，帮我讲讲」</div>' +
+    '<div>· 「化学平衡移动的影响因素有哪些？」</div>' +
+    '<div>· 「圆锥曲线的离心率怎么求？」</div>' +
+    '<div>· 也可以直接拍照上传题目问我</div>' +
+    '</div></div>';
+}
+
+function emptyDrillHtml() {
+  const map = {
+    generate: {
+      icon: '📚', title: '按知识点生成题目',
+      desc: '输入一个知识点，AI 会生成递进难度的练习题',
+      tips: ['· 牛顿第二定律', '· 化学平衡常数', '· 数列求通项公式', '· 文言文实词虚词']
+    },
+    adapt: {
+      icon: '🔄', title: '按题目改编题目',
+      desc: '上传一道原题，AI 识别后生成同类型变式题',
+      tips: ['· 改变数值或条件', '· 更换物理情境', '· 转换设问角度']
+    },
+    summary: {
+      icon: '🧠', title: '按题目总结知识点',
+      desc: '上传一道题，AI 帮你梳理背后的知识点网络',
+      tips: ['· 核心考点提炼', '· 知识点之间的联系', '· 易错点提醒', '· 举一反三']
+    }
+  };
+  const c = map[S.drill] || map.generate;
+  return '<div class="empty">' +
+    '<div class="empty-icon">' + c.icon + '</div>' +
+    '<h2>' + c.title + '</h2>' +
+    '<p>' + c.desc + '</p>' +
+    '<div class="empty-tips">' + c.tips.map(t => '<div>' + t + '</div>').join('') + '</div>' +
+    '</div>';
+}
+
+function msgHtml(m) {
+  const isUser = m.role === 'user';
+  let inner = '';
+  if (m.images && m.images.length) {
+    inner += m.images.map(src => '<img class="msg-img" src="' + src + '" alt="上传的图片">').join('');
+  }
+  if (m.streaming) {
+    inner += '<div class="md" id="streamTarget">' +
+      (m.text ? mdToHtml(m.text) : '') +
+      '<span class="typing"><i></i><i></i><i></i></span></div>';
+  } else {
+    inner += '<div class="md">' + renderBlocks(m.text || '') + '</div>';
+  }
+  return '<div class="msg ' + (isUser ? 'user' : 'ai') + '">' +
+    '<div class="avatar">' + (isUser ? '我' : 'AI') + '</div>' +
+    '<div class="bubble">' + inner + '</div>' +
+    '</div>';
+}
+
+function renderStage() {
+  const stage = document.getElementById('stage');
+  if (!stage) return;
+  const keepBottom = stage.scrollHeight - stage.scrollTop - stage.clientHeight < 160;
+
+  if (S.mode === 'chat') {
+    if (!S.chat.length) {
+      stage.innerHTML = emptyChatHtml();
+    } else {
+      stage.innerHTML = '<div id="chatList">' + S.chat.map(msgHtml).join('') + '</div>';
+    }
+  } else {
+    if (!S.items.length && !S.loading) {
+      stage.innerHTML = emptyDrillHtml();
+    } else {
+      let html = '';
+      for (const it of S.items) {
+        if (it.kind === 'user') {
+          html += '<div class="msg user">' +
+            '<div class="avatar">我</div>' +
+            '<div class="bubble">' +
+            (it.images || []).map(s => '<img class="msg-img" src="' + s + '" alt="上传的图片">').join('') +
+            '<div>' + escapeHtml(it.text || '') + '</div>' +
+            '</div></div>';
+        } else {
+          html += '<div class="msg ai">' +
+            '<div class="avatar">AI</div>' +
+            '<div class="bubble"><div class="md">' + renderBlocks(it.text || '') + '</div></div>' +
+            '</div>';
+        }
+      }
+      if (S.loading) {
+        html += '<div class="stream-preview" id="drillStream"><div class="md">' +
+          mdToHtml(S.streamText) + '</div><span class="typing"><i></i><i></i><i></i></span></div>';
+      }
+      stage.innerHTML = html;
+    }
+  }
+
+  renderMath(stage);
+  if (keepBottom) scrollBottom();
+}
+
+function imgPreviewHtml() {
+  if (!S.pendingImg) return '';
+  return '<div class="img-preview"><img src="' + S.pendingImg + '" alt="待发送图片">' +
+    '<button data-act="rmimg" title="移除">×</button></div>';
+}
+
+function renderComposer() {
+  const c = document.getElementById('composer');
+  if (!c) return;
+
+  if (S.mode === 'chat') {
+    c.innerHTML = imgPreviewHtml() +
+      '<div class="composer-box">' +
+      '<button class="icon-btn" data-act="pick" title="上传图片">📎</button>' +
+      '<textarea rows="1" placeholder="说说你哪里不懂，或者直接提问……（Enter 发送，Shift+Enter 换行）"></textarea>' +
+      '<button class="btn-primary send-btn" data-act="send">发送</button>' +
+      '</div>';
+    return;
+  }
+
+  let form = '';
+  if (S.drill === 'generate') {
+    form = '<div class="drill-form">' +
+      '<textarea id="drillInput" rows="1" placeholder="输入知识点，例如：牛顿第二定律、电磁感应、圆锥曲线……"></textarea>' +
+      '<div class="drill-sep"></div>' +
+      '<div class="drill-row">' +
+      '<select id="drillQType">' +
+      '<option value="auto">题型：自动匹配</option>' +
+      '<option value="single">单选题</option>' +
+      '<option value="multiple">多选题</option>' +
+      '<option value="indefinite">不定项选择题</option>' +
+      '<option value="fill">填空题</option>' +
+      '<option value="short">简答题</option>' +
+      '<option value="experiment">实验题</option>' +
+      '<option value="essay">解答题</option>' +
+      '</select>' +
+      '<select id="drillDiff">' +
+      '<option value="2">难度：基础</option>' +
+      '<option value="3" selected>难度：中等</option>' +
+      '<option value="4">难度：较难</option>' +
+      '<option value="5">难度：压轴</option>' +
+      '</select>' +
+      '<select id="drillCount">' +
+      '<option value="1">1 道</option>' +
+      '<option value="3" selected>3 道</option>' +
+      '<option value="5">5 道</option>' +
+      '</select>' +
+      '<div class="grow"></div>' +
+      '<button class="btn-primary" data-act="drill">生成题目</button>' +
+      '</div></div>';
+  } else if (S.drill === 'adapt') {
+    form = '<div class="drill-form">' +
+      '<textarea id="drillInput" rows="1" placeholder="可选：说明改编方向，例如「把数值改大」「换成滑块模型」"></textarea>' +
+      '<div class="drill-sep"></div>' +
+      '<div class="drill-row">' +
+      '<button class="btn-ghost" data-act="pick">📷 上传原题图片</button>' +
+      '<div class="grow"></div>' +
+      '<button class="btn-primary" data-act="drill">开始改编</button>' +
+      '</div></div>';
+  } else {
+    form = '<div class="drill-form">' +
+      '<textarea id="drillInput" rows="1" placeholder="可选：想重点总结哪些方面？"></textarea>' +
+      '<div class="drill-sep"></div>' +
+      '<div class="drill-row">' +
+      '<button class="btn-ghost" data-act="pick">📷 上传题目图片</button>' +
+      '<div class="grow"></div>' +
+      '<button class="btn-primary" data-act="drill">总结知识点</button>' +
+      '</div></div>';
+  }
+  c.innerHTML = imgPreviewHtml() + form;
+}
+
+/* =========================================================
+   9. 发送
+   ========================================================= */
+async function sendChat() {
+  if (S.loading) return;
+  const ta = document.querySelector('#composer textarea');
+  const text = ta ? ta.value.trim() : '';
+  const img = S.pendingImg;
+  if (!text && !img) return;
+  if (!S.apiKey) { openSettings(); toast('请先配置 API Key'); return; }
+
+  S.chat.push({ role: 'user', text, images: img ? [img] : [] });
+  S.pendingImg = null;
+  S.loading = true;
+  S.streamText = '';
+  const aiMsg = { role: 'ai', text: '', streaming: true };
+  S.chat.push(aiMsg);
+
+  renderComposer();
+  renderStage();
+  scrollBottom();
+
+  try {
+    let full = '';
+    await callDeepSeek(buildChatMessages(), (p) => { full = p; pushStream(p); });
+    aiMsg.text = full;
+  } catch (err) {
+    aiMsg.text = '⚠️ 请求失败：' + (err && err.message ? err.message : String(err)) +
+      '\n\n请检查：\n1. API Key 是否正确\n2. 网络是否能访问 ' + S.baseUrl +
+      '\n3. 若提示 CORS，请在设置中改用自建反向代理地址';
+  }
+  aiMsg.streaming = false;
+  S.loading = false;
+  S.streamText = '';
+  renderStage();
+  scrollBottom();
+}
+
+async function runDrill() {
+  if (S.loading) return;
+  if (!S.apiKey) { openSettings(); toast('请先配置 API Key'); return; }
+
+  const ta = document.querySelector('#composer textarea');
+  const text = ta ? ta.value.trim() : '';
+  const img = S.pendingImg;
+
+  let userPrompt = '';
+  let systemPrompt = DRILL_SYSTEM;
+  let displayText = text;
+
+  if (S.drill === 'generate') {
+    if (!text) { toast('请输入知识点'); return; }
+    const qtypeEl = document.getElementById('drillQType');
+    const diffEl = document.getElementById('drillDiff');
+    const cntEl = document.getElementById('drillCount');
+    const qtype = qtypeEl ? qtypeEl.value : 'auto';
+    const diff = diffEl ? diffEl.value : '3';
+    const count = cntEl ? cntEl.value : '3';
+    displayText = '按知识点生成：' + text + '（' + count + ' 道 · 难度 ' + diff + '）';
+    userPrompt = '请针对知识点「' + text + '」生成 ' + count + ' 道题目。\n' +
+      '难度要求：' + diff + '（1 最简单，5 最难）。\n' +
+      '题型要求：' + (qtype === 'auto' ? '自动选择最合适的题型，尽量覆盖不同题型' : TYPE_LABELS[qtype]) + '。\n' +
+      '每道题单独放在一个 json 代码块中，题目之间不要输出任何多余文字。';
+  } else if (S.drill === 'adapt') {
+    if (!img) { toast('请先上传原题图片'); return; }
+    displayText = text || '请改编这道题';
+    userPrompt = '这是我上传的一道原题。请先识别题目内容，然后基于它改编出 1 道同类型但有所变化的新题' +
+      '（可改变数值、情境或设问角度），并给出完整答案与解析。\n' +
+      (text ? '改编要求：' + text + '\n' : '') +
+      '只输出新题的 json 代码块，不要输出多余文字。';
+  } else {
+    if (!img) { toast('请先上传题目图片'); return; }
+    displayText = text || '请总结这道题的知识点';
+    systemPrompt = SUMMARY_SYSTEM;
+    userPrompt = '这是我上传的一道题目。请先识别题目内容，然后系统总结这道题涉及的知识点，输出一份结构化总结报告。\n' +
+      (text ? '补充要求：' + text + '\n' : '') +
+      '\n总结报告请用 markdown 输出，包含以下部分：\n' +
+      '## 📌 题目核心考点\n## 🧩 涉及知识点清单\n## 🔗 知识点之间的联系\n## ⚠️ 易错点提醒\n## 🎯 举一反三\n\n' +
+      '最后再附上一道同类巩固练习题，放在 json 代码块中。';
+  }
+
+  S.items.push({ kind: 'user', text: displayText, images: img ? [img] : [] });
+  S.pendingImg = null;
+  S.loading = true;
+  S.streamText = '';
+
+  renderComposer();
+  renderStage();
+  scrollBottom();
+
+  try {
+    const content = [];
+    if (img) content.push({ type: 'image_url', image_url: { url: img } });
+    content.push({ type: 'text', text: userPrompt });
+
+    const msgs = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: img ? content : userPrompt }
+    ];
+
+    let full = '';
+    await callDeepSeek(msgs, (p) => { full = p; pushStream(p); });
+    S.items.push({ kind: 'ai', text: full });
+  } catch (err) {
+    S.items.push({
+      kind: 'ai',
+      text: '⚠️ 请求失败：' + (err && err.message ? err.message : String(err)) +
+        '\n\n请检查 API Key、网络连通性，若提示 CORS 请在设置中改用自建反向代理。'
+    });
+  }
+  S.loading = false;
+  S.streamText = '';
+  renderStage();
+  scrollBottom();
+}
+
+/* =========================================================
+   10. 事件绑定
+   ========================================================= */
+function openSettings() {
+  document.getElementById('inpKey').value = S.apiKey;
+  document.getElementById('inpModel').value = S.model;
+  document.getElementById('inpBase').value = S.baseUrl;
+  document.getElementById('settingsModal').classList.remove('hidden');
+}
+
+function updateStatus() {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  if (S.apiKey) {
+    dot.className = 'status-dot on';
+    txt.textContent = '已连接 · ' + S.model;
+  } else {
+    dot.className = 'status-dot off';
+    txt.textContent = '未配置';
+  }
+}
+
+function initEvents() {
+  /* 模式切换 */
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (S.mode === btn.dataset.mode) return;
+      document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      S.mode = btn.dataset.mode;
+      document.getElementById('subNav').classList.toggle('show', S.mode === 'drill');
+      document.getElementById('pageTitle').textContent = S.mode === 'chat' ? '边聊边学' : '沉浸刷题';
+      renderStage();
+      renderComposer();
+    });
+  });
+
+  /* 刷题方式切换 */
+  document.querySelectorAll('.sub-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.sub-item').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      S.drill = btn.dataset.drill;
+      renderStage();
+      renderComposer();
+    });
+  });
+
+  /* Stage 事件委托 */
+  const stage = document.getElementById('stage');
+
+  stage.addEventListener('click', e => {
+    const btn = e.target.closest('[data-act]');
+    if (!btn) return;
+    const card = btn.closest('.qcard');
+    if (!card) return;
+    const qid = card.dataset.qid;
+    const act = btn.dataset.act;
+    if (act === 'check') checkAnswer(qid, card);
+    else if (act === 'reveal') {
+      const entry = S.qstore[qid];
+      if (!entry) return;
+      collectUser(qid, card, entry);
+      entry.checked = true;
+      entry.ok = null;
+      renderStage();
+    } else if (act === 'reset') resetAnswer(qid);
+  });
+
+  /* 答题输入实时保存（防止重渲染丢失） */
+  stage.addEventListener('input', e => {
+    const card = e.target.closest('.qcard');
+    if (!card) return;
+    const entry = S.qstore[card.dataset.qid];
+    if (!entry || entry.checked) return;
+    collectUser(card.dataset.qid, card, entry);
+  });
+
+  /* Composer 事件委托 */
+  const composer = document.getElementById('composer');
+
+  composer.addEventListener('click', e => {
+    const btn = e.target.closest('[data-act]');
+    if (!btn) return;
+    const act = btn.dataset.act;
+    if (act === 'pick') document.getElementById('fileInput').click();
+    else if (act === 'rmimg') { S.pendingImg = null; renderComposer(); }
+    else if (act === 'send') sendChat();
+    else if (act === 'drill') runDrill();
+  });
+
+  /* Enter 发送 / Shift+Enter 换行 */
+  composer.addEventListener('keydown', e => {
+    if (e.target.tagName !== 'TEXTAREA') return;
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+      e.preventDefault();
+      if (S.mode === 'chat') sendChat();
+      else runDrill();
+    }
+  });
+
+  /* textarea 自适应高度 */
+  composer.addEventListener('input', e => {
+    if (e.target.tagName !== 'TEXTAREA') return;
+    e.target.style.height = 'auto';
+    e.target.style.height = Math.min(e.target.scrollHeight, 160) + 'px';
+  });
+
+  /* 图片选择 */
+  document.getElementById('fileInput').addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    if (!/^image\//.test(f.type)) { toast('请选择图片文件'); return; }
+    if (f.size > 8 * 1024 * 1024) { toast('图片请小于 8MB'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      S.pendingImg = reader.result;
+      renderComposer();
+    };
+    reader.readAsDataURL(f);
+    e.target.value = '';
+  });
+
+  /* 设置弹窗 */
+  document.getElementById('btnSettings').addEventListener('click', openSettings);
+  document.getElementById('btnCancel').addEventListener('click', () => {
+    document.getElementById('settingsModal').classList.add('hidden');
+  });
+  document.getElementById('btnSave').addEventListener('click', () => {
+    S.apiKey = document.getElementById('inpKey').value.trim();
+    S.model = document.getElementById('inpModel').value.trim() || 'deepseek-flash';
+    S.baseUrl = document.getElementById('inpBase').value.trim().replace(/\/+$/, '') || 'https://api.deepseek.com';
+    localStorage.setItem('ds_api_key', S.apiKey);
+    localStorage.setItem('ds_model', S.model);
+    localStorage.setItem('ds_base', S.baseUrl);
+    document.getElementById('settingsModal').classList.add('hidden');
+    updateStatus();
+    toast('设置已保存');
+  });
+  document.getElementById('settingsModal').addEventListener('click', e => {
+    if (e.target.id === 'settingsModal') e.target.classList.add('hidden');
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.getElementById('settingsModal').classList.add('hidden');
+  });
+
+  /* 拖拽上传图片 */
+  document.addEventListener('dragover', e => { e.preventDefault(); });
+  document.addEventListener('drop', e => {
+    e.preventDefault();
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!f || !/^image\//.test(f.type)) return;
+    if (f.size > 8 * 1024 * 1024) { toast('图片请小于 8MB'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      S.pendingImg = reader.result;
+      renderComposer();
+      toast('已添加图片');
+    };
+    reader.readAsDataURL(f);
+  });
+}
+
+/* =========================================================
+   11. 启动
+   ========================================================= */
+function init() {
+  initEvents();
+  updateStatus();
+  renderStage();
+  renderComposer();
+  if (!S.apiKey) {
+    setTimeout(() => toast('请先在左下角「设置 API Key」', 3200), 700);
+  }
+}
+
+init();
+</script>
+</body>
+</html>

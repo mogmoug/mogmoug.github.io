@@ -1,0 +1,1956 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>化学实验室模拟器 - 高锰酸钾制氧气</title>
+    <style>
+        :root {
+            --bg-primary: #f0f4f8;
+            --bg-card: #ffffff;
+            --bg-dark: #1a2a3a;
+            --text-primary: #1a2a3a;
+            --text-secondary: #4a5a6a;
+            --text-light: #ffffff;
+            --accent: #2e86c1;
+            --accent-dark: #1a5276;
+            --accent-light: #d4e6f1;
+            --success: #27ae60;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --glass-border: rgba(200, 220, 240, 0.5);
+            --glass-bg: rgba(255, 255, 255, 0.6);
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+            --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.12);
+            --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.18);
+            --radius-sm: 8px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --font-mono: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', monospace;
+            --font-sans: 'Inter', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-image:
+                radial-gradient(ellipse at 20% 20%, rgba(46, 134, 193, 0.06) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 80%, rgba(26, 82, 118, 0.08) 0%, transparent 60%),
+                linear-gradient(180deg, #f0f4f8 0%, #e8ecf1 100%);
+        }
+
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            min-height: 100vh;
+        }
+
+        /* ===== Header ===== */
+        .header {
+            background: var(--bg-dark);
+            border-radius: var(--radius-md);
+            padding: 18px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            box-shadow: var(--shadow-md);
+            background-image: linear-gradient(135deg, #1a2a3a 0%, #1e3a5f 100%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .header-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #2e86c1, #1a5276);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 4px 15px rgba(46, 134, 193, 0.4);
+            flex-shrink: 0;
+        }
+        .header-title h1 {
+            color: var(--text-light);
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            line-height: 1.2;
+        }
+        .header-title p {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.8rem;
+            letter-spacing: 0.3px;
+            margin-top: 2px;
+        }
+        .header-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #95a5a6;
+            transition: var(--transition);
+            animation: pulse-dot 2s infinite;
+        }
+        .status-dot.active {
+            background: #f39c12;
+            box-shadow: 0 0 12px #f39c12;
+            animation: pulse-dot-active 1s infinite;
+        }
+        .status-dot.success {
+            background: #27ae60;
+            box-shadow: 0 0 12px #27ae60;
+            animation: pulse-dot 2s infinite;
+        }
+        .status-text {
+            color: var(--text-light);
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        @keyframes pulse-dot {
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.6;
+                transform: scale(1.2);
+            }
+        }
+        @keyframes pulse-dot-active {
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+                box-shadow: 0 0 8px #f39c12;
+            }
+            50% {
+                opacity: 0.7;
+                transform: scale(1.3);
+                box-shadow: 0 0 20px #f39c12;
+            }
+        }
+
+        /* ===== Main Layout ===== */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 360px;
+            gap: 16px;
+            flex: 1;
+            min-height: 0;
+        }
+        @media (max-width: 1000px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ===== Lab Bench ===== */
+        .lab-bench {
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--glass-border);
+        }
+        .lab-bench-header {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #f8fafc, #eef2f6);
+            border-bottom: 1px solid #e0e6ec;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .lab-bench-header h2 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--accent-dark);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .bench-badge {
+            font-size: 0.7rem;
+            padding: 3px 10px;
+            border-radius: 12px;
+            background: var(--accent-light);
+            color: var(--accent-dark);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .svg-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            background: linear-gradient(180deg, #fdfefe 0%, #f5f7f9 100%);
+            min-height: 400px;
+            position: relative;
+        }
+        .svg-container svg {
+            width: 100%;
+            height: auto;
+            max-height: 520px;
+            border-radius: var(--radius-sm);
+            filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.06));
+        }
+
+        /* ===== Info Panel ===== */
+        .info-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+            max-height: 700px;
+        }
+        .info-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            padding: 16px 18px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--glass-border);
+            transition: var(--transition);
+        }
+        .info-card:hover {
+            box-shadow: var(--shadow-md);
+            border-color: var(--accent);
+        }
+        .info-card h3 {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--accent-dark);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        .info-card h3 .icon {
+            font-size: 1rem;
+        }
+        .reagent-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .reagent-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: #f8fafc;
+            border-radius: var(--radius-sm);
+            border-left: 3px solid var(--accent);
+            font-size: 0.8rem;
+            transition: var(--transition);
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .reagent-item .name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .reagent-item .formula {
+            font-family: var(--font-mono);
+            color: var(--accent-dark);
+            font-size: 0.75rem;
+            background: var(--accent-light);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        .reagent-item .amount {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+        }
+        .reagent-color-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+            flex-shrink: 0;
+        }
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            font-size: 0.8rem;
+            border-bottom: 1px dashed #e8ecf0;
+        }
+        .data-row:last-child {
+            border-bottom: none;
+        }
+        .data-row .label {
+            color: var(--text-secondary);
+        }
+        .data-row .value {
+            font-weight: 600;
+            font-family: var(--font-mono);
+            color: var(--text-primary);
+        }
+        .data-row .value.highlight {
+            color: var(--accent-dark);
+            font-size: 1rem;
+        }
+        .temp-bar {
+            width: 100%;
+            height: 6px;
+            background: #e8ecf0;
+            border-radius: 3px;
+            margin-top: 6px;
+            overflow: hidden;
+            position: relative;
+        }
+        .temp-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.4s ease;
+            background: linear-gradient(90deg, #3498db, #f39c12, #e74c3c);
+        }
+        .reaction-display {
+            background: #1a2a3a;
+            border-radius: var(--radius-sm);
+            padding: 10px 14px;
+            color: #fff;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            text-align: center;
+            letter-spacing: 0.5px;
+            line-height: 1.6;
+            margin-top: 6px;
+        }
+        .reaction-display .condition {
+            color: #f39c12;
+            font-weight: 600;
+        }
+        .reaction-display.active {
+            border: 1px solid #f39c12;
+            box-shadow: 0 0 20px rgba(243, 156, 18, 0.3);
+            animation: reaction-glow 1.5s infinite;
+        }
+        @keyframes reaction-glow {
+            0%,
+            100% {
+                box-shadow: 0 0 10px rgba(243, 156, 18, 0.2);
+            }
+            50% {
+                box-shadow: 0 0 25px rgba(243, 156, 18, 0.5);
+            }
+        }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e8ecf0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            background: linear-gradient(90deg, #2e86c1, #27ae60);
+            transition: width 0.3s ease;
+        }
+
+        /* ===== Controls ===== */
+        .controls-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 12px 16px;
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--glass-border);
+        }
+        .btn {
+            padding: 10px 18px;
+            border-radius: var(--radius-sm);
+            border: none;
+            font-family: var(--font-sans);
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+            user-select: none;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        .btn:active {
+            transform: translateY(0);
+            box-shadow: var(--shadow-sm);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #2e86c1, #1a5276);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(46, 134, 193, 0.3);
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60, #1e8449);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+        }
+        .btn-warning {
+            background: linear-gradient(135deg, #f39c12, #d68910);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(243, 156, 18, 0.3);
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+        }
+        .btn-outline {
+            background: transparent;
+            color: var(--accent-dark);
+            border: 2px solid var(--accent);
+            box-shadow: none;
+        }
+        .btn-outline:hover {
+            background: var(--accent-light);
+            box-shadow: none;
+        }
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.7rem;
+            border-radius: 6px;
+        }
+
+        /* ===== Guide ===== */
+        .guide-section {
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            border: 1px solid var(--glass-border);
+        }
+        .guide-header {
+            padding: 14px 20px;
+            background: linear-gradient(135deg, #f8fafc, #eef2f6);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            user-select: none;
+            border-bottom: 1px solid #e0e6ec;
+        }
+        .guide-header h2 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--accent-dark);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .guide-content {
+            padding: 16px 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+        .guide-step {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            padding: 10px;
+            background: #f8fafc;
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+            border-left: 3px solid transparent;
+        }
+        .guide-step.active {
+            border-left-color: var(--success);
+            background: #f0faf4;
+        }
+        .guide-step-number {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.8rem;
+            flex-shrink: 0;
+        }
+        .guide-step.active .guide-step-number {
+            background: var(--success);
+        }
+        .guide-step-text {
+            font-size: 0.8rem;
+            line-height: 1.5;
+            color: var(--text-secondary);
+        }
+        .guide-step-text strong {
+            color: var(--text-primary);
+        }
+
+        /* ===== Tooltip ===== */
+        .tooltip {
+            position: fixed;
+            background: var(--bg-dark);
+            color: #fff;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            pointer-events: none;
+            z-index: 1000;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            opacity: 0;
+            transition: opacity 0.2s;
+            max-width: 280px;
+            line-height: 1.5;
+        }
+        .tooltip.visible {
+            opacity: 1;
+        }
+
+        /* ===== Scrollbar ===== */
+        .info-panel::-webkit-scrollbar,
+        .guide-content::-webkit-scrollbar {
+            width: 6px;
+        }
+        .info-panel::-webkit-scrollbar-track,
+        .guide-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .info-panel::-webkit-scrollbar-thumb,
+        .guide-content::-webkit-scrollbar-thumb {
+            background: #c0c8d0;
+            border-radius: 3px;
+        }
+        .info-panel::-webkit-scrollbar-thumb:hover,
+        .guide-content::-webkit-scrollbar-thumb:hover {
+            background: #a0a8b0;
+        }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 600px) {
+            .app-container {
+                padding: 8px;
+                gap: 8px;
+            }
+            .header {
+                padding: 12px 16px;
+            }
+            .header-title h1 {
+                font-size: 1.1rem;
+            }
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+            .svg-container {
+                min-height: 280px;
+                padding: 6px;
+            }
+            .controls-section {
+                padding: 8px;
+                gap: 4px;
+            }
+            .btn {
+                padding: 7px 12px;
+                font-size: 0.7rem;
+            }
+            .guide-content {
+                grid-template-columns: 1fr;
+                max-height: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container" id="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <div class="header-icon">⚗️</div>
+                <div class="header-title">
+                    <h1>化学实验室模拟器</h1>
+                    <p>高锰酸钾制取氧气 · 初中化学实验</p>
+                </div>
+            </div>
+            <div class="header-status">
+                <div class="status-dot" id="statusDot"></div>
+                <span class="status-text" id="statusText">就绪</span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Lab Bench with SVG -->
+            <div class="lab-bench">
+                <div class="lab-bench-header">
+                    <h2>🔬 实验台 <span class="bench-badge">排水法收集氧气</span></h2>
+                    <span id="benchTemp" style="font-size:0.8rem;color:var(--text-secondary);font-family:var(--font-mono);">环境温度: 25.0°C</span>
+                </div>
+                <div class="svg-container">
+                    <svg id="labSvg" viewBox="0 0 900 560" xmlns="http://www.w3.org/2000/svg">
+                        <!-- SVG content will be rendered dynamically -->
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Info Panel -->
+            <div class="info-panel" id="infoPanel">
+                <!-- Cards rendered dynamically -->
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls-section" id="controlsSection">
+            <!-- Buttons rendered dynamically -->
+        </div>
+
+        <!-- Guide -->
+        <div class="guide-section">
+            <div class="guide-header" onclick="toggleGuide()">
+                <h2>📋 操作指南 <span style="font-size:0.7rem;color:var(--text-secondary);font-weight:400;">点击展开/收起</span></h2>
+                <span id="guideToggleIcon" style="font-size:1.2rem;">▾</span>
+            </div>
+            <div class="guide-content" id="guideContent">
+                <!-- Guide steps rendered dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Tooltip -->
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // =============================================
+        // ================== MODEL ====================
+        // =============================================
+        const Model = {
+            // Reagent database
+            reagents: {
+                KMnO4: {
+                    id: 'KMnO4',
+                    name: '高锰酸钾',
+                    formula: 'KMnO₄',
+                    color: '#4a1a5e',
+                    state: '固体',
+                    molarMass: 158.03,
+                    description: '紫黑色晶体，强氧化剂',
+                    defaultAmount: 0.02 // mol
+                },
+                MnO2: {
+                    id: 'MnO2',
+                    name: '二氧化锰',
+                    formula: 'MnO₂',
+                    color: '#1a1a1a',
+                    state: '固体',
+                    molarMass: 86.94,
+                    description: '黑色粉末，常用催化剂',
+                    defaultAmount: 0.005
+                },
+                H2O2: {
+                    id: 'H2O2',
+                    name: '过氧化氢',
+                    formula: 'H₂O₂',
+                    color: 'transparent',
+                    state: '液体',
+                    molarMass: 34.01,
+                    description: '无色液体，俗称双氧水',
+                    defaultAmount: 0.1,
+                    concentration: 0.5 // mol/L
+                },
+                H2O: {
+                    id: 'H2O',
+                    name: '水',
+                    formula: 'H₂O',
+                    color: 'transparent',
+                    state: '液体',
+                    molarMass: 18.02,
+                    description: '用于排水法收集气体',
+                    defaultAmount: 5
+                },
+                K2MnO4: {
+                    id: 'K2MnO4',
+                    name: '锰酸钾',
+                    formula: 'K₂MnO₄',
+                    color: '#1a5e2a',
+                    state: '固体',
+                    molarMass: 197.13,
+                    description: '墨绿色固体，高锰酸钾分解产物',
+                    defaultAmount: 0
+                },
+                O2: {
+                    id: 'O2',
+                    name: '氧气',
+                    formula: 'O₂',
+                    color: 'transparent',
+                    state: '气体',
+                    molarMass: 32.00,
+                    description: '无色无味气体，支持燃烧',
+                    defaultAmount: 0
+                }
+            },
+
+            // Container states
+            containers: {
+                testTube: {
+                    id: 'testTube',
+                    name: '试管',
+                    contents: [], // [{reagentId, amount}]
+                    temperature: 25, // °C
+                    volume: 50, // mL
+                    maxVolume: 60,
+                    cottonPlaced: false,
+                    connectedToTube: false
+                },
+                beaker: {
+                    id: 'beaker',
+                    name: '烧杯',
+                    contents: [],
+                    temperature: 25,
+                    volume: 250,
+                    maxVolume: 300
+                },
+                measuringCylinder: {
+                    id: 'measuringCylinder',
+                    name: '量筒',
+                    contents: [],
+                    temperature: 25,
+                    volume: 50,
+                    maxVolume: 50
+                },
+                gasJar: {
+                    id: 'gasJar',
+                    name: '集气瓶',
+                    contents: [],
+                    temperature: 25,
+                    volume: 250,
+                    maxVolume: 250,
+                    oxygenCollected: 0, // mol
+                    waterLevel: 1.0, // 1 = full water, 0 = empty
+                    isCollecting: false
+                },
+                waterTrough: {
+                    id: 'waterTrough',
+                    name: '水槽',
+                    contents: [{ reagentId: 'H2O', amount: 5 }],
+                    temperature: 25,
+                    volume: 3000,
+                    maxVolume: 4000
+                }
+            },
+
+            // Equipment states
+            equipment: {
+                alcoholLamp: {
+                    lit: false,
+                    flameIntensity: 0, // 0-1
+                    position: 'underTube' // 'underTube' | 'away'
+                },
+                ironStand: { assembled: true },
+                ironClamp: { holdingTube: true },
+                tubeConnected: false,
+                deliveryTube: {
+                    inWater: false,
+                    inGasJar: false
+                },
+                cottonPlaced: false,
+                gasJarInverted: true,
+                experimentPhase: 'idle' // 'idle' | 'loaded' | 'assembled' | 'heating' | 'reacting' | 'collecting' | 'complete' | 'finished'
+            },
+
+            // Reaction states
+            reactions: {
+                kmno4Decomposition: {
+                    active: false,
+                    progress: 0, // 0-1
+                    rate: 0, // mol/s
+                    startTemp: 25,
+                    activationEnergy: 100, // kJ/mol
+                    frequencyFactor: 1e8,
+                    gasConstant: 8.314,
+                    o2Produced: 0 // mol
+                },
+                h2o2Decomposition: {
+                    active: false,
+                    progress: 0,
+                    rate: 0,
+                    o2Produced: 0,
+                    hasCatalyst: false
+                }
+            },
+
+            // Experiment data
+            experimentData: {
+                timeElapsed: 0, // seconds
+                oxygenCollected: 0, // mol
+                temperatureHistory: [],
+                maxTemperature: 25,
+                reactionCompleted: false,
+                phaseLog: []
+            },
+
+            // Simulation settings
+            settings: {
+                roomTemp: 25, // °C
+                heatingRate: 35, // °C/s when lamp is on
+                coolingRate: 8, // °C/s when lamp is off
+                maxLampTemp: 450, // °C max achievable
+                kmno4DecompThreshold: 200, // °C start decomposition
+                updateInterval: 100 // ms
+            }
+        };
+
+        // =============================================
+        // ================== VIEW =====================
+        // =============================================
+        const View = {
+            // Main render function
+            render() {
+                this.renderSVG();
+                this.renderInfoPanel();
+                this.renderControls();
+                this.renderGuide();
+                this.renderStatus();
+                this.renderBenchTemp();
+            },
+
+            // Render SVG experiment setup
+            renderSVG() {
+                const svg = document.getElementById('labSvg');
+                const eq = Model.equipment;
+                const tt = Model.containers.testTube;
+                const gj = Model.containers.gasJar;
+                const wt = Model.containers.waterTrough;
+                const rx = Model.reactions.kmno4Decomposition;
+
+                // Calculate dynamic values
+                const tubeTemp = tt.temperature;
+                const flameOn = eq.alcoholLamp.lit;
+                const flameIntensity = eq.alcoholLamp.flameIntensity;
+                const reactionActive = rx.active;
+                const reactionProgress = rx.progress;
+                const tubeColor = this.getTubeColor(reactionProgress);
+                const waterLevelGJ = gj.waterLevel;
+                const oxygenCollected = gj.oxygenCollected;
+                const cottonPlaced = eq.cottonPlaced;
+                const tubeConnected = eq.tubeConnected;
+                const tubeInWater = eq.deliveryTube.inWater;
+                const tubeInGasJar = eq.deliveryTube.inGasJar;
+
+                // Build SVG
+                let svgContent = '';
+
+                // Background - lab bench surface
+                svgContent += `
+                    <defs>
+                        <linearGradient id="benchGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" style="stop-color:#e8e0d8;stop-opacity:1"/>
+                            <stop offset="100%" style="stop-color:#d0c8c0;stop-opacity:1"/>
+                        </linearGradient>
+                        <linearGradient id="glassGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" style="stop-color:rgba(220,235,250,0.7)"/>
+                            <stop offset="100%" style="stop-color:rgba(200,220,240,0.4)"/>
+                        </linearGradient>
+                        <linearGradient id="waterGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" style="stop-color:#b8d8f0;stop-opacity:0.85"/>
+                            <stop offset="100%" style="stop-color:#d0e8f8;stop-opacity:0.6"/>
+                        </linearGradient>
+                        <linearGradient id="tubeGlassGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:rgba(230,240,250,0.8)"/>
+                            <stop offset="50%" style="stop-color:rgba(200,220,240,0.5)"/>
+                            <stop offset="100%" style="stop-color:rgba(220,235,250,0.7)"/>
+                        </linearGradient>
+                        <radialGradient id="flameGrad" cx="50%" cy="70%" r="50%">
+                            <stop offset="0%" style="stop-color:#fff8e0;stop-opacity:1"/>
+                            <stop offset="30%" style="stop-color:#ffcc33;stop-opacity:0.9"/>
+                            <stop offset="70%" style="stop-color:#ff8833;stop-opacity:0.7"/>
+                            <stop offset="100%" style="stop-color:#ff4400;stop-opacity:0.3"/>
+                        </radialGradient>
+                        <radialGradient id="flameInnerGrad" cx="50%" cy="70%" r="50%">
+                            <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1"/>
+                            <stop offset="40%" style="stop-color:#ffffcc;stop-opacity:0.9"/>
+                            <stop offset="100%" style="stop-color:#ffcc33;stop-opacity:0.5"/>
+                        </radialGradient>
+                        <filter id="flameGlow">
+                            <feGaussianBlur stdDeviation="4" result="blur"/>
+                            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                        </filter>
+                        <filter id="softShadow">
+                            <feDropShadow dx="2" dy="3" stdDeviation="3" flood-opacity="0.2"/>
+                        </filter>
+                        <clipPath id="tubeClip">
+                            <ellipse cx="355" cy="285" rx="118" ry="18" transform="rotate(-8 355 285)"/>
+                        </clipPath>
+                        <clipPath id="gasJarClip">
+                            <rect x="655" y="380" width="62" height="110" rx="3"/>
+                        </clipPath>
+                        <clipPath id="waterTroughClip">
+                            <rect x="570" y="395" width="240" height="110" rx="5"/>
+                        </clipPath>
+                    </defs>
+                `;
+
+                // Lab bench surface
+                svgContent += `<rect x="20" y="500" width="860" height="50" rx="4" fill="url(#benchGrad)" stroke="#c8c0b8" stroke-width="1.5"/>`;
+                svgContent +=
+                    `<rect x="20" y="500" width="860" height="4" rx="2" fill="#d8d0c8" opacity="0.6"/>`;
+                svgContent += `<text x="450" y="540" text-anchor="middle" font-size="11" fill="#999" font-family="var(--font-sans)">实验操作台</text>`;
+
+                // ===== Iron Stand (铁架台) =====
+                // Base
+                svgContent += `<rect x="130" y="490" width="140" height="14" rx="3" fill="#5a6a7a" filter="url(#softShadow)"/>`;
+                svgContent += `<rect x="135" y="488" width="130" height="6" rx="2" fill="#6a7a8a"/>`;
+                // Vertical rod
+                svgContent +=
+                    `<rect x="192" y="140" width="10" height="350" rx="2" fill="#4a5a6a" filter="url(#softShadow)"/>`;
+                svgContent += `<rect x="194" y="140" width="4" height="350" rx="1" fill="#6a7a8a" opacity="0.6"/>`;
+                // Iron clamp (铁夹)
+                const clampY = 245;
+                svgContent += `<rect x="180" y="${clampY}" width="28" height="8" rx="2" fill="#5a6a7a"/>`;
+                svgContent +=
+                    `<path d="M 205 ${clampY+2} Q 215 ${clampY-6} 225 ${clampY+2} Q 230 ${clampY+6} 235 ${clampY+4} L 235 ${clampY+10} Q 230 ${clampY+12} 225 ${clampY+10} Q 215 ${clampY+6} 205 ${clampY+8} Z" fill="#5a6a7a" stroke="#4a5a6a" stroke-width="0.5"/>`;
+                svgContent +=
+                    `<rect x="200" y="${clampY-8}" width="16" height="5" rx="2" fill="#6a7a8a" opacity="0.8"/>`;
+
+                // ===== Test Tube (试管) =====
+                const tubeAngle = -8; // degrees, mouth slightly lower
+                const tubeCenterX = 340;
+                const tubeCenterY = 288;
+                const tubeLength = 150;
+                const tubeRadius = 16;
+
+                // Test tube body
+                svgContent += `
+                    <g transform="rotate(${tubeAngle} ${tubeCenterX} ${tubeCenterY})">
+                        <!-- Tube glass -->
+                        <ellipse cx="${tubeCenterX}" cy="${tubeCenterY}" rx="${tubeLength}" ry="${tubeRadius}" fill="url(#tubeGlassGrad)" stroke="#b8c8d8" stroke-width="1.8" filter="url(#softShadow)"/>
+                        <!-- Tube bottom (rounded) -->
+                        <ellipse cx="${tubeCenterX - tubeLength + 8}" cy="${tubeCenterY}" rx="10" ry="${tubeRadius}" fill="url(#tubeGlassGrad)" stroke="#b8c8d8" stroke-width="1.5"/>
+                        <!-- Tube mouth rim -->
+                        <ellipse cx="${tubeCenterX + tubeLength}" cy="${tubeCenterY}" rx="6" ry="${tubeRadius}" fill="none" stroke="#b8c8d8" stroke-width="2"/>
+                        <!-- KMnO4 content -->
+                        <g clip-path="url(#tubeClip)">
+                            <ellipse cx="${tubeCenterX - 55}" cy="${tubeCenterY + 5}" rx="48" ry="12" fill="${tubeColor}" opacity="0.95"/>
+                            <ellipse cx="${tubeCenterX - 50}" cy="${tubeCenterY + 2}" rx="38" ry="9" fill="${tubeColor}" opacity="0.85"/>
+                            <!-- Sparkle effect when reacting -->
+                            ${reactionActive ? this.getSparkleSVG(tubeCenterX - 55, tubeCenterY, 40, 12) : ''}
+                        </g>
+                        <!-- Cotton plug -->
+                        ${cottonPlaced ? `
+                        <ellipse cx="${tubeCenterX + tubeLength - 18}" cy="${tubeCenterY}" rx="14" ry="${tubeRadius - 3}" fill="#f5f0e8" stroke="#e0d8d0" stroke-width="1" opacity="0.9"/>
+                        <ellipse cx="${tubeCenterX + tubeLength - 14}" cy="${tubeCenterY - 1}" rx="8" ry="${tubeRadius - 6}" fill="#faf8f4" opacity="0.8"/>
+                        <ellipse cx="${tubeCenterX + tubeLength - 16}" cy="${tubeCenterY + 2}" rx="6" ry="${tubeRadius - 7}" fill="#f0ece6" opacity="0.7"/>
+                        ` : ''}
+                        <!-- Glass shine -->
+                        <ellipse cx="${tubeCenterX + 20}" cy="${tubeCenterY - 7}" rx="50" ry="4" fill="rgba(255,255,255,0.35)" transform="rotate(-3 ${tubeCenterX + 20} ${tubeCenterY - 7})"/>
+                    </g>
+                `;
+
+                // ===== Delivery Tube (导管) =====
+                if (tubeConnected) {
+                    const tubeMouthX = tubeCenterX + tubeLength * Math.cos(tubeAngle * Math.PI / 180);
+                    const tubeMouthY = tubeCenterY + tubeLength * Math.sin(tubeAngle * Math.PI / 180);
+                    const tubeEndX = 625;
+                    const tubeEndY = 410;
+
+                    // Rubber stopper
+                    svgContent +=
+                        `<ellipse cx="${tubeMouthX - 2}" cy="${tubeMouthY}" rx="9" ry="17" fill="#5a4a3a" stroke="#4a3a2a" stroke-width="1" opacity="0.9"/>`;
+
+                    // Glass delivery tube
+                    svgContent += `
+                        <path d="M ${tubeMouthX + 6} ${tubeMouthY} 
+                                 Q ${tubeMouthX + 25} ${tubeMouthY + 5} ${tubeMouthX + 20} ${tubeMouthY + 30}
+                                 Q ${tubeMouthX + 15} ${tubeMouthY + 55} ${tubeMouthX + 30} ${tubeMouthY + 75}
+                                 Q ${tubeMouthX + 45} ${tubeMouthY + 95} ${tubeEndX - 30} ${tubeEndY - 10}
+                                 Q ${tubeEndX - 10} ${tubeEndY + 5} ${tubeEndX} ${tubeEndY}"
+                              fill="none" stroke="#c8d8e8" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+                        <path d="M ${tubeMouthX + 6} ${tubeMouthY} 
+                                 Q ${tubeMouthX + 25} ${tubeMouthY + 5} ${tubeMouthX + 20} ${tubeMouthY + 30}
+                                 Q ${tubeMouthX + 15} ${tubeMouthY + 55} ${tubeMouthX + 30} ${tubeMouthY + 75}
+                                 Q ${tubeMouthX + 45} ${tubeMouthY + 95} ${tubeEndX - 30} ${tubeEndY - 10}
+                                 Q ${tubeEndX - 10} ${tubeEndY + 5} ${tubeEndX} ${tubeEndY}"
+                              fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    `;
+
+                    // Tube end in water
+                    if (tubeInWater) {
+                        svgContent +=
+                            `<circle cx="${tubeEndX}" cy="${tubeEndY}" r="5" fill="rgba(200,220,240,0.7)" stroke="#b8c8d8" stroke-width="1"/>`;
+                        // Bubbles
+                        if (reactionActive) {
+                            svgContent += this.getBubbleSVG(tubeEndX, tubeEndY - 5, reactionProgress);
+                        }
+                    }
+                }
+
+                // ===== Alcohol Lamp (酒精灯) =====
+                const lampX = 320;
+                const lampY = 400;
+                const lampW = 90;
+                const lampH = 65;
+
+                // Lamp body
+                svgContent += `
+                    <ellipse cx="${lampX}" cy="${lampY + lampH/2}" rx="${lampW/2}" ry="${lampH/2}" fill="#d4a86a" stroke="#b8944a" stroke-width="1.5" filter="url(#softShadow)"/>
+                    <ellipse cx="${lampX}" cy="${lampY + lampH/2 - 5}" rx="${lampW/2 - 8}" ry="${lampH/2 - 8}" fill="#e8c890" opacity="0.7"/>
+                    <ellipse cx="${lampX}" cy="${lampY + lampH/2 - 8}" rx="${lampW/4}" ry="${lampH/4}" fill="#f0d8a0" opacity="0.5"/>
+                    <!-- Wick tube -->
+                    <rect x="${lampX - 6}" y="${lampY - 18}" width="12" height="25" rx="3" fill="#8a7a6a" stroke="#6a5a4a" stroke-width="1"/>
+                    <rect x="${lampX - 4}" y="${lampY - 18}" width="4" height="22" rx="1" fill="#a09080" opacity="0.6"/>
+                    <!-- Wick -->
+                    <rect x="${lampX - 2}" y="${lampY - 22}" width="4" height="8" rx="1" fill="#4a3a2a"/>
+                    <!-- Flame -->
+                    ${flameOn ? `
+                    <g filter="url(#flameGlow)">
+                        <ellipse cx="${lampX}" cy="${lampY - 32 - flameIntensity * 8}" rx="${12 + flameIntensity * 6}" ry="${20 + flameIntensity * 12}" fill="url(#flameGrad)" opacity="${0.6 + flameIntensity * 0.4}">
+                            <animate attributeName="ry" values="${18 + flameIntensity * 10};${22 + flameIntensity * 14};${18 + flameIntensity * 10}" dur="0.6s" repeatCount="indefinite"/>
+                            <animate attributeName="cy" values="${lampY - 30 - flameIntensity * 6};${lampY - 35 - flameIntensity * 10};${lampY - 30 - flameIntensity * 6}" dur="0.7s" repeatCount="indefinite"/>
+                        </ellipse>
+                        <ellipse cx="${lampX}" cy="${lampY - 28 - flameIntensity * 5}" rx="${6 + flameIntensity * 3}" ry="${12 + flameIntensity * 6}" fill="url(#flameInnerGrad)" opacity="0.9">
+                            <animate attributeName="ry" values="${10 + flameIntensity * 5};${14 + flameIntensity * 8};${10 + flameIntensity * 5}" dur="0.5s" repeatCount="indefinite"/>
+                        </ellipse>
+                        <ellipse cx="${lampX}" cy="${lampY - 24}" rx="${3 + flameIntensity * 2}" ry="${6 + flameIntensity * 3}" fill="#ffffcc" opacity="0.95"/>
+                    </g>
+                    ` : ''}
+                `;
+
+                // ===== Water Trough (水槽) =====
+                svgContent += `
+                    <rect x="560" y="390" width="260" height="115" rx="4" fill="url(#glassGrad)" stroke="#b8c8d8" stroke-width="2" filter="url(#softShadow)"/>
+                    <!-- Water -->
+                    <g clip-path="url(#waterTroughClip)">
+                        <rect x="562" y="410" width="256" height="93" fill="url(#waterGrad)"/>
+                        <!-- Water surface line -->
+                        <line x1="562" y1="410" x2="818" y2="410" stroke="rgba(180,210,235,0.8)" stroke-width="1.5"/>
+                    </g>
+                    <!-- Water shine -->
+                    <ellipse cx="640" cy="430" rx="30" ry="4" fill="rgba(255,255,255,0.25)"/>
+                    <ellipse cx="750" cy="450" rx="20" ry="3" fill="rgba(255,255,255,0.2)"/>
+                `;
+
+                // ===== Gas Jar (集气瓶) - inverted =====
+                const gjX = 670;
+                const gjY = 395;
+                const gjW = 55;
+                const gjH = 95;
+                const gjWaterLevelPx = waterLevelGJ * gjH;
+                const gjBottomY = gjY + gjH;
+
+                svgContent += `
+                    <g transform="rotate(180 ${gjX + gjW/2} ${gjY + gjH/2})">
+                        <!-- Gas jar body (inverted) -->
+                        <rect x="${gjX}" y="${gjY}" width="${gjW}" height="${gjH}" rx="2" fill="url(#glassGrad)" stroke="#b8c8d8" stroke-width="1.8" opacity="0.85"/>
+                        <!-- Jar bottom (now at top visually) -->
+                        <rect x="${gjX}" y="${gjY}" width="${gjW}" height="6" rx="1" fill="#c8d8e8" stroke="#b8c8d8" stroke-width="1"/>
+                    </g>
+                    <!-- Water inside gas jar -->
+                    <g clip-path="url(#gasJarClip)">
+                        <rect x="${gjX}" y="${gjY + gjH - gjWaterLevelPx}" width="${gjW}" height="${gjWaterLevelPx}" fill="url(#waterGrad)" opacity="0.9"/>
+                    </g>
+                    <!-- Gas jar glass outline -->
+                    <rect x="${gjX}" y="${gjY}" width="${gjW}" height="${gjH}" rx="2" fill="none" stroke="#c8d8e8" stroke-width="2"/>
+                    <rect x="${gjX}" y="${gjY}" width="${gjW}" height="5" rx="1" fill="rgba(200,216,232,0.6)" stroke="#b8c8d8" stroke-width="1"/>
+                    <!-- Oxygen collected indicator -->
+                    ${oxygenCollected > 0 ? `
+                    <text x="${gjX + gjW/2}" y="${gjY + 25}" text-anchor="middle" font-size="8" fill="#888" font-family="var(--font-mono)">O₂</text>
+                    <text x="${gjX + gjW/2}" y="${gjY + 35}" text-anchor="middle" font-size="7" fill="#aaa" font-family="var(--font-mono)">${(oxygenCollected * 1000).toFixed(1)}mmol</text>
+                    ` : ''}
+                `;
+
+                // ===== Beaker (烧杯) =====
+                svgContent += `
+                    <rect x="90" y="430" width="70" height="60" rx="3" fill="url(#glassGrad)" stroke="#b8c8d8" stroke-width="1.8" opacity="0.9"/>
+                    <rect x="92" y="432" width="66" height="25" rx="2" fill="url(#waterGrad)" opacity="0.7"/>
+                    <text x="125" y="465" text-anchor="middle" font-size="7" fill="#999" font-family="var(--font-sans)">烧杯</text>
+                    <text x="125" y="475" text-anchor="middle" font-size="6" fill="#aaa" font-family="var(--font-mono)">H₂O</text>
+                `;
+
+                // ===== Measuring Cylinder (量筒) =====
+                svgContent += `
+                    <rect x="60" y="445" width="25" height="48" rx="2" fill="url(#glassGrad)" stroke="#b8c8d8" stroke-width="1.5" opacity="0.9"/>
+                    <text x="72" y="480" text-anchor="middle" font-size="6" fill="#999" font-family="var(--font-sans)">量筒</text>
+                    <text x="72" y="488" text-anchor="middle" font-size="5" fill="#aaa" font-family="var(--font-mono)">25mL</text>
+                `;
+
+                // ===== Funnel (漏斗) =====
+                svgContent += `
+                    <path d="M 40 500 L 48 510 L 40 520 L 32 510 Z" fill="rgba(220,235,250,0.6)" stroke="#b8c8d8" stroke-width="1" opacity="0.8"/>
+                    <ellipse cx="40" cy="500" rx="12" ry="4" fill="none" stroke="#b8c8d8" stroke-width="1.2" opacity="0.8"/>
+                    <text x="52" y="516" font-size="5" fill="#999" font-family="var(--font-sans)">漏斗</text>
+                `;
+
+                // ===== Glass Rod (玻璃棒) =====
+                svgContent += `
+                    <rect x="30" y="455" width="4" height="55" rx="2" fill="rgba(200,220,240,0.7)" stroke="#b8c8d8" stroke-width="0.8" transform="rotate(15 32 480)"/>
+                    <text x="22" y="450" font-size="5" fill="#999" font-family="var(--font-sans)">玻璃棒</text>
+                `;
+
+                // ===== Test Tube Clamp (试管夹) =====
+                svgContent += `
+                    <rect x="175" y="280" width="20" height="5" rx="2" fill="#7a6a5a" stroke="#5a4a3a" stroke-width="0.8"/>
+                    <rect x="178" y="285" width="14" height="3" rx="1" fill="#8a7a6a"/>
+                `;
+
+                // ===== Temperature label on test tube =====
+                svgContent += `
+                    <text x="${tubeCenterX - 30}" y="${tubeCenterY - 30}" text-anchor="middle" font-size="8" fill="#e74c3c" font-family="var(--font-mono)" font-weight="600">${tubeTemp.toFixed(0)}°C</text>
+                `;
+
+                // ===== Reaction indicator =====
+                if (reactionActive) {
+                    svgContent += `
+                        <text x="${tubeCenterX + 20}" y="${tubeCenterY - 40}" text-anchor="middle" font-size="8" fill="#f39c12" font-family="var(--font-sans)" font-weight="700">⚡ 反应进行中</text>
+                    `;
+                }
+
+                svg.innerHTML = svgContent;
+            },
+
+            getTubeColor(progress) {
+                // Transition from KMnO4 purple to K2MnO4 green
+                if (progress < 0.05) return '#4a1a5e';
+                if (progress < 0.3) return '#5a2a5e';
+                if (progress < 0.5) return '#3a3a4a';
+                if (progress < 0.7) return '#2a4a3a';
+                if (progress < 0.9) return '#1a5e2a';
+                return '#1a4a2a';
+            },
+
+            getSparkleSVG(cx, cy, rx, ry) {
+                let sparkles = '';
+                for (let i = 0; i < 5; i++) {
+                    const sx = cx + (Math.random() - 0.5) * rx * 2;
+                    const sy = cy + (Math.random() - 0.5) * ry * 2;
+                    const size = 1 + Math.random() * 2;
+                    sparkles +=
+                        `<circle cx="${sx}" cy="${sy}" r="${size}" fill="#ffcc33" opacity="${0.5 + Math.random() * 0.5}"><animate attributeName="opacity" values="0.3;1;0.3" dur="${0.3 + Math.random() * 0.4}s" repeatCount="indefinite"/></circle>`;
+                }
+                return sparkles;
+            },
+
+            getBubbleSVG(x, y, progress) {
+                const bubbleCount = Math.floor(3 + progress * 6);
+                let bubbles = '';
+                for (let i = 0; i < bubbleCount; i++) {
+                    const bx = x + (Math.random() - 0.5) * 12;
+                    const by = y - Math.random() * 30;
+                    const br = 2 + Math.random() * 3;
+                    const duration = 0.8 + Math.random() * 0.7;
+                    bubbles += `
+                        <circle cx="${bx}" cy="${by}" r="${br}" fill="rgba(255,255,255,0.7)" stroke="rgba(180,210,235,0.6)" stroke-width="0.5">
+                            <animate attributeName="cy" from="${by + 20}" to="${by - 25}" dur="${duration}s" repeatCount="indefinite"/>
+                            <animate attributeName="opacity" values="0.8;0.4;0" dur="${duration}s" repeatCount="indefinite"/>
+                        </circle>
+                    `;
+                }
+                return bubbles;
+            },
+
+            renderInfoPanel() {
+                const panel = document.getElementById('infoPanel');
+                const tt = Model.containers.testTube;
+                const gj = Model.containers.gasJar;
+                const rx = Model.reactions.kmno4Decomposition;
+                const hx = Model.reactions.h2o2Decomposition;
+                const ed = Model.experimentData;
+
+                let html = '';
+
+                // Test tube contents
+                html += `
+                    <div class="info-card">
+                        <h3><span class="icon">🧪</span> 试管内容物</h3>
+                        <div class="reagent-list">
+                `;
+                if (tt.contents.length === 0) {
+                    html += `<div class="reagent-item" style="border-left-color:#ccc;"><span class="name" style="color:#999;">试管为空</span></div>`;
+                } else {
+                    tt.contents.forEach(c => {
+                        const r = Model.reagents[c.reagentId];
+                        if (!r) return;
+                        const amount = c.amount;
+                        html += `
+                            <div class="reagent-item" style="border-left-color:${r.color};">
+                                <div style="display:flex;align-items:center;gap:6px;">
+                                    <div class="reagent-color-dot" style="background:${r.color};"></div>
+                                    <span class="name">${r.name}</span>
+                                    <span class="formula">${r.formula}</span>
+                                </div>
+                                <span class="amount">${amount.toFixed(4)} mol</span>
+                            </div>
+                        `;
+                    });
+                }
+                // KMnO4 reaction products
+                if (rx.progress > 0) {
+                    const k2mno4Amt = rx.progress * 0.01; // based on stoichiometry
+                    const mno2Amt = rx.progress * 0.005;
+                    const o2Amt = rx.o2Produced;
+                    html += `
+                        <div class="reagent-item" style="border-left-color:#1a5e2a;">
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <div class="reagent-color-dot" style="background:#1a5e2a;"></div>
+                                <span class="name">锰酸钾</span>
+                                <span class="formula">K₂MnO₄</span>
+                            </div>
+                            <span class="amount">${k2mno4Amt.toFixed(4)} mol</span>
+                        </div>
+                        <div class="reagent-item" style="border-left-color:#1a1a1a;">
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <div class="reagent-color-dot" style="background:#1a1a1a;"></div>
+                                <span class="name">二氧化锰</span>
+                                <span class="formula">MnO₂</span>
+                            </div>
+                            <span class="amount">${mno2Amt.toFixed(4)} mol</span>
+                        </div>
+                    `;
+                }
+                html += `</div>`;
+                // Temperature
+                html += `
+                    <div class="data-row">
+                        <span class="label">🌡️ 温度</span>
+                        <span class="value highlight" style="color:${tt.temperature > 200 ? '#e74c3c' : '#2e86c1'};">${tt.temperature.toFixed(1)}°C</span>
+                    </div>
+                    <div class="temp-bar">
+                        <div class="temp-bar-fill" style="width:${Math.min(tt.temperature / 450 * 100, 100)}%;"></div>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:0.65rem;color:#999;margin-top:4px;">
+                        <span>25°C</span>
+                        <span>450°C</span>
+                    </div>
+                </div>
+                `;
+
+                // Reaction status
+                html += `
+                    <div class="info-card">
+                        <h3><span class="icon">⚡</span> 反应状态</h3>
+                        <div class="reaction-display ${rx.active ? 'active' : ''}">
+                            ${rx.active ? `
+                                2KMnO₄ <span class="condition">→(加热)</span> K₂MnO₄ + MnO₂ + O₂↑
+                                <br><span style="color:#27ae60;">● 反应进行中 (${(rx.progress * 100).toFixed(1)}%)</span>
+                            ` : rx.progress >= 1 ? `
+                                2KMnO₄ <span class="condition">→(加热)</span> K₂MnO₄ + MnO₂ + O₂↑
+                                <br><span style="color:#27ae60;">✓ 反应完成</span>
+                            ` : `
+                                2KMnO₄ <span class="condition">→(加热)</span> K₂MnO₄ + MnO₂ + O₂↑
+                                <br><span style="color:#aaa;">等待加热 (需≥200°C)</span>
+                            `}
+                        </div>
+                        <div class="data-row">
+                            <span class="label">反应进度</span>
+                            <span class="value">${(rx.progress * 100).toFixed(1)}%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-bar-fill" style="width:${rx.progress * 100}%;"></div>
+                        </div>
+                        <div class="data-row" style="margin-top:6px;">
+                            <span class="label">反应速率</span>
+                            <span class="value">${(rx.rate * 1e6).toFixed(2)} μmol/s</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="label">已产生 O₂</span>
+                            <span class="value">${(rx.o2Produced * 1000).toFixed(3)} mmol</span>
+                        </div>
+                    </div>
+                `;
+
+                // Gas jar status
+                html += `
+                    <div class="info-card">
+                        <h3><span class="icon">🫙</span> 集气瓶</h3>
+                        <div class="data-row">
+                            <span class="label">收集方式</span>
+                            <span class="value">排水法</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="label">已收集 O₂</span>
+                            <span class="value">${(gj.oxygenCollected * 1000).toFixed(3)} mmol</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="label">瓶内水位</span>
+                            <span class="value">${(gj.waterLevel * 100).toFixed(0)}%</span>
+                        </div>
+                        <div class="progress-bar" style="margin-top:4px;">
+                            <div class="progress-bar-fill" style="width:${(1 - gj.waterLevel) * 100}%;background:linear-gradient(90deg,#2e86c1,#8ecae6);"></div>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;font-size:0.6rem;color:#999;margin-top:4px;">
+                            <span>充满水</span>
+                            <span>充满O₂</span>
+                        </div>
+                    </div>
+                `;
+
+                // Experiment data
+                html += `
+                    <div class="info-card">
+                        <h3><span class="icon">📊</span> 实验数据</h3>
+                        <div class="data-row">
+                            <span class="label">实验时间</span>
+                            <span class="value">${ed.timeElapsed.toFixed(1)} s</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="label">最高温度</span>
+                            <span class="value" style="color:${ed.maxTemperature > 200 ? '#e74c3c' : '#2e86c1'};">${ed.maxTemperature.toFixed(1)}°C</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="label">总产氧量</span>
+                            <span class="value">${(ed.oxygenCollected * 1000).toFixed(3)} mmol</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="label">实验阶段</span>
+                            <span class="value" style="font-size:0.7rem;">${this.getPhaseLabel(ed)}</span>
+                        </div>
+                    </div>
+                `;
+
+                panel.innerHTML = html;
+            },
+
+            getPhaseLabel(ed) {
+                const phase = Model.equipment.experimentPhase;
+                const labels = {
+                    'idle': '🔵 等待开始',
+                    'loaded': '🟡 试剂已装入',
+                    'assembled': '🟡 装置已组装',
+                    'heating': '🟠 加热中...',
+                    'reacting': '🔴 反应进行中',
+                    'collecting': '🟢 收集氧气中',
+                    'complete': '✅ 收集完成',
+                    'finished': '✅ 实验结束'
+                };
+                return labels[phase] || '未知';
+            },
+
+            renderControls() {
+                const section = document.getElementById('controlsSection');
+                const eq = Model.equipment;
+                const tt = Model.containers.testTube;
+                const rx = Model.reactions.kmno4Decomposition;
+
+                const buttons = [
+                    {
+                        text: '🧪 装入高锰酸钾',
+                        cls: 'btn-primary',
+                        action: 'loadKMnO4',
+                        disabled: tt.contents.length > 0 || eq.experimentPhase !== 'idle'
+                    },
+                    {
+                        text: '🧻 放置棉花',
+                        cls: 'btn-outline',
+                        action: 'placeCotton',
+                        disabled: !eq.cottonPlaced && tt.contents.length === 0 || eq.cottonPlaced
+                    },
+                    {
+                        text: '🔗 连接导管',
+                        cls: 'btn-outline',
+                        action: 'connectTube',
+                        disabled: eq.tubeConnected || !eq.cottonPlaced
+                    },
+                    {
+                        text: eq.alcoholLamp.lit ? '🔥 熄灭酒精灯' : '🔥 点燃酒精灯',
+                        cls: eq.alcoholLamp.lit ? 'btn-danger' : 'btn-warning',
+                        action: 'toggleLamp',
+                        disabled: tt.contents.length === 0 || rx.progress >= 1
+                    },
+                    {
+                        text: '💧 收集氧气',
+                        cls: 'btn-success',
+                        action: 'startCollection',
+                        disabled: !rx.active || eq.deliveryTube.inGasJar
+                    },
+                    {
+                        text: '🔄 重置实验',
+                        cls: 'btn-outline',
+                        action: 'resetExperiment',
+                        disabled: false
+                    }
+                ];
+
+                let html = '';
+                buttons.forEach(b => {
+                    html +=
+                        `<button class="btn ${b.cls}" onclick="Controller.${b.action}()" ${b.disabled ? 'disabled' : ''}>${b.text}</button>`;
+                });
+
+                // H2O2 experiment buttons
+                html += `<span style="width:1px;height:24px;background:#e0e6ec;margin:0 4px;"></span>`;
+                html +=
+                    `<button class="btn btn-primary btn-sm" onclick="Controller.addH2O2()" ${Model.containers.beaker.contents.some(c => c.reagentId === 'H2O2') ? 'disabled' : ''}>💧 加H₂O₂</button>`;
+                html +=
+                    `<button class="btn btn-primary btn-sm" onclick="Controller.addMnO2ToBeaker()" ${Model.containers.beaker.contents.some(c => c.reagentId === 'MnO2') ? 'disabled' : ''}>⬛ 加MnO₂催化剂</button>`;
+
+                section.innerHTML = html;
+            },
+
+            renderGuide() {
+                const guideContent = document.getElementById('guideContent');
+                const eq = Model.equipment;
+                const phase = eq.experimentPhase;
+
+                const steps = [
+                    { id: 1, text: '<strong>检查气密性</strong> — 连接好装置后检查是否漏气。将导管一端放入水中，用手握住试管，看是否有气泡产生。', active: phase ===
+                            'idle' },
+                    { id: 2, text: '<strong>装入高锰酸钾</strong> — 用药匙将约0.02 mol高锰酸钾（紫黑色晶体）送入试管底部。', active: phase ===
+                            'loaded' || ttHasKMnO4() },
+                    { id: 3, text: '<strong>放置棉花</strong> — 在试管口放一团疏松的棉花，防止高锰酸钾粉末进入导管。', active: eq
+                            .cottonPlaced },
+                    { id: 4, text: '<strong>连接导管</strong> — 将导管通过橡胶塞连接到试管口，另一端伸入水槽中。', active: eq
+                            .tubeConnected },
+                    { id: 5, text: '<strong>固定试管</strong> — 将试管固定在铁架台上，试管口略向下倾斜（防止冷凝水回流炸裂试管）。', active: eq
+                            .ironStand.assembled },
+                    { id: 6, text: '<strong>点燃酒精灯</strong> — 先预热试管（来回移动酒精灯），再集中加热试管底部。', active: eq.alcoholLamp
+                            .lit },
+                    { id: 7, text: '<strong>收集氧气</strong> — 将集气瓶倒扣在水槽中，导管口伸入集气瓶口，用排水法收集氧气。', active: eq
+                            .deliveryTube.inGasJar },
+                    { id: 8, text: '<strong>实验结束</strong> — 先撤出导管，再熄灭酒精灯（防止水倒吸炸裂试管）。', active: phase ===
+                            'complete' || phase === 'finished' }
+                ];
+
+                let html = '';
+                steps.forEach(s => {
+                    html += `
+                        <div class="guide-step ${s.active ? 'active' : ''}">
+                            <div class="guide-step-number">${s.id}</div>
+                            <div class="guide-step-text">${s.text}</div>
+                        </div>
+                    `;
+                });
+                guideContent.innerHTML = html;
+            },
+
+            renderStatus() {
+                const dot = document.getElementById('statusDot');
+                const text = document.getElementById('statusText');
+                const rx = Model.reactions.kmno4Decomposition;
+                const eq = Model.equipment;
+
+                if (rx.active) {
+                    dot.className = 'status-dot active';
+                    text.textContent = '🔴 反应进行中';
+                } else if (eq.experimentPhase === 'complete' || eq.experimentPhase === 'finished') {
+                    dot.className = 'status-dot success';
+                    text.textContent = '✅ 实验完成';
+                } else if (eq.alcoholLamp.lit) {
+                    dot.className = 'status-dot active';
+                    text.textContent = '🟠 加热中';
+                } else {
+                    dot.className = 'status-dot';
+                    text.textContent = '🔵 就绪';
+                }
+            },
+
+            renderBenchTemp() {
+                const el = document.getElementById('benchTemp');
+                el.textContent = `环境温度: ${Model.settings.roomTemp.toFixed(1)}°C | 试管: ${Model.containers.testTube.temperature.toFixed(1)}°C`;
+            },
+
+            showTooltip(x, y, text) {
+                const tooltip = document.getElementById('tooltip');
+                tooltip.textContent = text;
+                tooltip.style.left = (x + 15) + 'px';
+                tooltip.style.top = (y + 15) + 'px';
+                tooltip.classList.add('visible');
+            },
+
+            hideTooltip() {
+                document.getElementById('tooltip').classList.remove('visible');
+            }
+        };
+
+        // Helper function for guide active state
+        function ttHasKMnO4() {
+            return Model.containers.testTube.contents.some(c => c.reagentId === 'KMnO4');
+        }
+
+        // =============================================
+        // ================ CONTROLLER =================
+        // =============================================
+        const Controller = {
+            simulationInterval: null,
+            lastUpdateTime: 0,
+
+            init() {
+                this.setupEventListeners();
+                this.startSimulationLoop();
+                View.render();
+            },
+
+            setupEventListeners() {
+                // SVG hover tooltips
+                document.addEventListener('mousemove', (e) => {
+                    const svg = document.getElementById('labSvg');
+                    const rect = svg.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    const scaleX = 900 / rect.width;
+                    const scaleY = 560 / rect.height;
+                    const svgX = x * scaleX;
+                    const svgY = y * scaleY;
+
+                    // Check if hovering over equipment
+                    let tooltipText = '';
+                    if (svgX > 190 && svgX < 210 && svgY > 140 && svgY < 490) {
+                        tooltipText = '铁架台 - 用于固定试管';
+                    } else if (svgX > 270 && svgX < 460 && svgY > 260 && svgY < 310) {
+                        tooltipText = `试管 - 内含${Model.containers.testTube.contents.map(c => Model.reagents[c.reagentId]?.name).join('、') || '空'} | 温度: ${Model.containers.testTube.temperature.toFixed(0)}°C`;
+                    } else if (svgX > 275 && svgX < 370 && svgY > 380 && svgY < 465) {
+                        tooltipText = Model.equipment.alcoholLamp.lit ? '酒精灯 - 正在加热' : '酒精灯 - 用于加热';
+                    } else if (svgX > 560 && svgX < 820 && svgY > 390 && svgY < 505) {
+                        tooltipText = '水槽 - 用于排水法收集氧气';
+                    } else if (svgX > 655 && svgX < 725 && svgY > 380 && svgY < 490) {
+                        tooltipText =
+                            `集气瓶 - 水位: ${(Model.containers.gasJar.waterLevel * 100).toFixed(0)}% | O₂: ${(Model.containers.gasJar.oxygenCollected * 1000).toFixed(2)} mmol`;
+                    }
+
+                    if (tooltipText) {
+                        View.showTooltip(e.clientX, e.clientY, tooltipText);
+                    } else {
+                        View.hideTooltip();
+                    }
+                });
+            },
+
+            startSimulationLoop() {
+                this.lastUpdateTime = Date.now();
+                this.simulationInterval = setInterval(() => {
+                    const now = Date.now();
+                    const dt = (now - this.lastUpdateTime) / 1000;
+                    this.lastUpdateTime = now;
+                    this.update(dt);
+                }, Model.settings.updateInterval);
+            },
+
+            update(dt) {
+                const tt = Model.containers.testTube;
+                const eq = Model.equipment;
+                const rx = Model.reactions.kmno4Decomposition;
+                const gj = Model.containers.gasJar;
+                const ed = Model.experimentData;
+                const s = Model.settings;
+
+                // Update time
+                ed.timeElapsed += dt;
+
+                // Temperature update
+                if (eq.alcoholLamp.lit && eq.alcoholLamp.position === 'underTube') {
+                    // Heating
+                    const targetTemp = s.maxLampTemp;
+                    const heatingAmount = s.heatingRate * dt * eq.alcoholLamp.flameIntensity;
+                    tt.temperature = Math.min(tt.temperature + heatingAmount, targetTemp);
+                } else {
+                    // Cooling
+                    const coolingAmount = s.coolingRate * dt;
+                    tt.temperature = Math.max(tt.temperature - coolingAmount, s.roomTemp);
+                }
+
+                // Update max temperature
+                ed.maxTemperature = Math.max(ed.maxTemperature, tt.temperature);
+
+                // KMnO4 decomposition reaction
+                const hasKMnO4 = tt.contents.some(c => c.reagentId === 'KMnO4' && c.amount > 0.0001);
+                const tempAboveThreshold = tt.temperature >= s.kmno4DecompThreshold;
+
+                if (hasKMnO4 && tempAboveThreshold && rx.progress < 1) {
+                    rx.active = true;
+                    eq.experimentPhase = 'reacting';
+
+                    // Calculate reaction rate using Arrhenius equation
+                    const T_kelvin = tt.temperature + 273.15;
+                    const Ea = rx.activationEnergy * 1000; // J/mol
+                    const R = rx.gasConstant;
+                    const A = rx.frequencyFactor;
+                    const k = A * Math.exp(-Ea / (R * T_kelvin));
+
+                    // Scale rate by amount of KMnO4 remaining
+                    const kmno4Remaining = tt.contents.find(c => c.reagentId === 'KMnO4')?.amount || 0;
+                    const amountFactor = kmno4Remaining / 0.02; // relative to initial
+                    rx.rate = k * amountFactor * 0.02;
+
+                    // Update progress
+                    const totalKMnO4 = 0.02; // initial amount
+                    const consumed = rx.rate * dt;
+                    rx.progress = Math.min(rx.progress + consumed / totalKMnO4, 1);
+
+                    // Update KMnO4 amount
+                    const kmno4Item = tt.contents.find(c => c.reagentId === 'KMnO4');
+                    if (kmno4Item) {
+                        kmno4Item.amount = Math.max(kmno4Item.amount - consumed, 0);
+                        if (kmno4Item.amount < 0.0001) {
+                            tt.contents = tt.contents.filter(c => c.reagentId !== 'KMnO4');
+                        }
+                    }
+
+                    // Add products
+                    const o2Produced = consumed / 2; // 2 KMnO4 -> 1 O2
+                    rx.o2Produced += o2Produced;
+
+                    // Add MnO2 (catalyst product)
+                    const mno2Produced = consumed / 2;
+                    const existingMnO2 = tt.contents.find(c => c.reagentId === 'MnO2');
+                    if (existingMnO2) {
+                        existingMnO2.amount += mno2Produced;
+                    } else {
+                        tt.contents.push({ reagentId: 'MnO2', amount: mno2Produced });
+                    }
+
+                    // Add K2MnO4
+                    const k2mno4Produced = consumed / 2;
+                    const existingK2MnO4 = tt.contents.find(c => c.reagentId === 'K2MnO4');
+                    if (existingK2MnO4) {
+                        existingK2MnO4.amount += k2mno4Produced;
+                    } else {
+                        tt.contents.push({ reagentId: 'K2MnO4', amount: k2mno4Produced });
+                    }
+
+                    // Gas jar collection
+                    if (eq.deliveryTube.inGasJar && gj.isCollecting) {
+                        gj.oxygenCollected += o2Produced;
+                        ed.oxygenCollected += o2Produced;
+                        gj.waterLevel = Math.max(0, gj.waterLevel - o2Produced * 5);
+                        if (gj.waterLevel < 0.05) {
+                            gj.waterLevel = 0;
+                            eq.experimentPhase = 'complete';
+                        }
+                    } else if (eq.deliveryTube.inWater) {
+                        // Oxygen goes into water and escapes
+                        gj.waterLevel = Math.max(0, gj.waterLevel - o2Produced * 0.3);
+                    }
+
+                    if (rx.progress >= 1) {
+                        rx.active = false;
+                        rx.rate = 0;
+                        if (eq.experimentPhase === 'reacting') {
+                            eq.experimentPhase = 'complete';
+                        }
+                        // Remove KMnO4 from contents
+                        tt.contents = tt.contents.filter(c => c.reagentId !== 'KMnO4');
+                        ed.reactionCompleted = true;
+                    }
+                } else if (!hasKMnO4 && rx.progress > 0 && rx.progress < 1) {
+                    // No KMnO4 left but reaction not complete
+                    rx.active = false;
+                    rx.rate = 0;
+                } else if (hasKMnO4 && !tempAboveThreshold) {
+                    rx.active = false;
+                    rx.rate = 0;
+                    if (rx.progress > 0 && rx.progress < 1) {
+                        // Reaction paused due to temperature drop
+                    }
+                }
+
+                // H2O2 decomposition (for comparison)
+                const hx = Model.reactions.h2o2Decomposition;
+                const beaker = Model.containers.beaker;
+                const hasH2O2 = beaker.contents.some(c => c.reagentId === 'H2O2' && c.amount > 0.001);
+                const hasMnO2InBeaker = beaker.contents.some(c => c.reagentId === 'MnO2' && c.amount > 0.0001);
+
+                if (hasH2O2 && hasMnO2InBeaker) {
+                    hx.hasCatalyst = true;
+                    hx.active = true;
+                    // Catalyzed rate
+                    hx.rate = 0.0005 * (beaker.contents.find(c => c.reagentId === 'H2O2')?.amount || 0);
+                    const h2o2Consumed = hx.rate * dt;
+                    const h2o2Item = beaker.contents.find(c => c.reagentId === 'H2O2');
+                    if (h2o2Item) {
+                        h2o2Item.amount = Math.max(h2o2Item.amount - h2o2Consumed, 0);
+                    }
+                    hx.o2Produced += h2o2Consumed / 2;
+                } else if (hasH2O2 && !hasMnO2InBeaker) {
+                    hx.hasCatalyst = false;
+                    // Very slow uncatalyzed rate
+                    hx.rate = 0.00001;
+                    hx.active = false;
+                }
+
+                // Alcohol lamp flame intensity animation
+                if (eq.alcoholLamp.lit) {
+                    eq.alcoholLamp.flameIntensity = 0.7 + Math.random() * 0.3;
+                } else {
+                    eq.alcoholLamp.flameIntensity = 0;
+                }
+
+                // Update temperature history
+                ed.temperatureHistory.push({ time: ed.timeElapsed, temp: tt.temperature });
+                if (ed.temperatureHistory.length > 500) {
+                    ed.temperatureHistory.shift();
+                }
+
+                // Render views
+                View.render();
+            },
+
+            // ===== User Actions =====
+            loadKMnO4() {
+                const tt = Model.containers.testTube;
+                if (tt.contents.length > 0) return;
+                const kmno4 = Model.reagents.KMnO4;
+                tt.contents.push({ reagentId: 'KMnO4', amount: kmno4.defaultAmount });
+                Model.equipment.experimentPhase = 'loaded';
+                Model.experimentData.phaseLog.push('装入高锰酸钾');
+                View.render();
+            },
+
+            placeCotton() {
+                if (Model.equipment.cottonPlaced) return;
+                if (Model.containers.testTube.contents.length === 0) return;
+                Model.equipment.cottonPlaced = true;
+                Model.containers.testTube.cottonPlaced = true;
+                Model.experimentData.phaseLog.push('放置棉花');
+                if (Model.equipment.experimentPhase === 'loaded') {
+                    Model.equipment.experimentPhase = 'assembled';
+                }
+                View.render();
+            },
+
+            connectTube() {
+                if (Model.equipment.tubeConnected) return;
+                if (!Model.equipment.cottonPlaced) return;
+                Model.equipment.tubeConnected = true;
+                Model.containers.testTube.connectedToTube = true;
+                Model.equipment.deliveryTube.inWater = true;
+                Model.experimentData.phaseLog.push('连接导管');
+                View.render();
+            },
+
+            toggleLamp() {
+                const eq = Model.equipment;
+                if (eq.alcoholLamp.lit) {
+                    eq.alcoholLamp.lit = false;
+                    eq.alcoholLamp.flameIntensity = 0;
+                    if (eq.experimentPhase === 'heating' || eq.experimentPhase === 'reacting') {
+                        if (Model.reactions.kmno4Decomposition.progress >= 1) {
+                            eq.experimentPhase = 'complete';
+                        }
+                    }
+                    Model.experimentData.phaseLog.push('熄灭酒精灯');
+                } else {
+                    eq.alcoholLamp.lit = true;
+                    eq.alcoholLamp.flameIntensity = 0.8;
+                    if (eq.experimentPhase === 'assembled' || eq.experimentPhase === 'loaded') {
+                        eq.experimentPhase = 'heating';
+                    }
+                    Model.experimentData.phaseLog.push('点燃酒精灯');
+                }
+                View.render();
+            },
+
+            startCollection() {
+                const eq = Model.equipment;
+                if (!eq.tubeConnected || !eq.deliveryTube.inWater) return;
+                if (eq.deliveryTube.inGasJar) return;
+                eq.deliveryTube.inGasJar = true;
+                Model.containers.gasJar.isCollecting = true;
+                if (eq.experimentPhase === 'reacting' || eq.experimentPhase === 'heating') {
+                    eq.experimentPhase = 'collecting';
+                }
+                Model.experimentData.phaseLog.push('开始收集氧气');
+                View.render();
+            },
+
+            stopCollection() {
+                const eq = Model.equipment;
+                eq.deliveryTube.inGasJar = false;
+                Model.containers.gasJar.isCollecting = false;
+                if (eq.experimentPhase === 'collecting') {
+                    eq.experimentPhase = 'reacting';
+                }
+                View.render();
+            },
+
+            addH2O2() {
+                const beaker = Model.containers.beaker;
+                if (beaker.contents.some(c => c.reagentId === 'H2O2')) return;
+                const h2o2 = Model.reagents.H2O2;
+                beaker.contents.push({ reagentId: 'H2O2', amount: h2o2.defaultAmount, concentration: h2o2.concentration });
+                Model.experimentData.phaseLog.push('向烧杯中加入H₂O₂');
+                View.render();
+            },
+
+            addMnO2ToBeaker() {
+                const beaker = Model.containers.beaker;
+                if (beaker.contents.some(c => c.reagentId === 'MnO2')) return;
+                const mno2 = Model.reagents.MnO2;
+                beaker.contents.push({ reagentId: 'MnO2', amount: mno2.defaultAmount });
+                Model.experimentData.phaseLog.push('向烧杯中加入MnO₂催化剂');
+                View.render();
+            },
+
+            removeTubeFromWater() {
+                const eq = Model.equipment;
+                eq.deliveryTube.inWater = false;
+                eq.deliveryTube.inGasJar = false;
+                Model.containers.gasJar.isCollecting = false;
+                Model.experimentData.phaseLog.push('撤出导管');
+                if (eq.experimentPhase === 'collecting' || eq.experimentPhase === 'reacting') {
+                    eq.experimentPhase = 'complete';
+                }
+                View.render();
+            },
+
+            resetExperiment() {
+                // Reset containers
+                Model.containers.testTube = {
+                    id: 'testTube',
+                    name: '试管',
+                    contents: [],
+                    temperature: 25,
+                    volume: 50,
+                    maxVolume: 60,
+                    cottonPlaced: false,
+                    connectedToTube: false
+                };
+                Model.containers.beaker = {
+                    id: 'beaker',
+                    name: '烧杯',
+                    contents: [],
+                    temperature: 25,
+                    volume: 250,
+                    maxVolume: 300
+                };
+                Model.containers.gasJar = {
+                    id: 'gasJar',
+                    name: '集气瓶',
+                    contents: [],
+                    temperature: 25,
+                    volume: 250,
+                    maxVolume: 250,
+                    oxygenCollected: 0,
+                    waterLevel: 1.0,
+                    isCollecting: false
+                };
+
+                // Reset equipment
+                Model.equipment = {
+                    alcoholLamp: { lit: false, flameIntensity: 0, position: 'underTube' },
+                    ironStand: { assembled: true },
+                    ironClamp: { holdingTube: true },
+                    tubeConnected: false,
+                    deliveryTube: { inWater: false, inGasJar: false },
+                    cottonPlaced: false,
+                    gasJarInverted: true,
+                    experimentPhase: 'idle'
+                };
+
+                // Reset reactions
+                Model.reactions.kmno4Decomposition = {
+                    active: false,
+                    progress: 0,
+                    rate: 0,
+                    startTemp: 25,
+                    activationEnergy: 100,
+                    frequencyFactor: 1e8,
+                    gasConstant: 8.314,
+                    o2Produced: 0
+                };
+                Model.reactions.h2o2Decomposition = {
+                    active: false,
+                    progress: 0,
+                    rate: 0,
+                    o2Produced: 0,
+                    hasCatalyst: false
+                };
+
+                // Reset experiment data
+                Model.experimentData = {
+                    timeElapsed: 0,
+                    oxygenCollected: 0,
+                    temperatureHistory: [],
+                    maxTemperature: 25,
+                    reactionCompleted: false,
+                    phaseLog: []
+                };
+
+                View.render();
+            }
+        };
+
+        // =============================================
+        // ============= GUIDE TOGGLE ==================
+        // =============================================
+        function toggleGuide() {
+            const content = document.getElementById('guideContent');
+            const icon = document.getElementById('guideToggleIcon');
+            if (content.style.display === 'none') {
+                content.style.display = 'grid';
+                icon.textContent = '▾';
+            } else {
+                content.style.display = 'none';
+                icon.textContent = '▸';
+            }
+        }
+
+        // =============================================
+        // ================== INIT =====================
+        // =============================================
+        document.addEventListener('DOMContentLoaded', () => {
+            Controller.init();
+        });
+
+        // Expose Controller to global scope for button onclick
+        window.Controller = Controller;
+        window.toggleGuide = toggleGuide;
+
+        // Fallback for potential issues
+        console.log('🔬 化学实验室模拟器已启动');
+        console.log('📋 高锰酸钾制氧气实验');
+        console.log('方程式: 2KMnO₄ →(Δ) K₂MnO₄ + MnO₂ + O₂↑');
+    </script>
+</body>
+</html>

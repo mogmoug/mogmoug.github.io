@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>核弹爆炸模拟器 - 增强版</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+        h1 {
+            color: #ff5252;
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 0 0 10px rgba(255, 82, 82, 0.5);
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+        }
+        .controls {
+            flex: 1;
+            min-width: 350px;
+            background: #1e1e1e;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .simulation {
+            flex: 2;
+            min-width: 600px;
+            height: 600px;
+            background: #000;
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        label {
+            display: block;
+            margin: 20px 0 8px;
+            font-weight: bold;
+            color: #ff9800;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #444;
+            border-radius: 6px;
+            box-sizing: border-box;
+            background: #2d2d2d;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+        button {
+            background: linear-gradient(135deg, #ff5252, #d32f2f);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            margin-top: 25px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 18px;
+            width: 100%;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            box-shadow: 0 4px 15px rgba(211, 47, 47, 0.4);
+            transition: all 0.3s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(211, 47, 47, 0.6);
+        }
+        .results {
+            margin-top: 25px;
+            background: #252525;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #ff5252;
+        }
+        .result-item {
+            margin: 15px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        .result-value {
+            color: #ff9800;
+            font-weight: bold;
+        }
+        .city {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 120px;
+            background: linear-gradient(to top, #1a1a1a, #333);
+            z-index: 1;
+        }
+        .building {
+            position: absolute;
+            bottom: 120px;
+            background: #444;
+            width: 25px;
+            z-index: 2;
+        }
+        .ground-zero {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            background: #ff0000;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            display: none;
+            box-shadow: 0 0 20px #ff0000;
+        }
+        .explosion {
+            position: absolute;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 5;
+        }
+        .mushroom-stem {
+            position: absolute;
+            background: linear-gradient(to top, rgba(255,100,0,0.8), rgba(255,200,100,0.6));
+            border-radius: 50%;
+            transform-origin: bottom center;
+            z-index: 4;
+        }
+        .mushroom-cap {
+            position: absolute;
+            background: radial-gradient(ellipse at center, rgba(255,200,100,0.8) 0%, rgba(150,50,0,0.6) 70%);
+            border-radius: 50%;
+            transform-origin: center center;
+            z-index: 6;
+        }
+        .shockwave {
+            position: absolute;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.7);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 3;
+        }
+        .debris {
+            position: absolute;
+            background: rgba(150, 150, 150, 0.7);
+            border-radius: 50%;
+            z-index: 7;
+        }
+        .warning {
+            color: #ff5252;
+            font-size: 14px;
+            margin-top: 30px;
+            text-align: center;
+            line-height: 1.6;
+            border-top: 1px solid #444;
+            padding-top: 15px;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .slider-container input[type="range"] {
+            flex: 1;
+        }
+        .slider-container input[type="number"] {
+            width: 80px;
+        }
+        .tooltip {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: -5px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>核弹爆炸模拟器 - 增强版</h1>
+    
+    <div class="container">
+        <div class="controls">
+            <label for="yield">核弹当量 (千吨 TNT):</label>
+            <div class="slider-container">
+                <input type="range" id="yield" min="1" max="100000" value="20000" step="100">
+                <input type="number" id="yield-input" min="1" max="100000" value="20000">
+            </div>
+            <div class="tooltip">广岛原子弹约15千吨，现代热核武器可达数万吨</div>
+            
+            <label for="altitude">爆炸高度:</label>
+            <select id="altitude">
+                <option value="0">地面爆炸 (最大冲击波)</option>
+                <option value="optimal" selected>最佳高度爆炸 (最大破坏范围)</option>
+                <option value="high">高空爆炸 (EMP效应)</option>
+            </select>
+            
+            <label for="population">目标区域人口密度 (人/平方公里):</label>
+            <div class="slider-container">
+                <input type="range" id="population" min="100" max="50000" value="8000" step="100">
+                <input type="number" id="population-input" min="100" max="50000" value="8000">
+            </div>
+            <div class="tooltip">典型城市: 5,000-20,000 人/平方公里</div>
+            
+            <button id="detonate">引 爆 核 弹</button>
+            
+            <div class="results">
+                <h3>爆炸效果估算</h3>
+                <div class="result-item">
+                    <span>火球半径:</span>
+                    <span class="result-value" id="fireball-radius">0 米</span>
+                </div>
+                <div class="result-item">
+                    <span>冲击波半径 (5psi):</span>
+                    <span class="result-value" id="blast-radius">0 米</span>
+                </div>
+                <div class="result-item">
+                    <span>热辐射半径 (三度烧伤):</span>
+                    <span class="result-value" id="thermal-radius">0 米</span>
+                </div>
+                <div class="result-item">
+                    <span>直接死亡人数:</span>
+                    <span class="result-value" id="deaths">0</span>
+                </div>
+                <div class="result-item">
+                    <span>受伤人数:</span>
+                    <span class="result-value" id="injuries">0</span>
+                </div>
+                <div class="result-item">
+                    <span>总受影响人数:</span>
+                    <span class="result-value" id="affected">0</span>
+                </div>
+            </div>
+            
+            <div class="warning">
+                警告: 此模拟器仅用于教育目的。核武器会造成灾难性的人道主义后果和环境破坏。<br>
+                根据国际法，使用核武器可能构成战争罪。我们呼吁全面禁止和销毁所有核武器。
+            </div>
+        </div>
+        
+        <div class="simulation">
+            <div class="city"></div>
+            <div class="ground-zero"></div>
+        </div>
+    </div>
+
+    <script>
+        // 同步滑块和数字输入
+        document.getElementById('yield').addEventListener('input', function() {
+            document.getElementById('yield-input').value = this.value;
+            updateYieldEffects();
+        });
+        document.getElementById('yield-input').addEventListener('input', function() {
+            const value = Math.min(100000, Math.max(1, this.value));
+            this.value = value;
+            document.getElementById('yield').value = value;
+            updateYieldEffects();
+        });
+        
+        document.getElementById('population').addEventListener('input', function() {
+            document.getElementById('population-input').value = this.value;
+        });
+        document.getElementById('population-input').addEventListener('input', function() {
+            const value = Math.min(50000, Math.max(100, this.value));
+            this.value = value;
+            document.getElementById('population').value = value;
+        });
+        
+        // 当量改变时预览效果
+        function updateYieldEffects() {
+            const yieldKT = parseInt(document.getElementById('yield').value);
+            const effects = calculateEffects(yieldKT);
+            
+            document.getElementById('fireball-radius').textContent = effects.fireballRadius.toLocaleString() + ' 米';
+            document.getElementById('blast-radius').textContent = effects.blastRadius.toLocaleString() + ' 米';
+            document.getElementById('thermal-radius').textContent = effects.thermalRadius.toLocaleString() + ' 米';
+        }
+        
+        // 创建随机城市建筑
+        function createCity() {
+            const city = document.querySelector('.city');
+            city.innerHTML = '';
+            
+            // 清除之前的爆炸效果
+            document.querySelectorAll('.explosion, .shockwave, .building, .mushroom-stem, .mushroom-cap, .debris').forEach(el => {
+                if (!el.classList.contains('city') && !el.classList.contains('ground-zero')) el.remove();
+            });
+            
+            // 创建建筑物
+            for (let i = 0; i < 80; i++) {
+                const building = document.createElement('div');
+                building.className = 'building';
+                building.style.left = `${Math.random() * 100}%`;
+                
+                // 随机建筑高度和宽度
+                const height = 50 + Math.random() * 250;
+                const width = 15 + Math.random() * 35;
+                
+                building.style.height = `${height}px`;
+                building.style.width = `${width}px`;
+                
+                // 随机建筑颜色
+                const darkness = 50 + Math.random() * 100;
+                building.style.background = `rgb(${darkness}, ${darkness}, ${darkness})`;
+                
+                // 添加一些窗户效果
+                if (Math.random() > 0.3) {
+                    building.style.boxShadow = `inset ${width/3}px ${width/3}px 10px rgba(0,0,0,0.5)`;
+                }
+                
+                city.appendChild(building);
+            }
+            
+            // 隐藏爆心标记
+            document.querySelector('.ground-zero').style.display = 'none';
+        }
+        
+        // 计算爆炸效果 (更精确的公式)
+        function calculateEffects(yieldKT) {
+            // 火球半径 (米) - 基于NUKEMAP公式
+            const fireballRadius = 110 * Math.pow(yieldKT, 0.4);
+            
+            // 5psi冲击波半径 (米) - 足以摧毁大部分建筑
+            const blastRadius = 1000 * Math.pow(yieldKT, 0.33);
+            
+            // 三度烧伤半径 (米)
+            const thermalRadius = 800 * Math.pow(yieldKT, 0.4);
+            
+            return {
+                fireballRadius: Math.round(fireballRadius),
+                blastRadius: Math.round(blastRadius),
+                thermalRadius: Math.round(thermalRadius)
+            };
+        }
+        
+        // 估算伤亡人数 (改进模型)
+        function estimateCasualties(blastRadius, thermalRadius, populationDensity) {
+            // 转换为平方公里
+            const blastArea = Math.PI * Math.pow(blastRadius / 1000, 2);
+            const thermalArea = Math.PI * Math.pow(thermalRadius / 1000, 2);
+            
+            // 冲击波区域死亡率 (90%)
+            const deaths = Math.round(blastArea * populationDensity * 0.9);
+            
+            // 热辐射区域受伤率 (考虑重叠区域)
+            const thermalOnlyArea = Math.max(0, thermalArea - blastArea);
+            const injuries = Math.round(thermalOnlyArea * populationDensity * 0.7 + blastArea * populationDensity * 0.05);
+            
+            return {
+                deaths,
+                injuries,
+                affected: deaths + injuries
+            };
+        }
+        
+        // 创建爆炸动画 (使用GSAP)
+        function createExplosion(x, y, yieldKT) {
+            const simulation = document.querySelector('.simulation');
+            const effects = calculateEffects(yieldKT);
+            const duration = 8; // 动画总时长 (秒)
+            
+            // 显示爆心
+            const groundZero = document.querySelector('.ground-zero');
+            groundZero.style.display = 'block';
+            groundZero.style.left = `${x}px`;
+            groundZero.style.top = `${y}px`;
+            
+            // 初始闪光
+            const initialFlash = document.createElement('div');
+            initialFlash.className = 'explosion';
+            initialFlash.style.left = `${x}px`;
+            initialFlash.style.top = `${y}px`;
+            initialFlash.style.width = '0';
+            initialFlash.style.height = '0';
+            initialFlash.style.backgroundColor = 'rgba(255, 255, 200, 0.9)';
+            initialFlash.style.boxShadow = '0 0 100px rgba(255, 200, 100, 0.9)';
+            simulation.appendChild(initialFlash);
+            
+            // 火球
+            const fireball = document.createElement('div');
+            fireball.className = 'explosion';
+            fireball.style.left = `${x}px`;
+            fireball.style.top = `${y}px`;
+            fireball.style.width = '0';
+            fireball.style.height = '0';
+            fireball.style.backgroundColor = 'rgba(255, 150, 50, 0.8)';
+            fireball.style.boxShadow = '0 0 80px rgba(255, 100, 0, 0.8)';
+            simulation.appendChild(fireball);
+            
+            // 冲击波
+            const shockwave = document.createElement('div');
+            shockwave.className = 'shockwave';
+            shockwave.style.left = `${x}px`;
+            shockwave.style.top = `${y}px`;
+            shockwave.style.width = '0';
+            shockwave.style.height = '0';
+            simulation.appendChild(shockwave);
+            
+            // 蘑菇云茎
+            const mushroomStem = document.createElement('div');
+            mushroomStem.className = 'mushroom-stem';
+            mushroomStem.style.left = `${x}px`;
+            mushroomStem.style.bottom = `${simulation.offsetHeight - y}px`;
+            mushroomStem.style.width = `${effects.fireballRadius * 0.3}px`;
+            mushroomStem.style.height = '0';
+            simulation.appendChild(mushroomStem);
+            
+            // 蘑菇云帽
+            const mushroomCap = document.createElement('div');
+            mushroomCap.className = 'mushroom-cap';
+            mushroomCap.style.left = `${x}px`;
+            mushroomCap.style.top = `${y}px`;
+            mushroomCap.style.width = '0';
+            mushroomCap.style.height = '0';
+            simulation.appendChild(mushroomCap);
+            
+            // 碎片效果
+            const debrisCount = 30 + Math.min(100, yieldKT / 100);
+            for (let i = 0; i < debrisCount; i++) {
+                const debris = document.createElement('div');
+                debris.className = 'debris';
+                debris.style.left = `${x}px`;
+                debris.style.top = `${y}px`;
+                debris.style.width = `${2 + Math.random() * 6}px`;
+                debris.style.height = debris.style.width;
+                simulation.appendChild(debris);
+                
+                // 随机碎片动画
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 50 + Math.random() * effects.fireballRadius;
+                const duration = 2 + Math.random() * 3;
+                
+                gsap.to(debris, {
+                    x: Math.cos(angle) * distance,
+                    y: -Math.sin(angle) * distance * (0.5 + Math.random()),
+                    opacity: 0,
+                    duration: duration,
+                    delay: 0.5 + Math.random() * 0.5,
+                    ease: "power2.out"
+                });
+            }
+            
+            // 动画时间线
+            const tl = gsap.timeline();
+            
+            // 阶段1: 初始闪光 (0-0.2秒)
+            tl.to(initialFlash, {
+                width: effects.fireballRadius * 0.5,
+                height: effects.fireballRadius * 0.5,
+                opacity: 1,
+                duration: 0.1
+            })
+            .to(initialFlash, {
+                opacity: 0,
+                duration: 0.1
+            }, "+=0.1");
+            
+            // 阶段2: 火球膨胀 (0.2-2秒)
+            tl.to(fireball, {
+                width: effects.fireballRadius * 2,
+                height: effects.fireballRadius * 2,
+                opacity: 1,
+                duration: 1.8,
+                ease: "power2.out"
+            }, "+=0");
+            
+            // 阶段3: 冲击波扩散 (1-5秒)
+            tl.to(shockwave, {
+                width: effects.blastRadius * 2,
+                height: effects.blastRadius * 2,
+                opacity: 1,
+                borderWidth: 5,
+                duration: 4,
+                ease: "power2.out"
+            }, "+=0.5")
+            .to(shockwave, {
+                opacity: 0,
+                duration: 1
+            }, "-=1");
+            
+            // 阶段4: 蘑菇云形成 (2-8秒)
+            tl.to(mushroomStem, {
+                height: effects.fireballRadius * 3,
+                duration: 3,
+                ease: "power2.out"
+            }, "+=1")
+            .to(mushroomCap, {
+                width: effects.fireballRadius * 2.5,
+                height: effects.fireballRadius * 1.5,
+                y: -effects.fireballRadius * 2,
+                opacity: 0.8,
+                duration: 4,
+                ease: "elastic.out(1, 0.5)"
+            }, "-=2")
+            .to(mushroomCap, {
+                width: effects.fireballRadius * 3,
+                height: effects.fireballRadius * 2,
+                y: -effects.fireballRadius * 2.5,
+                duration: 3,
+                ease: "power1.out"
+            }, "+=0");
+            
+            // 阶段5: 火球消退 (5-8秒)
+            tl.to(fireball, {
+                opacity: 0,
+                duration: 2
+            }, "+=2");
+            
+            // 阶段6: 蘑菇云消散 (10-15秒)
+            tl.to([mushroomStem, mushroomCap], {
+                opacity: 0,
+                duration: 5,
+                onComplete: () => {
+                    initialFlash.remove();
+                    fireball.remove();
+                    shockwave.remove();
+                    mushroomStem.remove();
+                    mushroomCap.remove();
+                    document.querySelectorAll('.debris').forEach(el => el.remove());
+                }
+            }, "+=2");
+            
+            // 震动效果
+            gsap.to(simulation, {
+                x: 10,
+                y: 10,
+                duration: 0.1,
+                repeat: 10,
+                yoyo: true,
+                ease: "power1.inOut"
+            });
+        }
+        
+        // 引爆按钮事件
+        document.getElementById('detonate').addEventListener('click', function() {
+            const yieldKT = parseInt(document.getElementById('yield').value);
+            const populationDensity = parseInt(document.getElementById('population').value);
+            
+            // 计算效果
+            const effects = calculateEffects(yieldKT);
+            
+            // 计算伤亡
+            const casualties = estimateCasualties(
+                effects.blastRadius, 
+                effects.thermalRadius, 
+                populationDensity
+            );
+            
+            // 更新显示
+            document.getElementById('deaths').textContent = casualties.deaths.toLocaleString();
+            document.getElementById('injuries').textContent = casualties.injuries.toLocaleString();
+            document.getElementById('affected').textContent = casualties.affected.toLocaleString();
+            
+            // 创建爆炸
+            const simulation = document.querySelector('.simulation');
+            const rect = simulation.getBoundingClientRect();
+            const x = rect.width / 2;
+            const y = rect.height / 2;
+            
+            createExplosion(x, y, yieldKT);
+        });
+        
+        // 初始化城市
+        createCity();
+        updateYieldEffects();
+    </script>
+</body>
+</html>

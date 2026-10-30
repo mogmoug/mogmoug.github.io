@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>洪水模拟器 · Flood Simulator</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0a0e14; color: #d7e2ee;
+    font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", sans-serif;
+    display: flex; height: 100vh; overflow: hidden;
+  }
+  #stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px; min-width: 0; }
+  #wrap { position: relative; width: min(100%, calc(100vh - 120px)); aspect-ratio: 1/1; }
+  canvas {
+    width: 100%; height: 100%; display: block; border-radius: 10px;
+    image-rendering: pixelated;
+    box-shadow: 0 0 0 1px #1e2a38, 0 12px 40px rgba(0,0,0,.7);
+    cursor: crosshair;
+  }
+  #hint { margin-top: 10px; font-size: 12px; color: #6c8399; letter-spacing: .3px; text-align: center; }
+  #panel {
+    width: 300px; background: #0f1620; border-left: 1px solid #1c2836;
+    padding: 18px 16px; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 14px; flex-shrink: 0;
+  }
+  h1 { font-size: 15px; font-weight: 600; letter-spacing: 1px; color: #7fd4ff; border-bottom: 1px solid #1c2836; padding-bottom: 10px; }
+  h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1.4px; color: #5a7185; margin-bottom: 8px; font-weight: 600; }
+  .card { background: #131c27; border: 1px solid #1e2c3b; border-radius: 8px; padding: 12px; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; font-size: 12.5px; padding: 3px 0; }
+  .row span:first-child { color: #7f95a8; }
+  .row span:last-child { font-variant-numeric: tabular-nums; font-weight: 600; color: #cfe4f5; }
+  .big { color: #ff9a6b !important; font-size: 15px; }
+  .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  button {
+    background: #1b2937; border: 1px solid #26384a; color: #b8d2e8;
+    padding: 9px 8px; border-radius: 6px; font-size: 12.5px;
+    cursor: pointer; transition: .15s; font-family: inherit;
+  }
+  button:hover { background: #24384c; border-color: #3a5670; color: #e6f3ff; }
+  button:active { transform: scale(.97); }
+  button.primary { background: #0d4a6b; border-color: #1a6d99; color: #a9e4ff; }
+  button.primary:hover { background: #12618a; }
+  button.wide { grid-column: span 2; }
+  .legend { display: flex; flex-direction: column; gap: 5px; font-size: 11.5px; color: #8fa5b8; }
+  .legend div { display: flex; align-items: center; gap: 8px; }
+  .sw { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+  #villList { font-size: 11.5px; max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; }
+  .vitem { display: flex; justify-content: space-between; padding: 3px 5px; border-radius: 4px; }
+  .vitem.hit { background: #3a1414; color: #ff9c9c; }
+  .vitem.ok  { background: #12211a; color: #7dbb95; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: #26384a; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <div id="wrap"><canvas id="map" width="256" height="256"></canvas></div>
+  <div id="hint">点击地图任意位置投放洪水 · 每次约 30 万立方米 · 水会沿河道流走并在边缘排出</div>
+</div>
+
+<div id="panel">
+  <h1>🌊 洪水模拟器</h1>
+
+  <div class="card">
+    <h2>实时数据</h2>
+    <div class="row"><span>模拟时间</span><span id="sTime">0.0 s</span></div>
+    <div class="row"><span>淹没面积</span><span id="sArea">0.00 km²</span></div>
+    <div class="row"><span>最大水深</span><span id="sDepth">0.00 m</span></div>
+    <div class="row"><span>总水量</span><span id="sVol">0 万m³</span></div>
+    <div class="row"><span>河流长度</span><span id="sRiver">0 格</span></div>
+    <div class="row"><span>受淹村庄</span><span id="sVill">0 / 0</span></div>
+    <div class="row"><span>受灾人口</span><span id="sPop">0 人</span></div>
+    <div class="row"><span>经济损失</span><span id="sLoss" class="big">0 元</span></div>
+  </div>
+
+  <div class="card">
+    <h2>操作</h2>
+    <div class="btns">
+      <button class="primary" id="btnPause">⏸ 暂停</button>
+      <button id="btnClear">💧 排干</button>
+      <button id="btnNewTerrain" class="wide">⛰ 重新生成地形</button>
+      <button id="btnNewVill" class="wide">🏘 重新生成村庄</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>村庄状态</h2>
+    <div id="villList"></div>
+  </div>
+
+  <div class="card">
+    <h2>图例</h2>
+    <div class="legend">
+      <div><div class="sw" style="background:#f0f2f8"></div>雪峰 / 高山</div>
+      <div><div class="sw" style="background:#8c7d69"></div>裸岩 / 山地</div>
+      <div><div class="sw" style="background:#5f8a4e"></div>丘陵</div>
+      <div><div class="sw" style="background:#7aa85e"></div>平原（村庄）</div>
+      <div><div class="sw" style="background:#5a6a6e"></div>河道 / 滩地</div>
+      <div><div class="sw" style="background:#3f9fe0"></div>积水</div>
+      <div><div class="sw" style="background:#ff5a5a"></div>受灾村庄</div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   常量
+   ============================================================ */
+const N = 256, N2 = N * N;
+const CELL_M = 50;
+const CELL_AREA = CELL_M * CELL_M;       // 2500 m²
+const G = 9.8;
+const FRICTION = 0.5;
+const TARGET_SIM_DT = 0.5;
+const MAX_SUBSTEPS = 40;
+
+const DX4 = [1, -1, 0, 0];
+const DY4 = [0, 0, 1, -1];
+
+/* 边缘排水：边缘格子保留比例 */
+const EDGE_DRAIN_KEEP = 0.5;
+
+/* ============================================================
+   状态
+   ============================================================ */
+let terrain, water, erodibility, fluxX, fluxY;
+let distRiver, riverMask;
+let villages = [];
+let running = true;
+let simTime = 0;
+let seed = 20240607;
+let riverPathLen = 0;
+let riverSource = -1;
+
+/* ============================================================
+   噪声
+   ============================================================ */
+function hash2(x, y, s) {
+  let h = Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263) + Math.imul(s | 0, 1442695041);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+
+function vnoise(x, y, s) {
+  const xi = Math.floor(x), yi = Math.floor(y);
+  const xf = x - xi, yf = y - yi;
+  const u = xf * xf * (3 - 2 * xf);
+  const v = yf * yf * (3 - 2 * yf);
+  const a = hash2(xi, yi, s);
+  const b = hash2(xi + 1, yi, s);
+  const c = hash2(xi, yi + 1, s);
+  const d = hash2(xi + 1, yi + 1, s);
+  return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v;
+}
+
+function fbm(x, y, oct, s, gain) {
+  gain = gain === undefined ? 0.5 : gain;
+  let sum = 0, amp = 1, freq = 1, norm = 0;
+  for (let i = 0; i < oct; i++) {
+    sum += amp * vnoise(x * freq, y * freq, s + i * 37);
+    norm += amp;
+    amp *= gain;
+    freq *= 2;
+  }
+  return sum / norm;
+}
+
+function smoothstep(a, b, x) {
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+}
+
+/* ============================================================
+   最小堆
+   ============================================================ */
+class MinHeap {
+  constructor() { this.k = []; this.v = []; }
+  get size() { return this.k.length; }
+  push(key, val) {
+    const K = this.k, V = this.v;
+    K.push(key); V.push(val);
+    let i = K.length - 1;
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (K[p] <= K[i]) break;
+      let t = K[p]; K[p] = K[i]; K[i] = t;
+      t = V[p]; V[p] = V[i]; V[i] = t;
+      i = p;
+    }
+  }
+  pop() {
+    const K = this.k, V = this.v;
+    const topK = K[0], topV = V[0];
+    const lastK = K.pop(), lastV = V.pop();
+    if (K.length > 0) {
+      K[0] = lastK; V[0] = lastV;
+      let i = 0;
+      const n = K.length;
+      for (;;) {
+        const l = 2 * i + 1, r = 2 * i + 2;
+        let m = i;
+        if (l < n && K[l] < K[m]) m = l;
+        if (r < n && K[r] < K[m]) m = r;
+        if (m === i) break;
+        let t = K[m]; K[m] = K[i]; K[i] = t;
+        t = V[m]; V[m] = V[i]; V[i] = t;
+        i = m;
+      }
+    }
+    return [topK, topV];
+  }
+}
+
+/* ============================================================
+   地形：大部分是平原/丘陵，右上角一座平滑的山脉
+   ============================================================ */
+function generateTerrain() {
+  terrain = new Float32Array(N2);
+  erodibility = new Float32Array(N2);
+
+  const mx = 0.82, my = 0.16;   // 山脉中心
+
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      const i = y * N + x;
+      const nx = x / N, ny = y / N;
+
+      // 平原基底：低缓起伏
+      const base = fbm(x * 0.008, y * 0.008, 5, seed);
+      let e = 2 + 20 * base;
+
+      // 中小尺度起伏（丘陵）
+      e += 5 * (fbm(x * 0.03, y * 0.03, 3, seed + 100) - 0.5);
+
+      // 山脉：平滑高斯衰减
+      const dx = nx - mx, dy = ny - my;
+      const d2 = dx * dx + dy * dy;
+      const sigma = 0.20;
+      const gaussian = Math.exp(-d2 / (2 * sigma * sigma));
+
+      // 山脊噪声
+      let ridge = 0, amp = 1, freq = 0.015, norm = 0;
+      for (let o = 0; o < 4; o++) {
+        let n = vnoise(x * freq, y * freq, seed + 500 + o * 91);
+        n = 1 - Math.abs(2 * n - 1);
+        ridge += amp * n * n;
+        norm += amp;
+        amp *= 0.5;
+        freq *= 2.1;
+      }
+      ridge /= norm;
+
+      e += gaussian * (28 + 105 * ridge);
+
+      if (e < 0.5) e = 0.5;
+      terrain[i] = e;
+
+      // 可蚀性
+      let fert = 0.3 + 1.6 * fbm(x * 0.028, y * 0.028, 4, seed + 777);
+      fert *= (1.2 - 0.5 * smoothstep(30, 90, e));
+      erodibility[i] = Math.max(0.15, Math.min(2.0, fert));
+    }
+  }
+}
+
+/* ============================================================
+   河流路径：从右上角山脉最高点出发，用 Dijkstra 找最低成本路径
+   成本 = 步长 + 上坡惩罚（下坡几乎免费）
+   ============================================================ */
+function findRiverPath() {
+  const INF = 1e18;
+  const dist = new Float32Array(N2).fill(INF);
+  const prev = new Int32Array(N2).fill(-1);
+  const done = new Uint8Array(N2);
+  const heap = new MinHeap();
+
+  // 起点：右上象限最高点
+  let start = -1, bestH = -1;
+  const x0 = Math.floor(N * 0.5), x1 = N - 15;
+  const y0 = 15, y1 = Math.floor(N * 0.5);
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) {
+      const i = y * N + x;
+      if (terrain[i] > bestH) { bestH = terrain[i]; start = i; }
+    }
+  }
+  if (start < 0) return [];
+
+  dist[start] = 0;
+  heap.push(0, start);
+
+  while (heap.size > 0) {
+    const [d, u] = heap.pop();
+    if (done[u]) continue;
+    done[u] = 1;
+    const ux = u % N, uy = (u / N) | 0;
+
+    for (let k = 0; k < 4; k++) {
+      const vx = ux + DX4[k], vy = uy + DY4[k];
+      if (vx < 0 || vy < 0 || vx >= N || vy >= N) continue;
+      const v = vy * N + vx;
+      if (done[v]) continue;
+
+      // 上坡惩罚大，下坡免费
+      const dh = terrain[v] - terrain[u];
+      const cost = d + 1 + Math.max(0, dh) * 1.8;
+
+      if (cost < dist[v]) {
+        dist[v] = cost;
+        prev[v] = u;
+        heap.push(cost, v);
+      }
+    }
+  }
+
+  // 终点：偏好底部 / 左侧
+  let endNode = -1, bestScore = INF;
+  for (let x = 0; x < N; x++) {
+    let i = x;
+    let s = dist[i] + 8000;
+    if (s < bestScore) { bestScore = s; endNode = i; }
+    i = (N - 1) * N + x;
+    s = dist[i];
+    if (s < bestScore) { bestScore = s; endNode = i; }
+  }
+  for (let y = 0; y < N; y++) {
+    let i = y * N;
+    let s = dist[i];
+    if (s < bestScore) { bestScore = s; endNode = i; }
+    i = y * N + N - 1;
+    s = dist[i] + 8000;
+    if (s < bestScore) { bestScore = s; endNode = i; }
+  }
+
+  if (endNode < 0 || dist[endNode] > 1e17) return [];
+
+  const path = [];
+  let cur = endNode;
+  while (cur >= 0) { path.push(cur); cur = prev[cur]; }
+  path.reverse();
+  return path;
+}
+
+/* ============================================================
+   河谷雕刻：平滑纵剖面（源头高 → 出口低）
+   ============================================================ */
+function carveRiver() {
+  riverMask = new Uint8Array(N2);
+  distRiver = new Float32Array(N2).fill(9999);
+  riverSource = -1;
+
+  const path = findRiverPath();
+  riverPathLen = path.length;
+  if (path.length < 5) return;
+
+  riverSource = path[0];
+
+  // 纵剖面：从源头到出口平滑下降
+  const srcH = terrain[path[0]];
+  const bedProfile = new Float32Array(path.length);
+  for (let i = 0; i < path.length; i++) {
+    const t = i / (path.length - 1);
+    // 平滑曲线：源头高，出口低
+    bedProfile[i] = 0.6 + Math.max(0, srcH - 12) * Math.pow(1 - t, 1.6);
+  }
+
+  // 1) 河道中心深切
+  for (let i = 0; i < path.length; i++) {
+    const p = path[i];
+    const bed = bedProfile[i];
+    if (terrain[p] > bed) terrain[p] = bed;
+  }
+
+  // 2) V 型河谷加宽（窄而清晰）
+  const R = 7;
+  for (let pi = 0; pi < path.length; pi++) {
+    const p = path[pi];
+    const px = p % N, py = (p / N) | 0;
+    const bedH = terrain[p];
+    for (let dy = -R; dy <= R; dy++) {
+      const y = py + dy;
+      if (y < 0 || y >= N) continue;
+      for (let dx = -R; dx <= R; dx++) {
+        const x = px + dx;
+        if (x < 0 || x >= N) continue;
+        const dd2 = dx * dx + dy * dy;
+        if (dd2 > R * R) continue;
+        const t = 1 - Math.sqrt(dd2) / R;
+        const w = t * t * t;
+        if (w <= 0.002) continue;
+        const i = y * N + x;
+        const blend = terrain[i] * (1 - w) + bedH * w;
+        if (blend < terrain[i]) terrain[i] = blend;
+      }
+    }
+  }
+
+  // 3) 距离场 BFS
+  const q = new Int32Array(N2);
+  let qh = 0, qt = 0;
+
+  for (let pi = 0; pi < path.length; pi++) {
+    const p = path[pi];
+    const px = p % N, py = (p / N) | 0;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const x = px + dx, y = py + dy;
+        if (x < 0 || y < 0 || x >= N || y >= N) continue;
+        const i = y * N + x;
+        if (!riverMask[i]) {
+          riverMask[i] = 1;
+          distRiver[i] = 0;
+          q[qt++] = i;
+        }
+      }
+    }
+  }
+
+  while (qh < qt) {
+    const u = q[qh++];
+    const ux = u % N, uy = (u / N) | 0;
+    const du = distRiver[u];
+    for (let k = 0; k < 4; k++) {
+      const vx = ux + DX4[k], vy = uy + DY4[k];
+      if (vx < 0 || vy < 0 || vx >= N || vy >= N) continue;
+      const v = vy * N + vx;
+      if (distRiver[v] > du + 1) {
+        distRiver[v] = du + 1;
+        q[qt++] = v;
+      }
+    }
+  }
+
+  // 4) 河道初始细流（沿路径放水）
+  for (let pi = 0; pi < path.length; pi++) {
+    const p = path[pi];
+    const px = p % N, py = (p / N) | 0;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const x = px + dx, y = py + dy;
+        if (x < 0 || y < 0 || x >= N || y >= N) continue;
+        const i = y * N + x;
+        if (terrain[i] < 60) water[i] = Math.max(water[i], 0.4);
+      }
+    }
+  }
+}
+
+/* ============================================================
+   村庄：低地平原，靠近河流两岸
+   ============================================================ */
+const VILL_NAMES = ["柳溪村","石门屯","望江寨","白鹭湾","青枫岭","河湾集","田心村","双桥铺",
+  "柳树洼","陈家渡","杏花坪","水南村","大堰头","黄泥岗","竹林坳","平安镇","长塘村","石桥驿",
+  "稻香村","杨林渡","河口村","梅子坪","石鼓镇","新田铺","东湖屯","西塘村"];
+
+function generateVillages() {
+  villages = [];
+  const used = new Uint8Array(N2);
+  const MIN_SEP2 = 20 * 20;
+
+  function tryAdd(x, y, strict) {
+    if (x < 12 || y < 12 || x >= N - 12 || y >= N - 12) return false;
+    const i = y * N + x;
+    if (used[i]) return false;
+
+    const e = terrain[i];
+    const dr = distRiver[i];
+
+    if (strict) {
+      if (e > 35) return false;              // 低地平原
+      if (dr < 3 || dr > 45) return false;   // 靠近但不紧贴河流
+      const sx = Math.abs(terrain[i + 1] - terrain[i - 1]);
+      const sy = Math.abs(terrain[i + N] - terrain[i - N]);
+      if (sx + sy > 4.0) return false;       // 坡度小
+    } else {
+      if (e > 55) return false;
+      if (dr < 2) return false;
+    }
+
+    for (const v of villages) {
+      const dx = v.x - x, dy = v.y - y;
+      if (dx * dx + dy * dy < MIN_SEP2) return false;
+    }
+
+    const pop = 180 + Math.floor(Math.random() * 2800);
+    villages.push({
+      x, y, i,
+      name: VILL_NAMES[villages.length % VILL_NAMES.length],
+      population: pop,
+      value: pop * (35000 + Math.random() * 45000),
+      loss: 0,
+      maxDepth: 0,
+      flooded: false
+    });
+
+    for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -2; dx <= 2; dx++) {
+        const xx = x + dx, yy = y + dy;
+        if (xx < 0 || yy < 0 || xx >= N || yy >= N) continue;
+        used[yy * N + xx] = 1;
+      }
+    }
+    return true;
+  }
+
+  let tries = 0;
+  while (villages.length < 12 && tries < 6000) {
+    tries++;
+    const x = 14 + Math.floor(Math.random() * (N - 28));
+    const y = 14 + Math.floor(Math.random() * (N - 28));
+    tryAdd(x, y, true);
+  }
+  tries = 0;
+  while (villages.length < 8 && tries < 8000) {
+    tries++;
+    const x = 14 + Math.floor(Math.random() * (N - 28));
+    const y = 14 + Math.floor(Math.random() * (N - 28));
+    tryAdd(x, y, false);
+  }
+
+  renderVillageList();
+}
+
+/* ============================================================
+   水力模拟（单个子步）
+   ============================================================ */
+function step(dt) {
+  const invFric = 1 / (1 + FRICTION * dt);
+
+  // X 方向通量
+  for (let y = 0; y < N; y++) {
+    const row = y * N;
+    for (let x = 0; x < N - 1; x++) {
+      const i = row + x;
+      const wA = water[i], wB = water[i + 1];
+      const hAvg = (wA + wB) * 0.5;
+      if (hAvg < 1e-6) { fluxX[i] = 0; continue; }
+      const dEta = (terrain[i] + wA) - (terrain[i + 1] + wB);
+      let Q = fluxX[i] + dt * G * hAvg * dEta;
+      Q *= invFric;
+      const maxQ = 0.45 * hAvg * Math.sqrt(G * Math.max(hAvg, 0.02));
+      if (Q > maxQ) Q = maxQ; else if (Q < -maxQ) Q = -maxQ;
+      fluxX[i] = Q;
+    }
+  }
+
+  // Y 方向通量
+  for (let y = 0; y < N - 1; y++) {
+    const row = y * N;
+    for (let x = 0; x < N; x++) {
+      const i = row + x;
+      const wA = water[i], wB = water[i + N];
+      const hAvg = (wA + wB) * 0.5;
+      if (hAvg < 1e-6) { fluxY[i] = 0; continue; }
+      const dEta = (terrain[i] + wA) - (terrain[i + N] + wB);
+      let Q = fluxY[i] + dt * G * hAvg * dEta;
+      Q *= invFric;
+      const maxQ = 0.45 * hAvg * Math.sqrt(G * Math.max(hAvg, 0.02));
+      if (Q > maxQ) Q = maxQ; else if (Q < -maxQ) Q = -maxQ;
+      fluxY[i] = Q;
+    }
+  }
+
+  // 水深更新
+  for (let y = 0; y < N; y++) {
+    const row = y * N;
+    for (let x = 0; x < N; x++) {
+      const i = row + x;
+      let net = 0;
+      if (x > 0) net += fluxX[i - 1];
+      if (x < N - 1) net -= fluxX[i];
+      if (y > 0) net += fluxY[i - N];
+      if (y < N - 1) net -= fluxY[i];
+      let w = water[i] + net * dt;
+      if (!isFinite(w) || w < 0) w = 0;
+      water[i] = w;
+    }
+  }
+}
+
+/* ============================================================
+   边缘排水：温和地把水从地图边缘排走
+   ============================================================ */
+function drainEdges() {
+  const f = EDGE_DRAIN_KEEP;
+  // 上下两行
+  for (let x = 0; x < N; x++) {
+    const top = x;
+    const bot = (N - 1) * N + x;
+    if (water[top] > 0.001) water[top] *= f;
+    if (water[bot] > 0.001) water[bot] *= f;
+  }
+  // 左右两列（不含角）
+  for (let y = 1; y < N - 1; y++) {
+    const left = y * N;
+    const right = y * N + N - 1;
+    if (water[left] > 0.001) water[left] *= f;
+    if (water[right] > 0.001) water[right] *= f;
+  }
+}
+
+/* 河流源头微量补水，保持河道有水 */
+function maintainRiverSource() {
+  if (riverSource < 0) return;
+  water[riverSource] += 0.008;
+  const sx = riverSource % N, sy = (riverSource / N) | 0;
+  for (let k = 0; k < 4; k++) {
+    const x = sx + DX4[k], y = sy + DY4[k];
+    if (x < 0 || y < 0 || x >= N || y >= N) continue;
+    water[y * N + x] += 0.004;
+  }
+}
+
+/* ============================================================
+   侵蚀（守恒型）
+   ============================================================ */
+const K_ERODE = 0.0020;
+const MIN_TERRAIN = 0.5;
+
+function applyErosion(dt) {
+  // X 方向
+  for (let y = 0; y < N; y++) {
+    const row = y * N;
+    for (let x = 0; x < N - 1; x++) {
+      const i = row + x;
+      const Q = fluxX[i];
+      const aq = Q < 0 ? -Q : Q;
+      if (aq < 1e-4) continue;
+      const dAvg = (water[i] + water[i + 1]) * 0.5;
+      if (dAvg < 5e-3) continue;
+      const speed = aq / dAvg;
+      let amt = K_ERODE * erodibility[i] * aq * Math.min(speed, 3.0) * dt;
+      if (amt > 0.004) amt = 0.004;
+      if (amt <= 0 || !isFinite(amt)) continue;
+
+      const donor = Q > 0 ? i : i + 1;
+      const recv  = Q > 0 ? i + 1 : i;
+      const maxAmt = terrain[donor] - MIN_TERRAIN;
+      if (maxAmt <= 0) continue;
+      if (amt > maxAmt) amt = maxAmt;
+
+      terrain[donor] -= amt;
+      terrain[recv]  += amt;
+    }
+  }
+
+  // Y 方向
+  for (let y = 0; y < N - 1; y++) {
+    const row = y * N;
+    for (let x = 0; x < N; x++) {
+      const i = row + x;
+      const Q = fluxY[i];
+      const aq = Q < 0 ? -Q : Q;
+      if (aq < 1e-4) continue;
+      const dAvg = (water[i] + water[i + N]) * 0.5;
+      if (dAvg < 5e-3) continue;
+      const speed = aq / dAvg;
+      let amt = K_ERODE * erodibility[i] * aq * Math.min(speed, 3.0) * dt;
+      if (amt > 0.004) amt = 0.004;
+      if (amt <= 0 || !isFinite(amt)) continue;
+
+      const donor = Q > 0 ? i : i + N;
+      const recv  = Q > 0 ? i + N : i;
+      const maxAmt = terrain[donor] - MIN_TERRAIN;
+      if (maxAmt <= 0) continue;
+      if (amt > maxAmt) amt = maxAmt;
+
+      terrain[donor] -= amt;
+      terrain[recv]  += amt;
+    }
+  }
+}
+
+/* ============================================================
+   村庄损失
+   ============================================================ */
+function updateVillages(dt) {
+  for (const v of villages) {
+    const d = water[v.i];
+    if (d > 0.12 && isFinite(d)) {
+      v.flooded = true;
+      if (d > v.maxDepth) v.maxDepth = d;
+      const rate = Math.min(0.02, 0.003 * Math.pow(Math.min(d, 15), 1.5));
+      v.loss += v.value * rate * dt;
+      if (v.loss > v.value) v.loss = v.value;
+    }
+  }
+}
+
+/* ============================================================
+   渲染
+   ============================================================ */
+const canvas = document.getElementById("map");
+const ctx = canvas.getContext("2d");
+const imgData = ctx.createImageData(N, N);
+const pix = imgData.data;
+
+const STOPS = [
+  [0,   205, 198, 158],
+  [4,   178, 188, 134],
+  [10,  148, 182, 106],
+  [18,  118, 165,  92],
+  [30,  100, 145,  80],
+  [46,   92, 122,  72],
+  [62,  110, 108,  78],
+  [82,  134, 126, 106],
+  [100, 162, 156, 150],
+  [120, 208, 208, 214],
+  [140, 244, 246, 250],
+  [165, 255, 255, 255]
+];
+
+const LUT = new Uint8Array(1024 * 3);
+(function buildLUT() {
+  const maxE = 165;
+  for (let k = 0; k < 1024; k++) {
+    const e = k / 1023 * maxE;
+    let idx = 0;
+    while (idx < STOPS.length - 2 && e > STOPS[idx + 1][0]) idx++;
+    const s0 = STOPS[idx], s1 = STOPS[idx + 1];
+    let t = (e - s0[0]) / (s1[0] - s0[0]);
+    if (t < 0) t = 0; else if (t > 1) t = 1;
+    LUT[k * 3]     = s0[1] + (s1[1] - s0[1]) * t;
+    LUT[k * 3 + 1] = s0[2] + (s1[2] - s0[2]) * t;
+    LUT[k * 3 + 2] = s0[3] + (s1[3] - s0[3]) * t;
+  }
+})();
+
+function render() {
+  const d = pix;
+
+  for (let y = 0; y < N; y++) {
+    const row = y * N;
+    const rowU = (y > 0 ? y - 1 : y) * N;
+    const rowD = (y < N - 1 ? y + 1 : y) * N;
+
+    for (let x = 0; x < N; x++) {
+      const i = row + x;
+      let e = terrain[i];
+      if (!isFinite(e)) e = 0;
+
+      let k = (e * 6.2) | 0;
+      if (k < 0) k = 0; else if (k > 1023) k = 1023;
+
+      let r = LUT[k * 3], g = LUT[k * 3 + 1], b = LUT[k * 3 + 2];
+
+      const hL = terrain[row + (x > 0 ? x - 1 : x)];
+      const hR = terrain[row + (x < N - 1 ? x + 1 : x)];
+      const hU = terrain[rowU + x];
+      const hD = terrain[rowD + x];
+      let shade = 1 + ((hR - hL) + (hD - hU)) * 0.009;
+      if (!isFinite(shade)) shade = 1;
+      if (shade < 0.65) shade = 0.65; else if (shade > 1.35) shade = 1.35;
+      r *= shade; g *= shade; b *= shade;
+
+      // 河道湿润暗色
+      const dr = distRiver[i];
+      if (dr < 4) {
+        const t = (1 - dr / 4) * 0.6;
+        r = r * (1 - t) + 68 * t;
+        g = g * (1 - t) + 86 * t;
+        b = b * (1 - t) + 94 * t;
+      }
+
+      // 水体
+      const w = water[i];
+      if (w > 0.003 && isFinite(w)) {
+        const t = w / 2.8;
+        const tt = t > 1 ? 1 : Math.sqrt(t);
+        const wr = 118 - 78 * tt;
+        const wg = 180 - 95 * tt;
+        const wb = 235 - 70 * tt;
+        const a = 0.42 + 0.55 * tt;
+        r = r * (1 - a) + wr * a;
+        g = g * (1 - a) + wg * a;
+        b = b * (1 - a) + wb * a;
+      }
+
+      const p = i << 2;
+      d[p]     = r < 0 ? 0 : r > 255 ? 255 : r;
+      d[p + 1] = g < 0 ? 0 : g > 255 ? 255 : g;
+      d[p + 2] = b < 0 ? 0 : b > 255 ? 255 : b;
+      d[p + 3] = 255;
+    }
+  }
+
+  ctx.putImageData(imgData, 0, 0);
+
+  // 村庄标记
+  for (const v of villages) {
+    const flooded = water[v.i] > 0.12;
+    ctx.fillStyle = flooded ? "rgba(255,70,70,.35)" : "rgba(255,210,80,.30)";
+    ctx.fillRect(v.x - 4, v.y - 4, 9, 9);
+    ctx.fillStyle = flooded ? "#ff4040" : "#ffd23f";
+    ctx.fillRect(v.x - 2, v.y - 2, 5, 5);
+    ctx.fillStyle = flooded ? "#7a1a1a" : "#7a5c12";
+    ctx.fillRect(v.x - 2, v.y - 2, 5, 1);
+    ctx.fillRect(v.x - 2, v.y + 2, 5, 1);
+    ctx.fillRect(v.x - 2, v.y - 2, 1, 5);
+    ctx.fillRect(v.x + 2, v.y - 2, 1, 5);
+  }
+}
+
+/* ============================================================
+   UI
+   ============================================================ */
+const el = {
+  sTime: document.getElementById("sTime"),
+  sArea: document.getElementById("sArea"),
+  sDepth: document.getElementById("sDepth"),
+  sVol: document.getElementById("sVol"),
+  sRiver: document.getElementById("sRiver"),
+  sVill: document.getElementById("sVill"),
+  sPop: document.getElementById("sPop"),
+  sLoss: document.getElementById("sLoss"),
+  villList: document.getElementById("villList"),
+  btnPause: document.getElementById("btnPause")
+};
+
+let uiCounter = 0;
+
+function formatMoney(v) {
+  if (!isFinite(v) || v < 0) v = 0;
+  if (v >= 1e8) return (v / 1e8).toFixed(2) + " 亿元";
+  if (v >= 1e4) return (v / 1e4).toFixed(1) + " 万元";
+  return Math.round(v) + " 元";
+}
+
+function formatVol(m3) {
+  if (m3 >= 1e8) return (m3 / 1e8).toFixed(2) + " 亿m³";
+  if (m3 >= 1e4) return (m3 / 1e4).toFixed(0) + " 万m³";
+  return Math.round(m3) + " m³";
+}
+
+function renderVillageList() {
+  let html = "";
+  const sorted = villages.slice().sort((a, b) => b.loss - a.loss);
+  for (const v of sorted) {
+    const cls = v.flooded ? "hit" : "ok";
+    const depthTxt = Math.min(v.maxDepth, 99).toFixed(1);
+    const txt = v.flooded
+      ? `淹没 ${depthTxt}m · ${formatMoney(v.loss)}`
+      : `${v.population} 人 · 安全`;
+    html += `<div class="vitem ${cls}"><span>${v.name}</span><span>${txt}</span></div>`;
+  }
+  if (!html) html = '<div style="color:#4a5f72;padding:6px">尚未生成村庄</div>';
+  el.villList.innerHTML = html;
+}
+
+function updateUI() {
+  let floodedCells = 0, maxDepth = 0, totalWaterVol = 0;
+  for (let i = 0; i < N2; i++) {
+    const w = water[i];
+    if (!isFinite(w)) continue;
+    if (w > 0.05) floodedCells++;
+    if (w > maxDepth) maxDepth = w;
+    totalWaterVol += w;
+  }
+  totalWaterVol *= CELL_AREA;
+
+  const areaKm2 = floodedCells * CELL_AREA / 1e6;
+
+  let floodedVill = 0, popAffected = 0, totalLoss = 0;
+  for (const v of villages) {
+    if (v.flooded) { floodedVill++; popAffected += v.population; }
+    totalLoss += v.loss;
+  }
+
+  el.sTime.textContent = simTime.toFixed(1) + " s";
+  el.sArea.textContent = areaKm2.toFixed(2) + " km²";
+  el.sDepth.textContent = Math.min(maxDepth, 99).toFixed(2) + " m";
+  el.sVol.textContent = formatVol(totalWaterVol);
+  el.sRiver.textContent = riverPathLen + " 格";
+  el.sVill.textContent = floodedVill + " / " + villages.length;
+  el.sPop.textContent = popAffected.toLocaleString() + " 人";
+  el.sLoss.textContent = formatMoney(totalLoss);
+
+  if (uiCounter % 8 === 0) renderVillageList();
+  uiCounter++;
+}
+
+/* ============================================================
+   点击放水
+   ============================================================ */
+const FLOOD_R = 12;
+const FLOOD_VOLUME = 300000;   // 30 万 m³
+
+function addFlood(cx, cy) {
+  const cells = [];
+  let sumW = 0;
+  for (let dy = -FLOOD_R; dy <= FLOOD_R; dy++) {
+    const y = cy + dy;
+    if (y < 0 || y >= N) continue;
+    for (let dx = -FLOOD_R; dx <= FLOOD_R; dx++) {
+      const x = cx + dx;
+      if (x < 0 || x >= N) continue;
+      const dd = Math.sqrt(dx * dx + dy * dy);
+      if (dd > FLOOD_R) continue;
+      const t = 1 - dd / FLOOD_R;
+      const w = t * t;
+      sumW += w;
+      cells.push([y * N + x, w]);
+    }
+  }
+  if (sumW <= 0) return;
+  const scale = FLOOD_VOLUME / (sumW * CELL_AREA);
+  for (let c = 0; c < cells.length; c++) {
+    const i = cells[c][0], w = cells[c][1];
+    water[i] += w * scale;
+  }
+}
+
+canvas.addEventListener("click", e => {
+  const rect = canvas.getBoundingClientRect();
+  const x = Math.floor((e.clientX - rect.left) / rect.width * N);
+  const y = Math.floor((e.clientY - rect.top) / rect.height * N);
+  if (x < 0 || y < 0 || x >= N || y >= N) return;
+  addFlood(x, y);
+});
+
+/* ============================================================
+   主模拟帧
+   ============================================================ */
+function simulateFrame() {
+  let maxH = 0.05;
+  for (let i = 0; i < N2; i++) {
+    const w = water[i];
+    if (w > maxH && isFinite(w)) maxH = w;
+  }
+  if (!isFinite(maxH) || maxH > 1e5) maxH = 1e5;
+
+  const c = Math.sqrt(G * maxH);
+  let dtStable = 0.35 / c;
+  if (dtStable > 0.06) dtStable = 0.06;
+  if (dtStable < 0.004) dtStable = 0.004;
+
+  let steps = Math.ceil(TARGET_SIM_DT / dtStable);
+  if (steps > MAX_SUBSTEPS) steps = MAX_SUBSTEPS;
+  if (steps < 1) steps = 1;
+  const dt = TARGET_SIM_DT / steps;
+
+  for (let s = 0; s < steps; s++) {
+    step(dt);
+  }
+
+  drainEdges();
+  maintainRiverSource();
+  applyErosion(TARGET_SIM_DT);
+  updateVillages(TARGET_SIM_DT);
+
+  simTime += TARGET_SIM_DT;
+}
+
+/* ============================================================
+   主循环
+   ============================================================ */
+function loop() {
+  requestAnimationFrame(loop);
+  if (running) simulateFrame();
+  render();
+  updateUI();
+}
+
+/* ============================================================
+   初始化
+   ============================================================ */
+function fullReset(newSeed) {
+  if (newSeed !== undefined) seed = newSeed;
+  water = new Float32Array(N2);
+  fluxX = new Float32Array(N2);
+  fluxY = new Float32Array(N2);
+  simTime = 0;
+  generateTerrain();
+  carveRiver();
+  generateVillages();
+}
+
+el.btnPause.addEventListener("click", e => {
+  running = !running;
+  e.target.textContent = running ? "⏸ 暂停" : "▶ 继续";
+});
+
+document.getElementById("btnClear").addEventListener("click", () => {
+  water.fill(0);
+  fluxX.fill(0);
+  fluxY.fill(0);
+  for (const v of villages) {
+    v.loss = 0; v.maxDepth = 0; v.flooded = false;
+  }
+  simTime = 0;
+});
+
+document.getElementById("btnNewTerrain").addEventListener("click", () => {
+  fullReset(Math.floor(Math.random() * 1e9));
+});
+
+document.getElementById("btnNewVill").addEventListener("click", () => {
+  generateVillages();
+});
+
+fullReset();
+loop();
+</script>
+</body>
+</html>

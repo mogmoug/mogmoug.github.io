@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数学模拟洪水系统 - 3D地形洪水仿真</title>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --panel-bg: rgba(20, 20, 40, 0.92);
+            --text: #e0e0e0;
+            --accent: #4da6ff;
+            --accent2: #ff704d;
+            --slider-track: #333;
+            --border: rgba(255, 255, 255, 0.12);
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            --radius: 14px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: #0a0a14;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            cursor: crosshair;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        /* 顶部信息栏 */
+        #top-bar {
+            position: fixed;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 30px;
+            padding: 8px 20px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: var(--shadow);
+            pointer-events: auto;
+        }
+        #top-bar .title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+        #top-bar .badge {
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.08);
+            color: #bbb;
+            white-space: nowrap;
+            letter-spacing: 0.3px;
+        }
+        #top-bar .water-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #8ccfff;
+            white-space: nowrap;
+        }
+        #top-bar .water-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #4da6ff;
+            box-shadow: 0 0 8px #4da6ff;
+            animation: pulse-dot 1.6s ease-in-out infinite;
+        }
+        @keyframes pulse-dot {
+            0%,
+            100% {
+                box-shadow: 0 0 6px #4da6ff;
+            }
+            50% {
+                box-shadow: 0 0 18px #7cc4ff, 0 0 30px rgba(77, 166, 255, 0.5);
+            }
+        }
+        #total-water {
+            font-weight: 700;
+            color: #fff;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        /* 底部控制面板 */
+        #control-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px 22px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 14px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: var(--shadow);
+            pointer-events: auto;
+            max-width: 95vw;
+        }
+        #control-panel label {
+            font-size: 11px;
+            color: #aaa;
+            letter-spacing: 0.4px;
+            white-space: nowrap;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        #control-panel input[type="range"] {
+            -webkit-appearance: none;
+            width: 90px;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--slider-track);
+            outline: none;
+            cursor: pointer;
+        }
+        #control-panel input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            border: 2px solid #fff;
+            box-shadow: 0 0 12px rgba(77, 166, 255, 0.5);
+            transition: box-shadow 0.2s;
+        }
+        #control-panel input[type="range"]::-webkit-slider-thumb:active {
+            box-shadow: 0 0 22px rgba(77, 166, 255, 0.8);
+        }
+        .btn {
+            padding: 9px 16px;
+            border-radius: 22px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.4px;
+            transition: all 0.25s;
+            white-space: nowrap;
+            font-family: inherit;
+            outline: none;
+        }
+        .btn-release {
+            background: var(--accent2);
+            color: #fff;
+            border-color: var(--accent2);
+            box-shadow: 0 0 16px rgba(255, 70, 40, 0.35);
+        }
+        .btn-release:hover {
+            box-shadow: 0 0 28px rgba(255, 70, 40, 0.6);
+            transform: translateY(-1px);
+        }
+        .btn-release:active {
+            transform: scale(0.95);
+        }
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.06);
+            color: #ccc;
+        }
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.14);
+            color: #fff;
+        }
+        .btn-toggle {
+            background: rgba(255, 255, 255, 0.06);
+            color: #ccc;
+            min-width: 70px;
+            text-align: center;
+        }
+        .btn-toggle.active {
+            background: rgba(77, 166, 255, 0.25);
+            color: #fff;
+            border-color: var(--accent);
+            box-shadow: 0 0 12px rgba(77, 166, 255, 0.3);
+        }
+
+        /* 图例提示 */
+        #legend {
+            position: fixed;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 10;
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px 14px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: var(--shadow);
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        #legend .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 10px;
+            color: #bbb;
+            letter-spacing: 0.3px;
+        }
+        #legend .legend-color {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            #control-panel {
+                gap: 8px;
+                padding: 10px 14px;
+                border-radius: 10px;
+            }
+            #control-panel input[type="range"] {
+                width: 55px;
+                height: 4px;
+            }
+            #control-panel input[type="range"]::-webkit-slider-thumb {
+                width: 18px;
+                height: 18px;
+            }
+            .btn {
+                padding: 7px 11px;
+                font-size: 10px;
+                border-radius: 16px;
+            }
+            #top-bar {
+                padding: 6px 14px;
+                gap: 10px;
+                border-radius: 22px;
+            }
+            #top-bar .title {
+                font-size: 13px;
+            }
+            #legend {
+                right: 4px;
+                padding: 8px 10px;
+                border-radius: 8px;
+                gap: 3px;
+            }
+            #legend .legend-item {
+                font-size: 9px;
+                gap: 4px;
+            }
+            #legend .legend-color {
+                width: 10px;
+                height: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 顶部状态栏 -->
+    <div id="top-bar">
+        <span class="title">🌊 洪水模拟系统</span>
+        <span class="badge">点击地形释放洪水</span>
+        <span class="water-indicator">
+            <span class="water-dot"></span> 总水量: <span id="total-water">0</span> m³
+        </span>
+    </div>
+
+    <!-- 底部控制面板 -->
+    <div id="control-panel">
+        <label>释放水量
+            <input type="range" id="release-amount" min="10" max="300" value="100" step="5">
+            <span style="text-align:center;color:#fff;font-weight:600;" id="amount-label">100</span>
+        </label>
+        <label>流速系数
+            <input type="range" id="flow-rate" min="5" max="50" value="18" step="1">
+            <span style="text-align:center;color:#fff;font-weight:600;" id="flow-label">0.18</span>
+        </label>
+        <label>蒸发率
+            <input type="range" id="evap-rate" min="0" max="20" value="3" step="1">
+            <span style="text-align:center;color:#fff;font-weight:600;" id="evap-label">0.003</span>
+        </label>
+        <button class="btn btn-toggle" id="btn-continuous" title="持续释放模式：水会不断从释放点涌出">💧 单次释放</button>
+        <button class="btn btn-secondary" id="btn-reset" title="清除所有水量，重新开始">🔄 重置水量</button>
+        <button class="btn btn-secondary" id="btn-reset-view" title="恢复默认视角">🎯 重置视角</button>
+    </div>
+
+    <!-- 高度图例 -->
+    <div id="legend">
+        <div class="legend-item"><span class="legend-color" style="background:#f5f0e8;"></span> 雪峰/高处</div>
+        <div class="legend-item"><span class="legend-color" style="background:#c4a882;"></span> 岩石/山脊</div>
+        <div class="legend-item"><span class="legend-color" style="background:#a0b878;"></span> 草地/山坡</div>
+        <div class="legend-item"><span class="legend-color" style="background:#6d9a5c;"></span> 低草/谷地</div>
+        <div class="legend-item"><span class="legend-color" style="background:#4a7a5e;"></span> 低谷/近水</div>
+        <div class="legend-item"><span class="legend-color" style="background:#3a6b8c;"></span> 河道/湿地</div>
+    </div>
+
+    <!-- Three.js 画布容器 -->
+    <div id="canvas-container"></div>
+
+    <!-- Three.js Import Map -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.157.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.157.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // ==================== DOM元素引用 ====================
+        const container = document.getElementById('canvas-container');
+        const totalWaterEl = document.getElementById('total-water');
+        const releaseAmountSlider = document.getElementById('release-amount');
+        const amountLabel = document.getElementById('amount-label');
+        const flowRateSlider = document.getElementById('flow-rate');
+        const flowLabel = document.getElementById('flow-label');
+        const evapRateSlider = document.getElementById('evap-rate');
+        const evapLabel = document.getElementById('evap-label');
+        const btnContinuous = document.getElementById('btn-continuous');
+        const btnReset = document.getElementById('btn-reset');
+        const btnResetView = document.getElementById('btn-reset-view');
+
+        // ==================== 参数 ====================
+        const GRID_SIZE = 120; // 网格分辨率 (120x120分段, 121x121顶点)
+        const TERRAIN_SIZE = 20; // 地形总尺寸 (单位)
+        const SIM_STEP_MS = 40; // 模拟时间步长(毫秒) - 25Hz
+        const MAX_SIM_STEPS_PER_FRAME = 3; // 每帧最多执行的模拟步数
+
+        let releaseAmount = 100; // 单次释放水量
+        let flowCoeff = 0.18; // 流动系数
+        let evaporationRate = 0.003; // 蒸发率(每步)
+        let isContinuousMode = false; // 持续释放模式
+        let continuousReleaseRate = 25; // 持续释放每步水量
+
+        // 释放点列表
+        let releasePoints = []; // {x, z} 世界坐标
+
+        // ==================== 场景初始化 ====================
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color('#1a2a3a');
+        scene.fog = new THREE.Fog('#1a2a3a', 25, 65);
+
+        const camera = new THREE.PerspectiveCamera(48, container.clientWidth / container.clientHeight, 0.5, 80);
+        camera.position.set(8, 14, 16);
+        camera.lookAt(0, -0.5, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.1;
+        container.appendChild(renderer.domElement);
+
+        // OrbitControls - 旋转/缩放/平移
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, -0.3, 0);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+        controls.minDistance = 4;
+        controls.maxDistance = 30;
+        controls.maxPolarAngle = Math.PI * 0.48;
+        controls.minPolarAngle = 0.15;
+        controls.mouseButtons = {
+            LEFT: THREE.MOUSE.ROTATE,
+            MIDDLE: THREE.MOUSE.PAN,
+            RIGHT: THREE.MOUSE.PAN
+        };
+        controls.touches = {
+            ONE: THREE.TOUCH.ROTATE,
+            TWO: THREE.TOUCH.DOLLY_PAN
+        };
+        controls.update();
+
+        // ==================== 光照 ====================
+        // 环境光
+        const ambientLight = new THREE.AmbientLight('#8899bb', 1.8);
+        scene.add(ambientLight);
+
+        // 半球光 - 模拟天空/地面
+        const hemiLight = new THREE.HemisphereLight('#c8d8f0', '#5a4a3a', 1.2);
+        scene.add(hemiLight);
+
+        // 主方向光 - 模拟太阳
+        const sunLight = new THREE.DirectionalLight('#fffdf0', 6.5);
+        sunLight.position.set(15, 20, 8);
+        sunLight.castShadow = true;
+        sunLight.shadow.mapSize.width = 2048;
+        sunLight.shadow.mapSize.height = 2048;
+        sunLight.shadow.camera.near = 0.5;
+        sunLight.shadow.camera.far = 60;
+        sunLight.shadow.camera.left = -16;
+        sunLight.shadow.camera.right = 16;
+        sunLight.shadow.camera.top = 16;
+        sunLight.shadow.camera.bottom = -16;
+        sunLight.shadow.bias = -0.0004;
+        sunLight.shadow.normalBias = 0.02;
+        scene.add(sunLight);
+
+        // ==================== 噪声函数（多层正弦波叠加模拟分形噪声） ====================
+        function fractalNoise(x, y, octaves = 6) {
+            let value = 0;
+            let amplitude = 1.0;
+            let frequency = 1.0;
+            let totalAmp = 0;
+            const seedAngles = [0.0, 0.42, 1.27, 2.15, 3.04, 3.78, 4.5, 5.1];
+            const seedPhases = [0.0, 1.3, 2.7, 0.6, 3.9, 1.8, 4.2, 2.3];
+
+            for (let i = 0; i < octaves; i++) {
+                const angle = seedAngles[i % seedAngles.length];
+                const phase = seedPhases[i % seedPhases.length];
+                const fx = frequency * (Math.cos(angle) * x + Math.sin(angle) * y) + phase;
+                const fy = frequency * (-Math.sin(angle) * x + Math.cos(angle) * y) + phase * 1.7;
+                value += amplitude * (Math.sin(fx) * Math.cos(fy) + Math.sin(fy * 1.3) * Math.cos(fx * 0.7)) * 0.5;
+                totalAmp += amplitude;
+                amplitude *= 0.55;
+                frequency *= 2.1;
+            }
+            return value / totalAmp;
+        }
+
+        // ==================== 地形生成 ====================
+        function generateTerrainHeight(x, z) {
+            // 归一化坐标到[-1, 1]
+            const nx = x / (TERRAIN_SIZE * 0.5);
+            const nz = z / (TERRAIN_SIZE * 0.5);
+
+            // 基础分形噪声
+            let height = fractalNoise(nx * 3.5, nz * 3.5, 6);
+
+            // 添加大尺度地形特征
+            height += fractalNoise(nx * 0.7, nz * 0.7, 3) * 0.8;
+
+            // 添加中等尺度细节
+            height += fractalNoise(nx * 6.0, nz * 6.0, 4) * 0.25;
+
+            // 缩放高度
+            height *= 3.5;
+
+            // 创建中央盆地（柔和的凹陷）
+            const distFromCenter = Math.sqrt(nx * nx + nz * nz);
+            const basinEffect = -0.9 * Math.exp(-distFromCenter * distFromCenter * 1.2);
+            height += basinEffect;
+
+            // 创建蜿蜒的河道系统
+            const riverPath1 = Math.sin(nx * 2.8 + 0.5) * 1.6 + Math.sin(nx * 5.5 + 1.8) * 0.5;
+            const distToRiver1 = Math.abs(nz - riverPath1);
+            const riverDepth1 = 1.4 * Math.exp(-distToRiver1 * distToRiver1 * 0.9);
+            height -= riverDepth1;
+
+            // 第二条较小的河道
+            const riverPath2 = Math.cos(nx * 3.3 - 1.2) * 1.3 + Math.sin(nx * 6.2 + 0.3) * 0.6;
+            const distToRiver2 = Math.abs(nz - riverPath2);
+            const riverDepth2 = 0.7 * Math.exp(-distToRiver2 * distToRiver2 * 1.3);
+            height -= riverDepth2;
+
+            // 边缘略微抬升（形成天然边界）
+            const edgeLift = 0.6 * (Math.abs(nx) * Math.abs(nx) + Math.abs(nz) * Math.abs(nz)) * 0.35;
+            height += edgeLift;
+
+            return height;
+        }
+
+        // 创建高度图数组 (121x121 顶点)
+        const vertexCount = GRID_SIZE + 1;
+        const heightData = new Float32Array(vertexCount * vertexCount);
+
+        for (let iz = 0; iz < vertexCount; iz++) {
+            for (let ix = 0; ix < vertexCount; ix++) {
+                const x = (ix / GRID_SIZE - 0.5) * TERRAIN_SIZE;
+                const z = (iz / GRID_SIZE - 0.5) * TERRAIN_SIZE;
+                heightData[iz * vertexCount + ix] = generateTerrainHeight(x, z);
+            }
+        }
+
+        // 获取某个世界坐标对应的地形高度（用于射线检测后的高度查询）
+        function getTerrainHeightAt(worldX, worldZ) {
+            const ix = (worldX / TERRAIN_SIZE + 0.5) * GRID_SIZE;
+            const iz = (worldZ / TERRAIN_SIZE + 0.5) * GRID_SIZE;
+            const ix0 = Math.max(0, Math.min(GRID_SIZE, Math.floor(ix)));
+            const iz0 = Math.max(0, Math.min(GRID_SIZE, Math.floor(iz)));
+            const ix1 = Math.max(0, Math.min(GRID_SIZE, ix0 + 1));
+            const iz1 = Math.max(0, Math.min(GRID_SIZE, iz0 + 1));
+            const fx = ix - ix0;
+            const fz = iz - iz0;
+            const h00 = heightData[iz0 * vertexCount + ix0];
+            const h10 = heightData[iz0 * vertexCount + ix1];
+            const h01 = heightData[iz1 * vertexCount + ix0];
+            const h11 = heightData[iz1 * vertexCount + ix1];
+            return (h00 * (1 - fx) + h10 * fx) * (1 - fz) + (h01 * (1 - fx) + h11 * fx) * fz;
+        }
+
+        // 世界坐标转网格索引
+        function worldToGrid(worldX, worldZ) {
+            const ix = Math.round((worldX / TERRAIN_SIZE + 0.5) * GRID_SIZE);
+            const iz = Math.round((worldZ / TERRAIN_SIZE + 0.5) * GRID_SIZE);
+            return {
+                ix: Math.max(0, Math.min(GRID_SIZE, ix)),
+                iz: Math.max(0, Math.min(GRID_SIZE, iz))
+            };
+        }
+
+        // ==================== 地形纹理生成 ====================
+        function createTerrainTexture() {
+            const texSize = 1024;
+            const canvas = document.createElement('canvas');
+            canvas.width = texSize;
+            canvas.height = texSize;
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.createImageData(texSize, texSize);
+
+            // 预先计算高度范围
+            let hMin = Infinity,
+                hMax = -Infinity;
+            for (let i = 0; i < heightData.length; i++) {
+                if (heightData[i] < hMin) hMin = heightData[i];
+                if (heightData[i] > hMax) hMax = heightData[i];
+            }
+            const hRange = hMax - hMin || 1;
+
+            for (let py = 0; py < texSize; py++) {
+                for (let px = 0; px < texSize; px++) {
+                    const fx = px / (texSize - 1);
+                    const fz = py / (texSize - 1);
+                    const ix = Math.floor(fx * GRID_SIZE);
+                    const iz = Math.floor(fz * GRID_SIZE);
+                    const ix1 = Math.min(ix + 1, GRID_SIZE);
+                    const iz1 = Math.min(iz + 1, GRID_SIZE);
+                    const lx = fx * GRID_SIZE - ix;
+                    const lz = fz * GRID_SIZE - iz;
+
+                    const h00 = heightData[iz * vertexCount + ix];
+                    const h10 = heightData[iz * vertexCount + ix1];
+                    const h01 = heightData[iz1 * vertexCount + ix];
+                    const h11 = heightData[iz1 * vertexCount + ix1];
+                    const h = (h00 * (1 - lx) + h10 * lx) * (1 - lz) + (h01 * (1 - lx) + h11 * lx) * lz;
+                    const t = (h - hMin) / hRange; // 0(低) ~ 1(高)
+
+                    let r, g, b;
+                    if (t < 0.12) {
+                        // 深谷/河道 - 深蓝绿
+                        const s = t / 0.12;
+                        r = 30 + s * 40;
+                        g = 85 + s * 50;
+                        b = 120 + s * 40;
+                    } else if (t < 0.28) {
+                        // 低草地
+                        const s = (t - 0.12) / 0.16;
+                        r = 70 + s * 50;
+                        g = 130 + s * 30;
+                        b = 70 + s * 20;
+                    } else if (t < 0.50) {
+                        // 中坡草地
+                        const s = (t - 0.28) / 0.22;
+                        r = 120 + s * 35;
+                        g = 155 + s * 15;
+                        b = 85 + s * 25;
+                    } else if (t < 0.72) {
+                        // 高地/岩石
+                        const s = (t - 0.50) / 0.22;
+                        r = 155 + s * 50;
+                        g = 165 + s * 10;
+                        b = 110 + s * 30;
+                    } else if (t < 0.90) {
+                        // 山脊
+                        const s = (t - 0.72) / 0.18;
+                        r = 200 + s * 30;
+                        g = 175 + s * 25;
+                        b = 140 + s * 35;
+                    } else {
+                        // 雪峰
+                        const s = (t - 0.90) / 0.10;
+                        r = 228 + s * 27;
+                        g = 200 + s * 40;
+                        b = 175 + s * 55;
+                    }
+
+                    const idx = (py * texSize + px) * 4;
+                    imageData.data[idx] = Math.round(r);
+                    imageData.data[idx + 1] = Math.round(g);
+                    imageData.data[idx + 2] = Math.round(b);
+                    imageData.data[idx + 3] = 255;
+                }
+            }
+            ctx.putImageData(imageData, 0, 0);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.ClampToEdgeWrapping;
+            texture.wrapT = THREE.ClampToEdgeWrapping;
+            texture.magFilter = THREE.LinearFilter;
+            texture.minFilter = THREE.LinearMipmapLinearFilter;
+            texture.generateMipmaps = true;
+            texture.colorSpace = THREE.SRGBColorSpace;
+            return texture;
+        }
+
+        const terrainTexture = createTerrainTexture();
+
+        // ==================== 地形几何体与网格 ====================
+        const terrainGeometry = new THREE.PlaneGeometry(TERRAIN_SIZE, TERRAIN_SIZE, GRID_SIZE, GRID_SIZE);
+        terrainGeometry.rotateX(-Math.PI / 2);
+
+        // 设置地形顶点高度
+        const terrainPositions = terrainGeometry.attributes.position;
+        for (let i = 0; i < terrainPositions.count; i++) {
+            const x = terrainPositions.getX(i);
+            const z = terrainPositions.getZ(i);
+            const h = getTerrainHeightAt(x, z);
+            terrainPositions.setY(i, h);
+        }
+        terrainGeometry.computeVertexNormals();
+        terrainGeometry.attributes.position.needsUpdate = true;
+
+        const terrainMaterial = new THREE.MeshStandardMaterial({
+            map: terrainTexture,
+            roughness: 0.75,
+            metalness: 0.05,
+            color: '#ffffff',
+        });
+
+        const terrainMesh = new THREE.Mesh(terrainGeometry, terrainMaterial);
+        terrainMesh.castShadow = true;
+        terrainMesh.receiveShadow = true;
+        terrainMesh.name = 'terrain';
+        scene.add(terrainMesh);
+
+        // ==================== 水面几何体与网格 ====================
+        const waterGeometry = new THREE.PlaneGeometry(TERRAIN_SIZE, TERRAIN_SIZE, GRID_SIZE, GRID_SIZE);
+        waterGeometry.rotateX(-Math.PI / 2);
+
+        // 初始时所有水面顶点设在地形高度以下（隐藏）
+        const waterPositions = waterGeometry.attributes.position;
+        const initialWaterY = new Float32Array(waterPositions.count);
+        for (let i = 0; i < waterPositions.count; i++) {
+            const x = waterPositions.getX(i);
+            const z = waterPositions.getZ(i);
+            const h = getTerrainHeightAt(x, z);
+            waterPositions.setY(i, h - 0.05); // 初始略低于地形
+            initialWaterY[i] = h;
+        }
+        waterGeometry.computeVertexNormals();
+        waterGeometry.attributes.position.needsUpdate = true;
+
+        const waterMaterial = new THREE.MeshPhongMaterial({
+            color: '#3388cc',
+            specular: '#ffffff',
+            shininess: 80,
+            transparent: true,
+            opacity: 0.68,
+            side: THREE.DoubleSide,
+            depthWrite: true,
+            polygonOffset: true,
+            polygonOffsetFactor: -1,
+            polygonOffsetUnits: -1,
+        });
+
+        const waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
+        waterMesh.receiveShadow = true;
+        waterMesh.renderOrder = 1;
+        waterMesh.name = 'water';
+        scene.add(waterMesh);
+
+        // ==================== 水深数据 ====================
+        const waterDepth = new Float32Array(vertexCount * vertexCount); // 初始全为0
+
+        // ==================== 释放点标记 ====================
+        const markersGroup = new THREE.Group();
+        markersGroup.name = 'markers';
+        scene.add(markersGroup);
+
+        function createMarker(worldX, worldZ) {
+            const h = getTerrainHeightAt(worldX, worldZ);
+            const markerGeo = new THREE.SphereGeometry(0.15, 16, 16);
+            const markerMat = new THREE.MeshStandardMaterial({
+                color: '#ff4444',
+                roughness: 0.3,
+                metalness: 0.1,
+                emissive: '#ff2222',
+                emissiveIntensity: 1.5,
+            });
+            const marker = new THREE.Mesh(markerGeo, markerMat);
+            marker.position.set(worldX, h + 0.35, worldZ);
+            marker.castShadow = true;
+            marker.userData = {
+                worldX,
+                worldZ,
+                baseY: h,
+                phase: Math.random() * Math.PI * 2,
+            };
+            return marker;
+        }
+
+        function addReleasePoint(worldX, worldZ) {
+            // 检查是否与现有点太近
+            const tooClose = releasePoints.some(p => {
+                const dx = p.x - worldX;
+                const dz = p.z - worldZ;
+                return Math.sqrt(dx * dx + dz * dz) < 0.6;
+            });
+            if (tooClose) return;
+
+            releasePoints.push({ x: worldX, z: worldZ });
+            const marker = createMarker(worldX, worldZ);
+            markersGroup.add(marker);
+
+            // 在释放点注入初始水量
+            const grid = worldToGrid(worldX, worldZ);
+            injectWater(grid.ix, grid.iz, releaseAmount);
+
+            // 闪烁提示
+            flashMarker(marker);
+        }
+
+        function flashMarker(marker) {
+            const startTime = performance.now();
+            const duration = 600;
+            const origScale = marker.scale.clone();
+
+            function animateFlash(now) {
+                const elapsed = now - startTime;
+                const t = elapsed / duration;
+                if (t >= 1) {
+                    marker.scale.copy(origScale);
+                    return;
+                }
+                const s = 1 + 1.5 * Math.sin(t * Math.PI) * (1 - t);
+                marker.scale.setScalar(s);
+                requestAnimationFrame(animateFlash);
+            }
+            requestAnimationFrame(animateFlash);
+        }
+
+        function clearAllMarkers() {
+            while (markersGroup.children.length > 0) {
+                const child = markersGroup.children[0];
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) child.material.dispose();
+                markersGroup.remove(child);
+            }
+            releasePoints = [];
+        }
+
+        // ==================== 水模拟核心 ====================
+        function injectWater(centerIX, centerIZ, amount) {
+            // 在高斯分布区域注入水量
+            const radius = 4; // 影响半径（网格单元）
+            const sigma = radius / 2.5;
+            let totalInjected = 0;
+            const weights = [];
+
+            for (let dz = -radius; dz <= radius; dz++) {
+                for (let dx = -radius; dx <= radius; dx++) {
+                    const ix = centerIX + dx;
+                    const iz = centerIZ + dz;
+                    if (ix < 0 || ix > GRID_SIZE || iz < 0 || iz > GRID_SIZE) continue;
+                    const dist = Math.sqrt(dx * dx + dz * dz);
+                    if (dist > radius) continue;
+                    const weight = Math.exp(-dist * dist / (2 * sigma * sigma));
+                    weights.push({ ix, iz, weight });
+                }
+            }
+
+            const totalWeight = weights.reduce((sum, w) => sum + w.weight, 0);
+            if (totalWeight <= 0) return;
+
+            for (const { ix, iz, weight } of weights) {
+                const idx = iz * vertexCount + ix;
+                const addAmount = amount * (weight / totalWeight);
+                waterDepth[idx] += addAmount;
+                totalInjected += addAmount;
+            }
+        }
+
+        function simulateWaterStep() {
+            const newWaterDepth = new Float32Array(waterDepth);
+            const flowCoeffClamped = Math.max(0.01, Math.min(0.5, flowCoeff));
+
+            // 遍历所有内部顶点
+            for (let iz = 0; iz < vertexCount; iz++) {
+                for (let ix = 0; ix < vertexCount; ix++) {
+                    const idx = iz * vertexCount + ix;
+                    const hCenter = heightData[idx];
+                    const dCenter = waterDepth[idx];
+                    const totalHeadCenter = hCenter + dCenter;
+
+                    if (dCenter < 0.0001 && totalHeadCenter <= hCenter + 0.001) continue;
+
+                    // 检查四个邻居
+                    const neighbors = [];
+                    if (ix > 0) neighbors.push({ ni: iz * vertexCount + (ix - 1), dir: 'x-' });
+                    if (ix < GRID_SIZE) neighbors.push({ ni: iz * vertexCount + (ix + 1), dir: 'x+' });
+                    if (iz > 0) neighbors.push({ ni: (iz - 1) * vertexCount + ix, dir: 'z-' });
+                    if (iz < GRID_SIZE) neighbors.push({ ni: (iz + 1) * vertexCount + ix, dir: 'z+' });
+
+                    for (const { ni } of neighbors) {
+                        const hNeighbor = heightData[ni];
+                        const dNeighbor = waterDepth[ni];
+                        const totalHeadNeighbor = hNeighbor + dNeighbor;
+
+                        const headDiff = totalHeadCenter - totalHeadNeighbor;
+
+                        if (headDiff > 0.00001) {
+                            // 水从center流向neighbor
+                            const maxTransfer = dCenter * 0.45; // 每步最多转移45%
+                            const transfer = Math.min(
+                                maxTransfer,
+                                headDiff * flowCoeffClamped
+                            );
+                            if (transfer > 0.00001) {
+                                newWaterDepth[idx] -= transfer;
+                                newWaterDepth[ni] += transfer;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 蒸发
+            if (evaporationRate > 0) {
+                for (let i = 0; i < newWaterDepth.length; i++) {
+                    if (newWaterDepth[i] > 0.0001) {
+                        newWaterDepth[i] = Math.max(0, newWaterDepth[i] - evaporationRate * newWaterDepth[i]);
+                    }
+                }
+            }
+
+            // 确保非负
+            for (let i = 0; i < newWaterDepth.length; i++) {
+                if (newWaterDepth[i] < 1e-8) newWaterDepth[i] = 0;
+            }
+
+            // 更新全局水深数组
+            for (let i = 0; i < waterDepth.length; i++) {
+                waterDepth[i] = newWaterDepth[i];
+            }
+
+            // 持续释放模式
+            if (isContinuousMode && releasePoints.length > 0) {
+                for (const point of releasePoints) {
+                    const grid = worldToGrid(point.x, point.z);
+                    injectWater(grid.ix, grid.iz, continuousReleaseRate);
+                }
+            }
+        }
+
+        // ==================== 更新水面几何体 ====================
+        function updateWaterGeometry() {
+            const positions = waterGeometry.attributes.position;
+            let hasWater = false;
+
+            for (let i = 0; i < positions.count; i++) {
+                const x = positions.getX(i);
+                const z = positions.getZ(i);
+                const h = getTerrainHeightAt(x, z);
+                const grid = worldToGrid(x, z);
+                const idx = grid.iz * vertexCount + grid.ix;
+                const d = waterDepth[idx];
+
+                if (d > 0.003) {
+                    positions.setY(i, h + d);
+                    hasWater = true;
+                } else {
+                    positions.setY(i, h - 0.04); // 隐藏在地形下
+                }
+            }
+
+            positions.needsUpdate = true;
+            waterGeometry.computeVertexNormals();
+            waterGeometry.attributes.position.needsUpdate = true;
+
+            // 动态调整水面透明度
+            if (hasWater) {
+                waterMaterial.opacity = THREE.MathUtils.lerp(waterMaterial.opacity, 0.68, 0.15);
+            } else {
+                waterMaterial.opacity = THREE.MathUtils.lerp(waterMaterial.opacity, 0.0, 0.3);
+            }
+            waterMaterial.transparent = true;
+            waterMaterial.needsUpdate = true;
+        }
+
+        // ==================== 计算总水量 ====================
+        function calculateTotalWater() {
+            let total = 0;
+            const cellArea = (TERRAIN_SIZE / GRID_SIZE) * (TERRAIN_SIZE / GRID_SIZE);
+            for (let i = 0; i < waterDepth.length; i++) {
+                total += waterDepth[i] * cellArea;
+            }
+            return total;
+        }
+
+        // ==================== 射线检测（点击地形） ====================
+        const raycaster = new THREE.Raycaster();
+        raycaster.far = 40;
+
+        function getTerrainIntersection(event) {
+            const mouse = new THREE.Vector2();
+            mouse.x = (event.clientX / container.clientWidth) * 2 - 1;
+            mouse.y = -(event.clientY / container.clientHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(terrainMesh, false);
+            if (intersects.length > 0) {
+                return intersects[0].point.clone();
+            }
+            return null;
+        }
+
+        // ==================== 事件处理 ====================
+        let isPointerDown = false;
+        let pointerMoved = false;
+        let pointerStart = { x: 0, y: 0 };
+
+        container.addEventListener('pointerdown', (event) => {
+            if (event.pointerType === 'mouse' && event.button !== 0) return;
+            isPointerDown = true;
+            pointerMoved = false;
+            pointerStart = { x: event.clientX, y: event.clientY };
+        });
+
+        container.addEventListener('pointermove', (event) => {
+            if (!isPointerDown) return;
+            const dx = event.clientX - pointerStart.x;
+            const dy = event.clientY - pointerStart.y;
+            if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+                pointerMoved = true;
+            }
+        });
+
+        container.addEventListener('pointerup', (event) => {
+            if (!isPointerDown) return;
+            isPointerDown = false;
+
+            if (!pointerMoved) {
+                // 这是一个点击
+                const intersection = getTerrainIntersection(event);
+                if (intersection) {
+                    addReleasePoint(intersection.x, intersection.z);
+                    // 触觉反馈（如果支持）
+                    if (navigator.vibrate) {
+                        navigator.vibrate(25);
+                    }
+                }
+            }
+        });
+
+        // 触摸事件 - 防止与OrbitControls冲突
+        container.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                pointerStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                pointerMoved = false;
+            }
+        }, { passive: false });
+
+        container.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 1 && pointerStart.x !== undefined) {
+                const dx = e.touches[0].clientX - pointerStart.x;
+                const dy = e.touches[0].clientY - pointerStart.y;
+                if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+                    pointerMoved = true;
+                }
+            }
+        }, { passive: false });
+
+        container.addEventListener('touchend', (e) => {
+            if (!pointerMoved && pointerStart.x !== undefined) {
+                const intersection = getTerrainIntersection({
+                    clientX: pointerStart.x,
+                    clientY: pointerStart.y
+                });
+                if (intersection) {
+                    addReleasePoint(intersection.x, intersection.z);
+                    if (navigator.vibrate) {
+                        navigator.vibrate(25);
+                    }
+                }
+            }
+            pointerStart = { x: 0, y: 0 };
+            pointerMoved = false;
+        });
+
+        // 键盘快捷键
+        window.addEventListener('keydown', (event) => {
+            switch (event.key.toLowerCase()) {
+                case 'r':
+                    resetAllWater();
+                    break;
+                case 'c':
+                    toggleContinuousMode();
+                    break;
+                case 'f':
+                    resetCameraView();
+                    break;
+                case ' ':
+                    event.preventDefault();
+                    if (releasePoints.length > 0 || !isContinuousMode) {
+                        // 在场景中心释放洪水
+                        addReleasePoint(0, 0);
+                    }
+                    break;
+            }
+        });
+
+        // ==================== UI控制 ====================
+        releaseAmountSlider.addEventListener('input', () => {
+            releaseAmount = parseInt(releaseAmountSlider.value);
+            amountLabel.textContent = releaseAmount;
+        });
+
+        flowRateSlider.addEventListener('input', () => {
+            flowCoeff = parseInt(flowRateSlider.value) / 100;
+            flowLabel.textContent = flowCoeff.toFixed(2);
+        });
+
+        evapRateSlider.addEventListener('input', () => {
+            evaporationRate = parseInt(evapRateSlider.value) / 1000;
+            evapLabel.textContent = evaporationRate.toFixed(3);
+        });
+
+        btnContinuous.addEventListener('click', toggleContinuousMode);
+
+        function toggleContinuousMode() {
+            isContinuousMode = !isContinuousMode;
+            if (isContinuousMode) {
+                btnContinuous.textContent = '💧 持续释放中';
+                btnContinuous.classList.add('active');
+            } else {
+                btnContinuous.textContent = '💧 单次释放';
+                btnContinuous.classList.remove('active');
+            }
+        }
+
+        btnReset.addEventListener('click', resetAllWater);
+
+        function resetAllWater() {
+            for (let i = 0; i < waterDepth.length; i++) {
+                waterDepth[i] = 0;
+            }
+            clearAllMarkers();
+            updateWaterGeometry();
+            updateWaterDisplay();
+        }
+
+        btnResetView.addEventListener('click', resetCameraView);
+
+        function resetCameraView() {
+            const targetPos = new THREE.Vector3(8, 14, 16);
+            const targetLook = new THREE.Vector3(0, -0.3, 0);
+
+            // 平滑动画
+            const startPos = camera.position.clone();
+            const startTarget = controls.target.clone();
+            const startTime = performance.now();
+            const duration = 800;
+
+            function animateReset(now) {
+                const elapsed = now - startTime;
+                const t = Math.min(elapsed / duration, 1.0);
+                // easeInOutCubic
+                const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+                camera.position.lerpVectors(startPos, targetPos, eased);
+                controls.target.lerpVectors(startTarget, targetLook, eased);
+                controls.update();
+
+                if (t < 1) {
+                    requestAnimationFrame(animateReset);
+                }
+            }
+            requestAnimationFrame(animateReset);
+        }
+
+        // ==================== 更新水量显示 ====================
+        function updateWaterDisplay() {
+            const total = calculateTotalWater();
+            totalWaterEl.textContent = total.toFixed(1);
+        }
+
+        // ==================== 动画循环 ====================
+        let lastSimTime = 0;
+        let accumulatedSimTime = 0;
+
+        function animate(timestamp) {
+            requestAnimationFrame(animate);
+
+            // 计算模拟步
+            if (lastSimTime === 0) lastSimTime = timestamp;
+            let dt = timestamp - lastSimTime;
+            lastSimTime = timestamp;
+
+            // 防止大时间跳跃
+            if (dt > 200) dt = 200;
+            accumulatedSimTime += dt;
+
+            // 执行模拟步
+            let simSteps = 0;
+            while (accumulatedSimTime >= SIM_STEP_MS && simSteps < MAX_SIM_STEPS_PER_FRAME) {
+                simulateWaterStep();
+                accumulatedSimTime -= SIM_STEP_MS;
+                simSteps++;
+            }
+
+            // 更新水面几何体
+            if (simSteps > 0) {
+                updateWaterGeometry();
+                updateWaterDisplay();
+            }
+
+            // 更新释放点标记动画
+            const now = performance.now();
+            for (const child of markersGroup.children) {
+                if (child.userData && child.userData.baseY !== undefined) {
+                    const bob = Math.sin(now * 0.004 + child.userData.phase) * 0.12;
+                    child.position.y = child.userData.baseY + 0.35 + bob;
+                    // 脉冲缩放
+                    const pulse = 1 + 0.15 * Math.sin(now * 0.005 + child.userData.phase);
+                    child.scale.setScalar(pulse);
+                }
+            }
+
+            // 更新控制器
+            controls.update();
+
+            // 渲染
+            renderer.render(scene, camera);
+        }
+
+        // ==================== 窗口调整 ====================
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        // ==================== 启动 ====================
+        function init() {
+            // 初始状态下在地形中央预设一个释放点（可选）
+            // 让用户自己点击释放
+
+            // 更新UI显示
+            amountLabel.textContent = releaseAmount;
+            flowLabel.textContent = flowCoeff.toFixed(2);
+            evapLabel.textContent = evaporationRate.toFixed(3);
+
+            // 更新水面（初始无水）
+            updateWaterGeometry();
+            updateWaterDisplay();
+
+            // 开始动画循环
+            lastSimTime = performance.now();
+            requestAnimationFrame(animate);
+
+            console.log('🌊 洪水模拟系统已就绪');
+            console.log('  🖱️  点击地形释放洪水');
+            console.log('  🔄 拖拽旋转 | 滚轮缩放 | 右键平移');
+            console.log('  ⌨️  快捷键: R=重置水量 C=切换持续模式 F=重置视角 空格=中心释放');
+            console.log('  💡 提示: 在山谷或河道处释放洪水效果最佳');
+        }
+
+        init();
+    </script>
+</body>
+</html>

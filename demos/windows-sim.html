@@ -1,0 +1,2150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Windows 模拟系统</title>
+    <style>
+        :root {
+            --taskbar-height: 48px;
+            --window-title-height: 36px;
+            --accent: #0078d4;
+            --accent-hover: #106ebe;
+            --bg-taskbar: rgba(20, 20, 30, 0.85);
+            --bg-window: #f0f0f0;
+            --bg-titlebar: #fafafa;
+            --text-dark: #1a1a1a;
+            --text-light: #fff;
+            --border-window: #c0c0c0;
+            --shadow-window: 0 8px 32px rgba(0, 0, 0, 0.3);
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
+            --radius-window: 8px;
+            --radius-sm: 4px;
+            --font-system: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+        body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            font-family: var(--font-system);
+            background: #1a3a5c;
+            cursor: default;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 桌面 */
+        #desktop {
+            flex: 1;
+            position: relative;
+            background: linear-gradient(135deg, #1a5c7a 0%, #0d3b56 30%, #1a3a4f 60%, #0f2b3d 100%);
+            background-size: cover;
+            overflow: hidden;
+            z-index: 1;
+        }
+        #desktop::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse at 20% 30%, rgba(255, 255, 255, 0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 75% 60%, rgba(100, 180, 255, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(255, 200, 100, 0.04) 0%, transparent 40%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        #desktop-icons {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            display: flex;
+            flex-direction: column;
+            flex-wrap: wrap;
+            gap: 8px;
+            max-height: calc(100vh - var(--taskbar-height) - 60px);
+            z-index: 2;
+        }
+        .desktop-icon {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 80px;
+            padding: 8px 6px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.1s;
+            text-align: center;
+            position: relative;
+        }
+        .desktop-icon:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+        .desktop-icon.selected {
+            background: rgba(255, 255, 255, 0.2);
+            outline: 1.5px solid rgba(255, 255, 255, 0.5);
+            outline-offset: -1px;
+        }
+        .desktop-icon .icon-img {
+            font-size: 38px;
+            line-height: 1;
+            margin-bottom: 4px;
+            filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3));
+            pointer-events: none;
+        }
+        .desktop-icon .icon-label {
+            font-size: 12px;
+            color: #fff;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+            word-break: break-all;
+            line-height: 1.3;
+            max-width: 76px;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        /* 窗口容器 */
+        #windows-container {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+        #windows-container>* {
+            pointer-events: auto;
+        }
+
+        /* 通用窗口 */
+        .window {
+            position: absolute;
+            min-width: 320px;
+            min-height: 240px;
+            background: var(--bg-window);
+            border-radius: var(--radius-window);
+            box-shadow: var(--shadow-window);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid var(--border-window);
+            animation: windowOpen 0.2s ease-out;
+        }
+        @keyframes windowOpen {
+            from {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        .window.maximized {
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: calc(100% - var(--taskbar-height)) !important;
+            border-radius: 0 !important;
+            animation: none;
+        }
+        .window.minimized {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(40px) scale(0.9);
+            transition: all 0.25s ease-in;
+        }
+        .window-titlebar {
+            height: var(--window-title-height);
+            background: var(--bg-titlebar);
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            cursor: move;
+            border-bottom: 1px solid #e0e0e0;
+            flex-shrink: 0;
+            gap: 8px;
+        }
+        .window-titlebar .win-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        .window-titlebar .win-title {
+            flex: 1;
+            font-size: 13px;
+            font-weight: 500;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: move;
+        }
+        .window-titlebar .win-btns {
+            display: flex;
+            gap: 2px;
+            flex-shrink: 0;
+        }
+        .win-btn {
+            width: 30px;
+            height: 26px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.1s;
+            line-height: 1;
+        }
+        .win-btn:hover {
+            background: #e0e0e0;
+        }
+        .win-btn.close:hover {
+            background: #e81123;
+            color: #fff;
+        }
+        .window-body {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        /* 文件资源管理器 */
+        .explorer-sidebar {
+            width: 200px;
+            min-width: 140px;
+            background: #f5f5f5;
+            border-right: 1px solid #e0e0e0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 8px 0;
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+        .explorer-sidebar .tree-title {
+            font-weight: 600;
+            padding: 6px 14px;
+            font-size: 12px;
+            color: #666;
+            letter-spacing: 0.5px;
+        }
+        .tree-item {
+            padding: 5px 10px 5px 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 0;
+            margin: 1px 4px;
+            font-size: 13px;
+            white-space: nowrap;
+            transition: background 0.08s;
+            position: relative;
+        }
+        .tree-item:hover {
+            background: #e8e8e8;
+        }
+        .tree-item.active {
+            background: #cce5ff;
+            color: #004c8c;
+        }
+        .tree-item .tree-arrow {
+            width: 16px;
+            text-align: center;
+            font-size: 10px;
+            flex-shrink: 0;
+            transition: transform 0.15s;
+            color: #666;
+        }
+        .tree-item .tree-arrow.expanded {
+            transform: rotate(90deg);
+        }
+        .tree-item .tree-arrow.empty {
+            visibility: hidden;
+        }
+        .tree-item .tree-icon {
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+        .tree-item .tree-name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .tree-children {
+            overflow: hidden;
+            transition: max-height 0.2s ease;
+        }
+        .tree-children.collapsed {
+            max-height: 0 !important;
+        }
+        .explorer-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .explorer-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border-bottom: 1px solid #e8e8e8;
+            background: #fafafa;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+        .explorer-toolbar button {
+            padding: 6px 14px;
+            border: 1px solid #d0d0d0;
+            background: #fff;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: var(--font-system);
+            transition: all 0.1s;
+            white-space: nowrap;
+        }
+        .explorer-toolbar button:hover {
+            background: #e8f0f8;
+            border-color: #a0c0e0;
+        }
+        .explorer-toolbar .addr-bar {
+            flex: 1;
+            padding: 6px 10px;
+            border: 1px solid #d0d0d0;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: var(--font-system);
+            background: #fff;
+            min-width: 150px;
+            color: #333;
+            user-select: text;
+            cursor: text;
+        }
+        .explorer-files {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            align-content: flex-start;
+            gap: 4px;
+            background: #fff;
+        }
+        .file-item {
+            width: 90px;
+            padding: 10px 6px;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+            transition: background 0.08s;
+            font-size: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            border: 2px solid transparent;
+        }
+        .file-item:hover {
+            background: #f0f4f8;
+        }
+        .file-item.selected {
+            background: #dde8f4;
+            border-color: #90b8d8;
+        }
+        .file-item .fi-icon {
+            font-size: 36px;
+            line-height: 1;
+        }
+        .file-item .fi-name {
+            word-break: break-all;
+            line-height: 1.3;
+            max-height: 32px;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            color: #222;
+        }
+
+        /* 记事本 */
+        .notepad-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+        }
+        .notepad-body textarea {
+            flex: 1;
+            border: none;
+            resize: none;
+            padding: 12px 16px;
+            font-family: 'Consolas', 'Courier New', 'PingFang SC', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            outline: none;
+            background: #fffef9;
+            color: #222;
+            user-select: text;
+            cursor: text;
+        }
+        .notepad-status {
+            padding: 4px 12px;
+            background: #f0f0f0;
+            font-size: 11px;
+            color: #666;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 16px;
+            flex-shrink: 0;
+        }
+
+        /* 任务栏 */
+        #taskbar {
+            height: var(--taskbar-height);
+            background: var(--bg-taskbar);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            display: flex;
+            align-items: center;
+            padding: 0 4px;
+            gap: 4px;
+            z-index: 100;
+            flex-shrink: 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        #start-btn {
+            width: 44px;
+            height: 38px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 22px;
+            border-radius: 6px;
+            color: #fff;
+            transition: background 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        #start-btn:hover,
+        #start-btn.active {
+            background: rgba(255, 255, 255, 0.15);
+        }
+        #taskbar-windows {
+            flex: 1;
+            display: flex;
+            gap: 3px;
+            overflow-x: auto;
+            align-items: center;
+            height: 100%;
+            padding: 4px 0;
+        }
+        .taskbar-win-btn {
+            height: 36px;
+            padding: 0 14px;
+            border: none;
+            background: rgba(255, 255, 255, 0.06);
+            cursor: pointer;
+            border-radius: 6px;
+            color: #ddd;
+            font-size: 12px;
+            font-family: var(--font-system);
+            white-space: nowrap;
+            transition: all 0.1s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .taskbar-win-btn:hover {
+            background: rgba(255, 255, 255, 0.14);
+        }
+        .taskbar-win-btn.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border-bottom: 2px solid #60b0f0;
+        }
+        #taskbar-tray {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 10px;
+            color: #ddd;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+        #taskbar-clock {
+            text-align: right;
+            line-height: 1.3;
+            cursor: default;
+        }
+
+        /* 开始菜单 */
+        #start-menu {
+            position: absolute;
+            bottom: calc(var(--taskbar-height) + 8px);
+            left: 8px;
+            width: 280px;
+            background: rgba(240, 242, 245, 0.96);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 8px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+            z-index: 200;
+            overflow: hidden;
+            display: none;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        #start-menu.show {
+            display: block;
+            animation: slideUp 0.2s ease-out;
+        }
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        .start-menu-item {
+            padding: 12px 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            transition: background 0.08s;
+            color: #222;
+        }
+        .start-menu-item:hover {
+            background: rgba(0, 0, 0, 0.06);
+        }
+        .start-menu-item .smi-icon {
+            font-size: 20px;
+            width: 28px;
+            text-align: center;
+        }
+        .start-menu-divider {
+            height: 1px;
+            background: #d0d0d0;
+            margin: 4px 0;
+        }
+
+        /* 右键菜单 */
+        .context-menu {
+            position: fixed;
+            background: #fff;
+            border-radius: 6px;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+            z-index: 300;
+            min-width: 180px;
+            padding: 4px 0;
+            display: none;
+            border: 1px solid #e0e0e0;
+            font-size: 13px;
+        }
+        .context-menu.show {
+            display: block;
+            animation: fadeIn 0.1s ease-out;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        .context-menu-item {
+            padding: 8px 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background 0.06s;
+            white-space: nowrap;
+        }
+        .context-menu-item:hover {
+            background: #e8f0f8;
+        }
+        .context-menu-item.disabled {
+            color: #aaa;
+            cursor: default;
+            pointer-events: none;
+        }
+        .context-menu-divider {
+            height: 1px;
+            background: #e8e8e8;
+            margin: 4px 0;
+        }
+
+        /* 对话框 */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 250;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            display: none;
+        }
+        .modal-overlay.show {
+            display: flex;
+            animation: fadeIn 0.15s;
+        }
+        .modal-dialog {
+            background: #fff;
+            border-radius: 8px;
+            padding: 20px 24px;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+            min-width: 320px;
+            max-width: 440px;
+            font-family: var(--font-system);
+        }
+        .modal-dialog h3 {
+            margin-bottom: 12px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .modal-dialog input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #c0c0c0;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: var(--font-system);
+            margin-bottom: 12px;
+            outline: none;
+        }
+        .modal-dialog input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.15);
+        }
+        .modal-dialog .modal-btns {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        .modal-dialog button {
+            padding: 8px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-family: var(--font-system);
+            border: 1px solid #c0c0c0;
+            background: #fff;
+            transition: all 0.1s;
+        }
+        .modal-dialog button:hover {
+            background: #f0f0f0;
+        }
+        .modal-dialog button.primary {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+        .modal-dialog button.primary:hover {
+            background: var(--accent-hover);
+        }
+        .modal-dialog button.danger {
+            background: #e81123;
+            color: #fff;
+            border-color: #e81123;
+        }
+        .modal-dialog button.danger:hover {
+            background: #c00f1e;
+        }
+
+        /* 调整大小手柄 */
+        .resize-handle {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 16px;
+            height: 16px;
+            cursor: nwse-resize;
+            z-index: 5;
+            opacity: 0;
+        }
+
+        /* 滚动条 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c8c8c8;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a0a0a0;
+        }
+
+        /* 响应式 */
+        @media (max-width: 600px) {
+            .window {
+                min-width: 260px;
+                min-height: 180px;
+            }
+            .explorer-sidebar {
+                width: 130px;
+                min-width: 100px;
+                font-size: 11px;
+            }
+            .file-item {
+                width: 70px;
+                padding: 6px 4px;
+                font-size: 11px;
+            }
+            .file-item .fi-icon {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 桌面 -->
+    <div id="desktop">
+        <div id="desktop-icons"></div>
+    </div>
+
+    <!-- 窗口容器 -->
+    <div id="windows-container"></div>
+
+    <!-- 任务栏 -->
+    <div id="taskbar">
+        <button id="start-btn" title="开始">⊞</button>
+        <div id="taskbar-windows"></div>
+        <div id="taskbar-tray">
+            <span id="taskbar-clock"></span>
+        </div>
+    </div>
+
+    <!-- 开始菜单 -->
+    <div id="start-menu">
+        <div class="start-menu-item" data-action="explorer">
+            <span class="smi-icon">📁</span> 文件资源管理器
+        </div>
+        <div class="start-menu-item" data-action="notepad-new">
+            <span class="smi-icon">📝</span> 记事本
+        </div>
+        <div class="start-menu-divider"></div>
+        <div class="start-menu-item" data-action="reset-fs">
+            <span class="smi-icon">🔄</span> 重置文件系统
+        </div>
+        <div class="start-menu-item" data-action="about">
+            <span class="smi-icon">ℹ️</span> 关于此系统
+        </div>
+    </div>
+
+    <!-- 右键菜单 -->
+    <div class="context-menu" id="context-menu-desktop">
+        <div class="context-menu-item" data-action="new-folder-desktop">📁 新建文件夹</div>
+        <div class="context-menu-item" data-action="new-file-desktop">📄 新建文本文件</div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" data-action="refresh-desktop">🔄 刷新</div>
+    </div>
+    <div class="context-menu" id="context-menu-file">
+        <div class="context-menu-item" data-action="open-file">📂 打开</div>
+        <div class="context-menu-item" data-action="rename-file">✏️ 重命名</div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" data-action="delete-file" style="color:#c00;">🗑️ 删除</div>
+    </div>
+
+    <!-- 模态对话框 -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal-dialog" id="modal-dialog"></div>
+    </div>
+
+    <script>
+        (function() {
+            // ============ 文件系统管理 ============
+            const STORAGE_KEY = 'win-sim-fs-v2';
+            const FS_SEP = '/';
+
+            let fileSystem = {}; // { path: { type:'folder'|'file', children?:[], content?:string } }
+            let fsRootPath = 'C:';
+
+            function fsPath(...parts) {
+                return parts.join(FS_SEP).replace(/\/+/g, FS_SEP);
+            }
+
+            function fsParent(path) {
+                if (path === fsRootPath) return null;
+                const lastSep = path.lastIndexOf(FS_SEP);
+                if (lastSep <= 0) return fsRootPath;
+                return path.substring(0, lastSep);
+            }
+
+            function fsName(path) {
+                if (path === fsRootPath) return 'C:';
+                const lastSep = path.lastIndexOf(FS_SEP);
+                return path.substring(lastSep + 1);
+            }
+
+            function fsExists(path) {
+                return fileSystem.hasOwnProperty(path);
+            }
+
+            function fsIsFolder(path) {
+                return fileSystem[path] && fileSystem[path].type === 'folder';
+            }
+
+            function fsIsFile(path) {
+                return fileSystem[path] && fileSystem[path].type === 'file';
+            }
+
+            function fsGetChildren(path) {
+                if (!fsIsFolder(path)) return [];
+                return fileSystem[path].children || [];
+            }
+
+            function fsGetSortedChildren(path) {
+                const children = fsGetChildren(path).map(p => ({
+                    path: p,
+                    name: fsName(p),
+                    type: fileSystem[p] ? fileSystem[p].type : 'file',
+                }));
+                // 文件夹在前，然后按名称排序
+                children.sort((a, b) => {
+                    if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+                    return a.name.localeCompare(b.name, 'zh-CN');
+                });
+                return children;
+            }
+
+            function fsCreateFolder(parentPath, name) {
+                const newPath = fsPath(parentPath, name);
+                if (fsExists(newPath)) return { success: false, error: '已存在同名项目' };
+                if (!fsIsFolder(parentPath)) return { success: false, error: '父路径不是文件夹' };
+                fileSystem[newPath] = { type: 'folder', children: [] };
+                fileSystem[parentPath].children.push(newPath);
+                fsSave();
+                return { success: true, path: newPath };
+            }
+
+            function fsCreateFile(parentPath, name, content = '') {
+                const newPath = fsPath(parentPath, name);
+                if (fsExists(newPath)) return { success: false, error: '已存在同名项目' };
+                if (!fsIsFolder(parentPath)) return { success: false, error: '父路径不是文件夹' };
+                fileSystem[newPath] = { type: 'file', content: content };
+                fileSystem[parentPath].children.push(newPath);
+                fsSave();
+                return { success: true, path: newPath };
+            }
+
+            function fsDelete(path) {
+                if (path === fsRootPath) return { success: false, error: '不能删除根目录' };
+                if (!fsExists(path)) return { success: false, error: '路径不存在' };
+                // 递归删除子节点
+                if (fsIsFolder(path)) {
+                    const children = [...fileSystem[path].children];
+                    for (const child of children) {
+                        fsDelete(child);
+                    }
+                }
+                // 从父节点移除
+                const parent = fsParent(path);
+                if (parent && fsExists(parent) && fsIsFolder(parent)) {
+                    fileSystem[parent].children = fileSystem[parent].children.filter(c => c !== path);
+                }
+                delete fileSystem[path];
+                fsSave();
+                return { success: true };
+            }
+
+            function fsRename(path, newName) {
+                if (path === fsRootPath) return { success: false, error: '不能重命名根目录' };
+                if (!fsExists(path)) return { success: false, error: '路径不存在' };
+                const parent = fsParent(path);
+                const newPath = fsPath(parent, newName);
+                if (fsExists(newPath)) return { success: false, error: '已存在同名项目' };
+                // 更新路径
+                const node = fileSystem[path];
+                delete fileSystem[path];
+                fileSystem[newPath] = node;
+                // 更新父节点的children引用
+                if (parent && fsExists(parent) && fsIsFolder(parent)) {
+                    const idx = fileSystem[parent].children.indexOf(path);
+                    if (idx >= 0) fileSystem[parent].children[idx] = newPath;
+                }
+                // 如果是文件夹，递归更新所有子路径
+                if (node.type === 'folder' && node.children) {
+                    const oldBase = path;
+                    const newBase = newPath;
+                    const toUpdate = [];
+                    // 收集所有需要更新的子路径
+                    for (const p of Object.keys(fileSystem)) {
+                        if (p === oldBase || p.startsWith(oldBase + FS_SEP)) {
+                            toUpdate.push(p);
+                        }
+                    }
+                    toUpdate.sort((a, b) => b.length - a.length); // 从深到浅
+                    for (const oldP of toUpdate) {
+                        if (oldP === oldBase) continue;
+                        const relative = oldP.substring(oldBase.length);
+                        const newP = newBase + relative;
+                        fileSystem[newP] = fileSystem[oldP];
+                        delete fileSystem[oldP];
+                        // 更新父节点的children
+                        const pp = fsParent(newP);
+                        if (pp && fsExists(pp) && fsIsFolder(pp)) {
+                            const ci = fileSystem[pp].children.indexOf(oldP);
+                            if (ci >= 0) fileSystem[pp].children[ci] = newP;
+                        }
+                    }
+                }
+                fsSave();
+                return { success: true, newPath: newPath };
+            }
+
+            function fsGetContent(path) {
+                if (!fsIsFile(path)) return null;
+                return fileSystem[path].content || '';
+            }
+
+            function fsSetContent(path, content) {
+                if (!fsIsFile(path)) return false;
+                fileSystem[path].content = content;
+                fsSave();
+                return true;
+            }
+
+            function fsSave() {
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(fileSystem));
+                } catch (e) {
+                    console.warn('无法保存文件系统到localStorage:', e);
+                }
+            }
+
+            function fsLoad() {
+                try {
+                    const data = localStorage.getItem(STORAGE_KEY);
+                    if (data) {
+                        fileSystem = JSON.parse(data);
+                        return true;
+                    }
+                } catch (e) {
+                    console.warn('无法从localStorage加载文件系统:', e);
+                }
+                return false;
+            }
+
+            function fsInitDefault() {
+                fileSystem = {};
+                fileSystem['C:'] = { type: 'folder', children: [] };
+
+                const createD = (parent, name) => {
+                    const p = fsPath(parent, name);
+                    fileSystem[p] = { type: 'folder', children: [] };
+                    fileSystem[parent].children.push(p);
+                    return p;
+                };
+
+                const createF = (parent, name, content) => {
+                    const p = fsPath(parent, name);
+                    fileSystem[p] = { type: 'file', content: content || '' };
+                    fileSystem[parent].children.push(p);
+                    return p;
+                };
+
+                const users = createD('C:', 'Users');
+                const defaultUser = createD(users, 'Default');
+                const desktop = createD(defaultUser, 'Desktop');
+                const documents = createD(defaultUser, 'Documents');
+                const pictures = createD(defaultUser, 'Pictures');
+                const music = createD(defaultUser, 'Music');
+                const videos = createD(defaultUser, 'Videos');
+
+                createD('C:', 'Windows');
+                createD('C:', 'Program Files');
+                createD('C:', 'Program Files (x86)');
+
+                // 桌面上的示例文件
+                createF(desktop, '欢迎.txt',
+                    '🎉 欢迎使用 Windows 模拟系统！\n\n这是一个在浏览器中运行的模拟Windows桌面环境。\n\n功能包括：\n- 📁 完整的文件系统（创建、删除、重命名、编辑）\n- 🪟 可拖拽的窗口\n- 📝 记事本编辑器\n- 💾 数据自动保存到浏览器本地存储\n\n双击文件资源管理器开始探索吧！\n\n祝您使用愉快！😊'
+                );
+                createD(desktop, '我的项目');
+                createF(desktop, '待办事项.txt', '📋 待办事项清单：\n\n1. ✅ 探索文件系统\n2. ✅ 创建新文件夹\n3. ⬜ 编辑文本文件\n4. ⬜ 体验窗口拖拽\n5. ⬜ 尝试右键菜单\n');
+
+                // Documents
+                createF(documents, '项目说明.txt', '这是一个示例项目说明文档。\n\n项目名称：Windows模拟系统\n技术栈：HTML + CSS + JavaScript\n数据存储：localStorage\n');
+                createD(documents, '项目资料');
+                createF(documents, '笔记.txt', '今天的笔记：\n\n文件系统设计采用了扁平化路径存储，\n每个路径作为key，方便快速查找和操作。\n窗口管理器负责所有窗口的创建、聚焦和关闭。');
+
+                // Pictures
+                createF(pictures, '示例图片说明.txt', '📷 图片文件夹\n\n这里可以存放您的图片文件。\n（本模拟系统仅支持文本文件编辑）');
+
+                // Music
+                createF(music, '播放列表.txt', '🎵 我的播放列表\n\n1. 示例歌曲一\n2. 示例歌曲二\n3. 示例歌曲三');
+
+                fsSave();
+            }
+
+            function fsEnsureInit() {
+                if (!fsLoad()) {
+                    fsInitDefault();
+                }
+                // 确保根节点存在
+                if (!fileSystem['C:']) {
+                    fsInitDefault();
+                }
+            }
+
+            // ============ 窗口管理器 ============
+            let windowZIndex = 100;
+            let openWindows = {}; // { winId: { element, type, title, icon, relatedPath, minimized } }
+            let activeWindowId = null;
+            let windowIdCounter = 0;
+
+            const windowsContainer = document.getElementById('windows-container');
+            const taskbarWindows = document.getElementById('taskbar-windows');
+
+            function getNextWinId() {
+                return 'win-' + (++windowIdCounter);
+            }
+
+            function bringToFront(winId) {
+                if (!openWindows[winId]) return;
+                windowZIndex++;
+                openWindows[winId].element.style.zIndex = windowZIndex;
+                // 更新任务栏状态
+                updateTaskbarButtons();
+                activeWindowId = winId;
+                // 取消桌面图标选中
+                clearDesktopSelection();
+                // 关闭右键菜单
+                closeAllContextMenus();
+            }
+
+            function createWindowElement(type, title, icon, width, height) {
+                const winId = getNextWinId();
+                const el = document.createElement('div');
+                el.className = 'window';
+                el.id = winId;
+                el.style.width = width + 'px';
+                el.style.height = height + 'px';
+                // 计算位置（偏移避免重叠）
+                const offsetX = 40 + (Object.keys(openWindows).length * 30) % 300;
+                const offsetY = 40 + (Object.keys(openWindows).length * 25) % 200;
+                el.style.left = Math.min(offsetX, window.innerWidth - width - 40) + 'px';
+                el.style.top = Math.min(offsetY, window.innerHeight - height - 100) + 'px';
+                el.style.zIndex = ++windowZIndex;
+                el.setAttribute('data-win-id', winId);
+                el.setAttribute('data-win-type', type);
+
+                // 标题栏
+                const titlebar = document.createElement('div');
+                titlebar.className = 'window-titlebar';
+                titlebar.innerHTML = `
+                    <span class="win-icon">${icon}</span>
+                    <span class="win-title">${escapeHTML(title)}</span>
+                    <div class="win-btns">
+                        <button class="win-btn minimize" title="最小化">─</button>
+                        <button class="win-btn maximize" title="最大化">□</button>
+                        <button class="win-btn close" title="关闭">✕</button>
+                    </div>
+                `;
+                el.appendChild(titlebar);
+
+                // 窗口主体
+                const body = document.createElement('div');
+                body.className = 'window-body';
+                body.setAttribute('data-win-body', 'true');
+                el.appendChild(body);
+
+                // 调整大小手柄
+                const resizeHandle = document.createElement('div');
+                resizeHandle.className = 'resize-handle';
+                el.appendChild(resizeHandle);
+
+                windowsContainer.appendChild(el);
+
+                // 事件绑定
+                bindWindowEvents(el, winId, titlebar, resizeHandle);
+
+                // 记录
+                openWindows[winId] = {
+                    element: el,
+                    type: type,
+                    title: title,
+                    icon: icon,
+                    relatedPath: null,
+                    minimized: false,
+                    maximized: false,
+                    originalRect: null,
+                };
+
+                // 更新任务栏
+                addTaskbarButton(winId, icon, title);
+                bringToFront(winId);
+
+                return { winId, element: el, bodyEl: body };
+            }
+
+            function bindWindowEvents(el, winId, titlebar, resizeHandle) {
+                // 点击窗口置顶
+                el.addEventListener('mousedown', (e) => {
+                    if (!openWindows[winId] || openWindows[winId].minimized) return;
+                    bringToFront(winId);
+                });
+
+                // 拖拽移动
+                let isDragging = false;
+                let dragStartX, dragStartY, winStartX, winStartY;
+                titlebar.addEventListener('mousedown', (e) => {
+                    if (e.target.closest('.win-btns')) return;
+                    if (openWindows[winId] && openWindows[winId].maximized) return;
+                    isDragging = true;
+                    dragStartX = e.clientX;
+                    dragStartY = e.clientY;
+                    winStartX = el.offsetLeft;
+                    winStartY = el.offsetTop;
+                    el.style.transition = 'none';
+                    document.body.style.cursor = 'move';
+                    e.preventDefault();
+                });
+                document.addEventListener('mousemove', (e) => {
+                    if (!isDragging) return;
+                    const dx = e.clientX - dragStartX;
+                    const dy = e.clientY - dragStartY;
+                    el.style.left = Math.max(-100, winStartX + dx) + 'px';
+                    el.style.top = Math.max(-30, winStartY + dy) + 'px';
+                });
+                document.addEventListener('mouseup', () => {
+                    if (isDragging) {
+                        isDragging = false;
+                        el.style.transition = '';
+                        document.body.style.cursor = '';
+                    }
+                });
+
+                // 调整大小
+                let isResizing = false;
+                let resizeStartX, resizeStartY, resizeStartW, resizeStartH;
+                resizeHandle.addEventListener('mousedown', (e) => {
+                    if (openWindows[winId] && openWindows[winId].maximized) return;
+                    isResizing = true;
+                    resizeStartX = e.clientX;
+                    resizeStartY = e.clientY;
+                    resizeStartW = el.offsetWidth;
+                    resizeStartH = el.offsetHeight;
+                    el.style.transition = 'none';
+                    document.body.style.cursor = 'nwse-resize';
+                    e.preventDefault();
+                    e.stopPropagation();
+                });
+                document.addEventListener('mousemove', (e) => {
+                    if (!isResizing) return;
+                    const newW = Math.max(320, resizeStartW + (e.clientX - resizeStartX));
+                    const newH = Math.max(200, resizeStartH + (e.clientY - resizeStartY));
+                    el.style.width = newW + 'px';
+                    el.style.height = newH + 'px';
+                });
+                document.addEventListener('mouseup', () => {
+                    if (isResizing) {
+                        isResizing = false;
+                        el.style.transition = '';
+                        document.body.style.cursor = '';
+                    }
+                });
+
+                // 按钮
+                const btnMin = titlebar.querySelector('.minimize');
+                const btnMax = titlebar.querySelector('.maximize');
+                const btnClose = titlebar.querySelector('.close');
+
+                btnMin.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    minimizeWindow(winId);
+                });
+                btnMax.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleMaximizeWindow(winId);
+                });
+                btnClose.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    closeWindow(winId);
+                });
+
+                // 双击标题栏最大化
+                titlebar.addEventListener('dblclick', (e) => {
+                    if (e.target.closest('.win-btns')) return;
+                    toggleMaximizeWindow(winId);
+                });
+            }
+
+            function minimizeWindow(winId) {
+                const win = openWindows[winId];
+                if (!win) return;
+                if (win.minimized) {
+                    restoreWindow(winId);
+                    return;
+                }
+                if (win.maximized) {
+                    // 先还原再最小化
+                    win.element.classList.remove('maximized');
+                    win.maximized = false;
+                }
+                win.minimized = true;
+                win.element.classList.add('minimized');
+                updateTaskbarButtons();
+                if (activeWindowId === winId) {
+                    activeWindowId = null;
+                }
+            }
+
+            function restoreWindow(winId) {
+                const win = openWindows[winId];
+                if (!win) return;
+                win.minimized = false;
+                win.element.classList.remove('minimized');
+                bringToFront(winId);
+            }
+
+            function toggleMaximizeWindow(winId) {
+                const win = openWindows[winId];
+                if (!win || win.minimized) return;
+                if (win.maximized) {
+                    win.maximized = false;
+                    win.element.classList.remove('maximized');
+                    if (win.originalRect) {
+                        win.element.style.left = win.originalRect.left + 'px';
+                        win.element.style.top = win.originalRect.top + 'px';
+                        win.element.style.width = win.originalRect.width + 'px';
+                        win.element.style.height = win.originalRect.height + 'px';
+                    }
+                } else {
+                    win.originalRect = {
+                        left: win.element.offsetLeft,
+                        top: win.element.offsetTop,
+                        width: win.element.offsetWidth,
+                        height: win.element.offsetHeight,
+                    };
+                    win.maximized = true;
+                    win.element.classList.add('maximized');
+                }
+                bringToFront(winId);
+            }
+
+            function closeWindow(winId) {
+                const win = openWindows[winId];
+                if (!win) return;
+                // 检查是否有未保存的内容（记事本）
+                if (win.type === 'notepad' && win._dirty && win.relatedPath) {
+                    showConfirmDialog('文件未保存', '您有未保存的更改，确定关闭吗？', () => {
+                        doCloseWindow(winId);
+                    });
+                } else {
+                    doCloseWindow(winId);
+                }
+            }
+
+            function doCloseWindow(winId) {
+                const win = openWindows[winId];
+                if (!win) return;
+                if (win.element && win.element.parentNode) {
+                    win.element.remove();
+                }
+                removeTaskbarButton(winId);
+                delete openWindows[winId];
+                if (activeWindowId === winId) {
+                    activeWindowId = null;
+                    // 激活最后一个窗口
+                    const keys = Object.keys(openWindows);
+                    if (keys.length > 0) {
+                        bringToFront(keys[keys.length - 1]);
+                    }
+                }
+            }
+
+            function addTaskbarButton(winId, icon, title) {
+                const btn = document.createElement('button');
+                btn.className = 'taskbar-win-btn';
+                btn.innerHTML = `<span>${icon}</span><span style="overflow:hidden;text-overflow:ellipsis;">${escapeHTML(title)}</span>`;
+                btn.setAttribute('data-taskbar-win', winId);
+                btn.addEventListener('click', () => {
+                    const win = openWindows[winId];
+                    if (!win) return;
+                    if (win.minimized) {
+                        restoreWindow(winId);
+                    } else if (activeWindowId === winId && !win.minimized) {
+                        minimizeWindow(winId);
+                    } else {
+                        bringToFront(winId);
+                    }
+                });
+                taskbarWindows.appendChild(btn);
+            }
+
+            function removeTaskbarButton(winId) {
+                const btn = taskbarWindows.querySelector(`[data-taskbar-win="${winId}"]`);
+                if (btn) btn.remove();
+            }
+
+            function updateTaskbarButtons() {
+                const buttons = taskbarWindows.querySelectorAll('.taskbar-win-btn');
+                buttons.forEach(btn => {
+                    const wid = btn.getAttribute('data-taskbar-win');
+                    btn.classList.toggle('active', wid === activeWindowId && openWindows[wid] && !openWindows[
+                        wid].minimized);
+                });
+            }
+
+            // ============ 文件资源管理器窗口 ============
+            function openExplorerWindow(initialPath) {
+                const path = initialPath || 'C:/Users/Default/Desktop';
+                const folderName = fsName(path);
+                const { winId, element, bodyEl } = createWindowElement('explorer', folderName + ' - 文件资源管理器',
+                    '📁', 750, 500);
+                openWindows[winId].relatedPath = path;
+                openWindows[winId]._explorerPath = path;
+
+                buildExplorerUI(bodyEl, winId, path);
+                bringToFront(winId);
+                return winId;
+            }
+
+            function buildExplorerUI(bodyEl, winId, currentPath) {
+                bodyEl.innerHTML = '';
+                // 侧边栏
+                const sidebar = document.createElement('div');
+                sidebar.className = 'explorer-sidebar';
+                buildTreeView(sidebar, winId, currentPath);
+                bodyEl.appendChild(sidebar);
+
+                // 主区域
+                const main = document.createElement('div');
+                main.className = 'explorer-main';
+
+                // 工具栏
+                const toolbar = document.createElement('div');
+                toolbar.className = 'explorer-toolbar';
+                toolbar.innerHTML = `
+                    <button class="btn-new-folder" title="新建文件夹">📁+ 新建文件夹</button>
+                    <button class="btn-new-file" title="新建文本文件">📄+ 新建文件</button>
+                    <button class="btn-go-up" title="向上">⬆</button>
+                    <span class="addr-bar" title="当前路径">${escapeHTML(currentPath)}</span>
+                    <button class="btn-refresh" title="刷新">🔄</button>
+                `;
+                main.appendChild(toolbar);
+
+                // 文件列表
+                const fileList = document.createElement('div');
+                fileList.className = 'explorer-files';
+                fileList.setAttribute('data-file-list', 'true');
+                renderFileList(fileList, currentPath, winId);
+                main.appendChild(fileList);
+
+                bodyEl.appendChild(main);
+
+                // 事件
+                toolbar.querySelector('.btn-new-folder').addEventListener('click', () => {
+                    showNameInputDialog('新建文件夹', '请输入文件夹名称：', '新建文件夹', (name) => {
+                        const result = fsCreateFolder(currentPath, name);
+                        if (!result.success) {
+                            showAlertDialog('错误', result.error);
+                        }
+                        refreshExplorer(winId);
+                        refreshDesktopIcons();
+                    });
+                });
+                toolbar.querySelector('.btn-new-file').addEventListener('click', () => {
+                    showNameInputDialog('新建文件', '请输入文件名称（如：文档.txt）：', '新建文件.txt', (name) => {
+                        if (!name.includes('.')) name += '.txt';
+                        const result = fsCreateFile(currentPath, name, '');
+                        if (!result.success) {
+                            showAlertDialog('错误', result.error);
+                        }
+                        refreshExplorer(winId);
+                        refreshDesktopIcons();
+                    });
+                });
+                toolbar.querySelector('.btn-go-up').addEventListener('click', () => {
+                    const parent = fsParent(currentPath);
+                    if (parent && fsExists(parent)) {
+                        navigateExplorer(winId, parent);
+                    }
+                });
+                toolbar.querySelector('.btn-refresh').addEventListener('click', () => {
+                    refreshExplorer(winId);
+                });
+                toolbar.querySelector('.addr-bar').addEventListener('dblclick', function() {
+                    this.contentEditable = 'true';
+                    this.focus();
+                    this.style.outline = '2px solid #0078d4';
+                    this.style.backgroundColor = '#fff';
+                });
+                toolbar.querySelector('.addr-bar').addEventListener('blur', function() {
+                    this.contentEditable = 'false';
+                    this.style.outline = '';
+                    this.style.backgroundColor = '';
+                    const newPath = this.textContent.trim();
+                    if (fsExists(newPath) && fsIsFolder(newPath)) {
+                        navigateExplorer(winId, newPath);
+                    } else {
+                        this.textContent = currentPath;
+                    }
+                });
+                toolbar.querySelector('.addr-bar').addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.blur();
+                    }
+                });
+
+                // 文件列表右键
+                fileList.addEventListener('contextmenu', (e) => {
+                    const fileItem = e.target.closest('.file-item');
+                    if (fileItem) {
+                        const filePath = fileItem.getAttribute('data-path');
+                        showFileContextMenu(e.clientX, e.clientY, filePath, winId);
+                        e.preventDefault();
+                    }
+                });
+            }
+
+            function buildTreeView(sidebar, winId, currentPath) {
+                sidebar.innerHTML = '<div class="tree-title">📁 文件系统</div>';
+                const rootItem = createTreeItem('C:', 'C:', 0, winId, currentPath);
+                sidebar.appendChild(rootItem);
+                // 默认展开到当前路径
+                expandTreeToPath(sidebar, currentPath);
+            }
+
+            function createTreeItem(path, name, depth, winId, currentPath) {
+                const container = document.createElement('div');
+                const item = document.createElement('div');
+                item.className = 'tree-item';
+                if (path === currentPath) item.classList.add('active');
+                item.style.paddingLeft = (8 + depth * 16) + 'px';
+                item.setAttribute('data-tree-path', path);
+
+                const hasChildren = fsIsFolder(path) && fsGetChildren(path).length > 0;
+                const arrow = document.createElement('span');
+                arrow.className = 'tree-arrow' + (hasChildren ? ' expanded' : ' empty');
+                arrow.textContent = '▶';
+                item.appendChild(arrow);
+
+                const icon = document.createElement('span');
+                icon.className = 'tree-icon';
+                icon.textContent = fsIsFolder(path) ? '📁' : '📄';
+                item.appendChild(icon);
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'tree-name';
+                nameSpan.textContent = name;
+                item.appendChild(nameSpan);
+
+                container.appendChild(item);
+
+                // 子节点
+                const childrenContainer = document.createElement('div');
+                childrenContainer.className = 'tree-children';
+                if (hasChildren) {
+                    childrenContainer.style.maxHeight = '2000px';
+                    const sortedChildren = fsGetSortedChildren(path);
+                    for (const child of sortedChildren) {
+                        if (child.type === 'folder') {
+                            const childTree = createTreeItem(child.path, child.name, depth + 1, winId, currentPath);
+                            childrenContainer.appendChild(childTree);
+                        }
+                    }
+                } else {
+                    childrenContainer.classList.add('collapsed');
+                    childrenContainer.style.maxHeight = '0px';
+                }
+                container.appendChild(childrenContainer);
+
+                // 点击事件
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (fsIsFolder(path)) {
+                        navigateExplorer(winId, path);
+                        // 切换展开
+                        if (hasChildren) {
+                            const isExpanded = !childrenContainer.classList.contains('collapsed');
+                            if (isExpanded) {
+                                childrenContainer.classList.add('collapsed');
+                                childrenContainer.style.maxHeight = '0px';
+                                arrow.classList.remove('expanded');
+                            } else {
+                                childrenContainer.classList.remove('collapsed');
+                                childrenContainer.style.maxHeight = '2000px';
+                                arrow.classList.add('expanded');
+                            }
+                        }
+                    }
+                });
+
+                return container;
+            }
+
+            function expandTreeToPath(sidebar, targetPath) {
+                const parts = targetPath.split(FS_SEP);
+                let cumulative = '';
+                for (let i = 0; i < parts.length; i++) {
+                    cumulative = i === 0 ? parts[i] : cumulative + FS_SEP + parts[i];
+                    const item = sidebar.querySelector(`[data-tree-path="${cumulative}"]`);
+                    if (item) {
+                        const container = item.parentElement;
+                        const childrenContainer = container.querySelector('.tree-children');
+                        const arrow = item.querySelector('.tree-arrow');
+                        if (childrenContainer && childrenContainer.classList.contains('collapsed')) {
+                            childrenContainer.classList.remove('collapsed');
+                            childrenContainer.style.maxHeight = '2000px';
+                            if (arrow) arrow.classList.add('expanded');
+                        }
+                    }
+                }
+                // 高亮当前路径
+                sidebar.querySelectorAll('.tree-item.active').forEach(el => el.classList.remove('active'));
+                const activeItem = sidebar.querySelector(`[data-tree-path="${targetPath}"]`);
+                if (activeItem) activeItem.classList.add('active');
+            }
+
+            function renderFileList(fileList, currentPath, winId) {
+                fileList.innerHTML = '';
+                const children = fsGetSortedChildren(currentPath);
+                if (children.length === 0) {
+                    fileList.innerHTML =
+                        '<div style="color:#999;padding:40px;text-align:center;width:100%;">此文件夹为空</div>';
+                    return;
+                }
+                for (const child of children) {
+                    const item = document.createElement('div');
+                    item.className = 'file-item';
+                    item.setAttribute('data-path', child.path);
+                    const isFolder = child.type === 'folder';
+                    item.innerHTML = `
+                        <span class="fi-icon">${isFolder ? '📁' : getFileIcon(child.name)}</span>
+                        <span class="fi-name">${escapeHTML(child.name)}</span>
+                    `;
+                    // 单击选中
+                    item.addEventListener('click', (e) => {
+                        fileList.querySelectorAll('.file-item.selected').forEach(el => el.classList
+                            .remove('selected'));
+                        item.classList.add('selected');
+                        e.stopPropagation();
+                    });
+                    // 双击打开
+                    item.addEventListener('dblclick', (e) => {
+                        e.stopPropagation();
+                        if (isFolder) {
+                            navigateExplorer(winId, child.path);
+                        } else {
+                            openNotepadWindow(child.path);
+                        }
+                    });
+                    fileList.appendChild(item);
+                }
+            }
+
+            function getFileIcon(name) {
+                const ext = name.split('.').pop().toLowerCase();
+                const iconMap = {
+                    'txt': '📄',
+                    'md': '📝',
+                    'html': '🌐',
+                    'css': '🎨',
+                    'js': '⚡',
+                    'json': '📋',
+                    'xml': '📰',
+                    'jpg': '🖼️',
+                    'jpeg': '🖼️',
+                    'png': '🖼️',
+                    'gif': '🖼️',
+                    'svg': '🖼️',
+                    'pdf': '📕',
+                    'zip': '📦',
+                    'rar': '📦',
+                    'mp3': '🎵',
+                    'wav': '🎵',
+                    'mp4': '🎬',
+                    'avi': '🎬',
+                    'exe': '⚙️',
+                    'dll': '🔧',
+                    'sys': '🔧',
+                };
+                return iconMap[ext] || '📄';
+            }
+
+            function navigateExplorer(winId, newPath) {
+                const win = openWindows[winId];
+                if (!win || win.type !== 'explorer') return;
+                win.relatedPath = newPath;
+                win._explorerPath = newPath;
+                const folderName = fsName(newPath);
+                win.title = folderName + ' - 文件资源管理器';
+                win.element.querySelector('.win-title').textContent = win.title;
+                const bodyEl = win.element.querySelector('[data-win-body]');
+                if (bodyEl) {
+                    buildExplorerUI(bodyEl, winId, newPath);
+                }
+                updateTaskbarButtons();
+            }
+
+            function refreshExplorer(winId) {
+                const win = openWindows[winId];
+                if (!win || win.type !== 'explorer') return;
+                const currentPath = win._explorerPath || win.relatedPath || 'C:/Users/Default/Desktop';
+                const bodyEl = win.element.querySelector('[data-win-body]');
+                if (bodyEl) {
+                    buildExplorerUI(bodyEl, winId, currentPath);
+                }
+            }
+
+            // ============ 记事本窗口 ============
+            function openNotepadWindow(filePath) {
+                const fileName = fsName(filePath);
+                const content = fsGetContent(filePath) || '';
+                const { winId, element, bodyEl } = createWindowElement('notepad', fileName + ' - 记事本', '📝', 550, 420);
+                openWindows[winId].relatedPath = filePath;
+                openWindows[winId]._dirty = false;
+                openWindows[winId]._originalContent = content;
+
+                buildNotepadUI(bodyEl, winId, filePath, content);
+                bringToFront(winId);
+                return winId;
+            }
+
+            function buildNotepadUI(bodyEl, winId, filePath, content) {
+                bodyEl.innerHTML = '';
+                const npBody = document.createElement('div');
+                npBody.className = 'notepad-body';
+
+                const textarea = document.createElement('textarea');
+                textarea.value = content;
+                textarea.setAttribute('spellcheck', 'false');
+                npBody.appendChild(textarea);
+
+                const status = document.createElement('div');
+                status.className = 'notepad-status';
+                const lineCount = (content.match(/\n/g) || []).length + 1;
+                const charCount = content.length;
+                status.innerHTML = `<span>路径: ${escapeHTML(filePath)}</span><span>行: ${lineCount}</span><span>字符: ${charCount}</span>`;
+                npBody.appendChild(status);
+
+                bodyEl.appendChild(npBody);
+
+                // 更新状态栏
+                const updateStatus = () => {
+                    const txt = textarea.value;
+                    const lc = (txt.match(/\n/g) || []).length + 1;
+                    const cc = txt.length;
+                    status.innerHTML =
+                        `<span>路径: ${escapeHTML(filePath)}</span><span>行: ${lc}</span><span>字符: ${cc}</span>`;
+                    if (txt !== openWindows[winId]._originalContent) {
+                        openWindows[winId]._dirty = true;
+                        if (!openWindows[winId].title.endsWith(' *')) {
+                            openWindows[winId].title += ' *';
+                            openWindows[winId].element.querySelector('.win-title').textContent = openWindows[winId]
+                                .title;
+                        }
+                    } else {
+                        openWindows[winId]._dirty = false;
+                        if (openWindows[winId].title.endsWith(' *')) {
+                            openWindows[winId].title = openWindows[winId].title.replace(' *', '');
+                            openWindows[winId].element.querySelector('.win-title').textContent = openWindows[winId]
+                                .title;
+                        }
+                    }
+                };
+
+                textarea.addEventListener('input', updateStatus);
+
+                // Ctrl+S 保存
+                textarea.addEventListener('keydown', (e) => {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                        e.preventDefault();
+                        const newContent = textarea.value;
+                        fsSetContent(filePath, newContent);
+                        openWindows[winId]._originalContent = newContent;
+                        openWindows[winId]._dirty = false;
+                        if (openWindows[winId].title.endsWith(' *')) {
+                            openWindows[winId].title = openWindows[winId].title.replace(' *', '');
+                            openWindows[winId].element.querySelector('.win-title').textContent = openWindows[winId]
+                                .title;
+                        }
+                        updateStatus();
+                        showToast('文件已保存 ✓');
+                    }
+                });
+            }
+
+            function openNewNotepad() {
+                // 创建一个临时文件在Desktop
+                const desktopPath = 'C:/Users/Default/Desktop';
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+                const fileName = '未命名-' + timestamp + '.txt';
+                const result = fsCreateFile(desktopPath, fileName, '');
+                if (result.success) {
+                    refreshDesktopIcons();
+                    openNotepadWindow(result.path);
+                } else {
+                    // 如果创建失败，使用一个虚拟路径
+                    const { winId, element, bodyEl } = createWindowElement('notepad', '未命名 - 记事本', '📝', 550, 420);
+                    openWindows[winId].relatedPath = null;
+                    openWindows[winId]._dirty = true;
+                    openWindows[winId]._originalContent = '';
+                    buildNotepadUI(bodyEl, winId, '未保存', '');
+                    bringToFront(winId);
+                }
+            }
+
+            // ============ 桌面图标 ============
+            function refreshDesktopIcons() {
+                const desktopPath = 'C:/Users/Default/Desktop';
+                const iconsContainer = document.getElementById('desktop-icons');
+                if (!fsExists(desktopPath)) return;
+                const children = fsGetSortedChildren(desktopPath);
+                iconsContainer.innerHTML = '';
+                for (const child of children) {
+                    const icon = document.createElement('div');
+                    icon.className = 'desktop-icon';
+                    icon.setAttribute('data-desktop-path', child.path);
+                    const isFolder = child.type === 'folder';
+                    icon.innerHTML = `
+                        <span class="icon-img">${isFolder ? '📁' : getFileIcon(child.name)}</span>
+                        <span class="icon-label">${escapeHTML(child.name)}</span>
+                    `;
+                    // 单击选中
+                    icon.addEventListener('click', (e) => {
+                        clearDesktopSelection();
+                        icon.classList.add('selected');
+                        e.stopPropagation();
+                    });
+                    // 双击打开
+                    icon.addEventListener('dblclick', (e) => {
+                        e.stopPropagation();
+                        if (isFolder) {
+                            openExplorerWindow(child.path);
+                        } else {
+                            openNotepadWindow(child.path);
+                        }
+                    });
+                    // 右键
+                    icon.addEventListener('contextmenu', (e) => {
+                        clearDesktopSelection();
+                        icon.classList.add('selected');
+                        showFileContextMenu(e.clientX, e.clientY, child.path, null);
+                        e.preventDefault();
+                        e.stopPropagation();
+                    });
+                    iconsContainer.appendChild(icon);
+                }
+            }
+
+            function clearDesktopSelection() {
+                document.querySelectorAll('#desktop-icons .desktop-icon.selected').forEach(el => el.classList.remove(
+                    'selected'));
+            }
+
+            // ============ 右键菜单 ============
+            let currentContextFile = null;
+            let currentContextWinId = null;
+
+            function showFileContextMenu(x, y, filePath, winId) {
+                currentContextFile = filePath;
+                currentContextWinId = winId;
+                const menu = document.getElementById('context-menu-file');
+                menu.style.left = x + 'px';
+                menu.style.top = y + 'px';
+                menu.classList.add('show');
+                // 确保菜单不超出屏幕
+                const rect = menu.getBoundingClientRect();
+                if (rect.right > window.innerWidth) menu.style.left = (x - rect.width) + 'px';
+                if (rect.bottom > window.innerHeight) menu.style.top = (y - rect.height) + 'px';
+            }
+
+            function closeAllContextMenus() {
+                document.querySelectorAll('.context-menu').forEach(m => m.classList.remove('show'));
+                currentContextFile = null;
+                currentContextWinId = null;
+            }
+
+            // 桌面右键菜单
+            document.getElementById('desktop').addEventListener('contextmenu', function(e) {
+                if (e.target.closest('.desktop-icon') || e.target.closest('.window') || e.target.closest(
+                        '#windows-container')) {
+                    return;
+                }
+                clearDesktopSelection();
+                closeAllContextMenus();
+                const menu = document.getElementById('context-menu-desktop');
+                menu.style.left = e.clientX + 'px';
+                menu.style.top = e.clientY + 'px';
+                menu.classList.add('show');
+                const rect = menu.getBoundingClientRect();
+                if (rect.right > window.innerWidth) menu.style.left = (e.clientX - rect.width) + 'px';
+                if (rect.bottom > window.innerHeight) menu.style.top = (e.clientY - rect.height) + 'px';
+                e.preventDefault();
+            });
+
+            // 文件右键菜单事件
+            document.getElementById('context-menu-file').addEventListener('click', function(e) {
+                const action = e.target.getAttribute('data-action');
+                const filePath = currentContextFile;
+                if (!filePath) return;
+                if (action === 'open-file') {
+                    if (fsIsFolder(filePath)) {
+                        openExplorerWindow(filePath);
+                    } else {
+                        openNotepadWindow(filePath);
+                    }
+                } else if (action === 'rename-file') {
+                    const oldName = fsName(filePath);
+                    showNameInputDialog('重命名', '请输入新名称：', oldName, (newName) => {
+                        const result = fsRename(filePath, newName);
+                        if (!result.success) {
+                            showAlertDialog('错误', result.error);
+                        }
+                        refreshAllExplorers();
+                        refreshDesktopIcons();
+                    });
+                } else if (action === 'delete-file') {
+                    const name = fsName(filePath);
+                    showConfirmDialog('删除确认', `确定要删除 "${name}" 吗？此操作不可恢复。`, () => {
+                        const result = fsDelete(filePath);
+                        if (result.success) {
+                            refreshAllExplorers();
+                            refreshDesktopIcons();
+                            // 关闭相关窗口
+                            for (const wid in openWindows) {
+                                const w = openWindows[wid];
+                                if (w.relatedPath === filePath || (w._explorerPath === filePath)) {
+                                    closeWindow(wid);
+                                }
+                            }
+                        } else {
+                            showAlertDialog('错误', result.error);
+                        }
+                    }, true);
+                }
+                closeAllContextMenus();
+            });
+
+            // 桌面右键菜单事件
+            document.getElementById('context-menu-desktop').addEventListener('click', function(e) {
+                const action = e.target.getAttribute('data-action');
+                const desktopPath = 'C:/Users/Default/Desktop';
+                if (action === 'new-folder-desktop') {
+                    showNameInputDialog('新建文件夹', '请输入文件夹名称：', '新建文件夹', (name) => {
+                        fsCreateFolder(desktopPath, name);
+                        refreshAllExplorers();
+                        refreshDesktopIcons();
+                    });
+                } else if (action === 'new-file-desktop') {
+                    showNameInputDialog('新建文件', '请输入文件名称（如：文档.txt）：', '新建文件.txt', (name) => {
+                        if (!name.includes('.')) name += '.txt';
+                        fsCreateFile(desktopPath, name, '');
+                        refreshAllExplorers();
+                        refreshDesktopIcons();
+                    });
+                } else if (action === 'refresh-desktop') {
+                    refreshDesktopIcons();
+                    refreshAllExplorers();
+                }
+                closeAllContextMenus();
+            });
+
+            function refreshAllExplorers() {
+                for (const wid in openWindows) {
+                    if (openWindows[wid].type === 'explorer') {
+                        refreshExplorer(wid);
+                    }
+                }
+            }
+
+            // ============ 对话框 ============
+            function showNameInputDialog(title, message, defaultValue, callback) {
+                const overlay = document.getElementById('modal-overlay');
+                const dialog = document.getElementById('modal-dialog');
+                dialog.innerHTML = `
+                    <h3>${escapeHTML(title)}</h3>
+                    <p style="margin-bottom:8px;color:#555;font-size:13px;">${escapeHTML(message)}</p>
+                    <input type="text" id="modal-input" value="${escapeHTML(defaultValue)}" autofocus>
+                    <div class="modal-btns">
+                        <button id="modal-cancel">取消</button>
+                        <button class="primary" id="modal-ok">确定</button>
+                    </div>
+                `;
+                overlay.classList.add('show');
+                const input = dialog.querySelector('#modal-input');
+                input.focus();
+                input.select();
+                const cleanup = () => {
+                    overlay.classList.remove('show');
+                };
+                dialog.querySelector('#modal-ok').addEventListener('click', () => {
+                    const val = input.value.trim();
+                    if (val) {
+                        cleanup();
+                        callback(val);
+                    }
+                });
+                dialog.querySelector('#modal-cancel').addEventListener('click', cleanup);
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        const val = input.value.trim();
+                        if (val) {
+                            cleanup();
+                            callback(val);
+                        }
+                    } else if (e.key === 'Escape') {
+                        cleanup();
+                    }
+                });
+                overlay.addEventListener('click', function(e) {
+                    if (e.target === overlay) cleanup();
+                });
+            }
+
+            function showConfirmDialog(title, message, callback, isDanger = false) {
+                const overlay = document.getElementById('modal-overlay');
+                const dialog = document.getElementById('modal-dialog');
+                dialog.innerHTML = `
+                    <h3>${escapeHTML(title)}</h3>
+                    <p style="margin-bottom:12px;color:#555;font-size:13px;">${escapeHTML(message)}</p>
+                    <div class="modal-btns">
+                        <button id="modal-cancel">取消</button>
+                        <button class="${isDanger ? 'danger' : 'primary'}" id="modal-ok">确定</button>
+                    </div>
+                `;
+                overlay.classList.add('show');
+                const cleanup = () => overlay.classList.remove('show');
+                dialog.querySelector('#modal-ok').addEventListener('click', () => { cleanup();
+                    callback(); });
+                dialog.querySelector('#modal-cancel').addEventListener('click', cleanup);
+                overlay.addEventListener('click', function(e) {
+                    if (e.target === overlay) cleanup();
+                });
+                document.addEventListener('keydown', function escHandler(e) {
+                    if (e.key === 'Escape') { cleanup();
+                        document.removeEventListener('keydown', escHandler); }
+                });
+            }
+
+            function showAlertDialog(title, message) {
+                const overlay = document.getElementById('modal-overlay');
+                const dialog = document.getElementById('modal-dialog');
+                dialog.innerHTML = `
+                    <h3>${escapeHTML(title)}</h3>
+                    <p style="margin-bottom:12px;color:#555;font-size:13px;">${escapeHTML(message)}</p>
+                    <div class="modal-btns">
+                        <button class="primary" id="modal-ok">确定</button>
+                    </div>
+                `;
+                overlay.classList.add('show');
+                const cleanup = () => overlay.classList.remove('show');
+                dialog.querySelector('#modal-ok').addEventListener('click', cleanup);
+                overlay.addEventListener('click', function(e) {
+                    if (e.target === overlay) cleanup();
+                });
+                dialog.querySelector('#modal-ok').focus();
+            }
+
+            // Toast提示
+            function showToast(message) {
+                const toast = document.createElement('div');
+                toast.style.cssText = `
+                    position: fixed;
+                    bottom: 70px;
+                    right: 20px;
+                    background: #333;
+                    color: #fff;
+                    padding: 10px 20px;
+                    border-radius: 20px;
+                    font-size: 13px;
+                    z-index: 400;
+                    font-family: var(--font-system);
+                    animation: fadeIn 0.2s ease-out;
+                    pointer-events: none;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                `;
+                toast.textContent = message;
+                document.body.appendChild(toast);
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    toast.style.transition = 'opacity 0.3s';
+                    setTimeout(() => toast.remove(), 300);
+                }, 1800);
+            }
+
+            // ============ 开始菜单 ============
+            const startBtn = document.getElementById('start-btn');
+            const startMenu = document.getElementById('start-menu');
+
+            startBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = startMenu.classList.contains('show');
+                closeAllContextMenus();
+                if (isOpen) {
+                    startMenu.classList.remove('show');
+                    startBtn.classList.remove('active');
+                } else {
+                    startMenu.classList.add('show');
+                    startBtn.classList.add('active');
+                }
+            });
+
+            startMenu.addEventListener('click', (e) => {
+                const item = e.target.closest('.start-menu-item');
+                if (!item) return;
+                const action = item.getAttribute('data-action');
+                if (action === 'explorer') {
+                    openExplorerWindow('C:/Users/Default/Desktop');
+                } else if (action === 'notepad-new') {
+                    openNewNotepad();
+                } else if (action === 'reset-fs') {
+                    showConfirmDialog('重置文件系统', '确定要重置整个文件系统吗？所有数据将丢失！', () => {
+                        fsInitDefault();
+                        refreshDesktopIcons();
+                        refreshAllExplorers();
+                        // 关闭所有窗口
+                        const allIds = Object.keys(openWindows);
+                        for (const wid of allIds) {
+                            doCloseWindow(wid);
+                        }
+                        showToast('文件系统已重置');
+                    }, true);
+                } else if (action === 'about') {
+                    showAlertDialog('关于此系统',
+                        '<strong>Windows 模拟系统 v1.0</strong><br><br>一个在浏览器中运行的模拟Windows桌面环境。<br><br>✅ 完整文件系统（增删改查）<br>✅ 可拖拽窗口<br>✅ 记事本文本编辑器<br>✅ 文件资源管理器<br>✅ 数据持久化存储<br><br>技术栈：HTML + CSS + JavaScript<br>数据存储：localStorage');
+                }
+                startMenu.classList.remove('show');
+                startBtn.classList.remove('active');
+            });
+
+            // ============ 全局事件 ============
+            document.addEventListener('click', function(e) {
+                // 关闭开始菜单
+                if (!startMenu.contains(e.target) && e.target !== startBtn && !startBtn.contains(e.target)) {
+                    startMenu.classList.remove('show');
+                    startBtn.classList.remove('active');
+                }
+                // 关闭右键菜单
+                if (!e.target.closest('.context-menu')) {
+                    closeAllContextMenus();
+                }
+                // 点击桌面空白处取消选中
+                if (e.target.id === 'desktop' || e.target.id === 'desktop-icons') {
+                    clearDesktopSelection();
+                }
+                // 点击文件列表空白处取消选中
+                if (e.target.classList.contains('explorer-files') || e.target.closest('.explorer-files') === e
+                    .target) {
+                    const fileList = e.target.classList.contains('explorer-files') ? e.target : e.target.closest(
+                        '.explorer-files');
+                    if (fileList) {
+                        fileList.querySelectorAll('.file-item.selected').forEach(el => el.classList.remove(
+                            'selected'));
+                    }
+                }
+            });
+
+            // 全局快捷键
+            document.addEventListener('keydown', function(e) {
+                // Delete键删除选中的桌面图标
+                if (e.key === 'Delete') {
+                    const selectedIcon = document.querySelector('#desktop-icons .desktop-icon.selected');
+                    if (selectedIcon && document.activeElement === document.body) {
+                        const filePath = selectedIcon.getAttribute('data-desktop-path');
+                        if (filePath) {
+                            const name = fsName(filePath);
+                            showConfirmDialog('删除确认', `确定要删除 "${name}" 吗？`, () => {
+                                fsDelete(filePath);
+                                refreshDesktopIcons();
+                                refreshAllExplorers();
+                            }, true);
+                        }
+                    }
+                }
+                // F5刷新
+                if (e.key === 'F5' && document.activeElement === document.body) {
+                    e.preventDefault();
+                    refreshDesktopIcons();
+                    refreshAllExplorers();
+                    showToast('已刷新');
+                }
+            });
+
+            // ============ 任务栏时钟 ============
+            function updateClock() {
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                const dateStr = now.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit',
+                    weekday: 'short' });
+                document.getElementById('taskbar-clock').innerHTML = `${timeStr}<br><span style="font-size:10px;">${dateStr}</span>`;
+            }
+            updateClock();
+            setInterval(updateClock, 10000);
+
+            // ============ 工具函数 ============
+            function escapeHTML(str) {
+                const div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            }
+
+            // ============ 初始化 ============
+            function init() {
+                fsEnsureInit();
+                refreshDesktopIcons();
+                // 默认打开一个文件资源管理器
+                setTimeout(() => {
+                    openExplorerWindow('C:/Users/Default/Desktop');
+                }, 300);
+            }
+
+            // 暴露到全局
+            window.openExplorerWindow = openExplorerWindow;
+            window.openNotepadWindow = openNotepadWindow;
+            window.openNewNotepad = openNewNotepad;
+            window.refreshDesktopIcons = refreshDesktopIcons;
+            window.refreshAllExplorers = refreshAllExplorers;
+            window.closeAllContextMenus = closeAllContextMenus;
+            window.fsExists = fsExists;
+            window.fsIsFolder = fsIsFolder;
+            window.fsName = fsName;
+
+            init();
+            console.log('🪟 Windows 模拟系统已就绪');
+            console.log('  - 双击桌面图标打开文件/文件夹');
+            console.log('  - 右键显示上下文菜单');
+            console.log('  - 拖拽窗口标题栏移动窗口');
+            console.log('  - 右下角拖拽调整窗口大小');
+            console.log('  - Ctrl+S 在记事本中保存');
+            console.log('  - 数据自动保存到浏览器本地存储');
+            console.log('💾 文件系统存储在 localStorage: ' + STORAGE_KEY);
+        })();
+    </script>
+</body>
+</html>

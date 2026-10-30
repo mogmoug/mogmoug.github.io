@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>体素地形 · 高度场 + 着色</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#9fc4e8;
+            font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  canvas{display:block}
+  #hud{position:fixed;left:12px;top:12px;color:#fff;font-size:12px;line-height:1.6;
+       text-shadow:0 1px 4px rgba(0,0,0,.7);pointer-events:none;white-space:pre}
+  #hint{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);color:#fff;
+        font-size:12px;text-shadow:0 1px 5px rgba(0,0,0,.8);opacity:.85;pointer-events:none;
+        transition:opacity .4s}
+  #overlay{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;
+           align-items:center;justify-content:center;gap:16px;
+           background:radial-gradient(circle at 50% 40%,#1b2735,#0b1016);color:#cfe3f5;
+           font-size:13px;transition:opacity .5s}
+  #bar{width:300px;height:3px;background:#22303d;border-radius:2px;overflow:hidden}
+  #bar > i{display:block;height:100%;width:0;background:#5ab0ff;transition:width .15s}
+  #cross{position:fixed;left:50%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;
+         pointer-events:none;opacity:.55}
+  #cross:before,#cross:after{content:"";position:absolute;background:#fff}
+  #cross:before{left:6px;top:0;width:2px;height:14px}
+  #cross:after{top:6px;left:0;height:2px;width:14px}
+</style>
+</head>
+<body>
+
+<div id="overlay">
+  <div id="status">初始化…</div>
+  <div id="bar"><i></i></div>
+</div>
+<div id="hud"></div>
+<div id="cross"></div>
+<div id="hint">点击画面进入 · WASD 移动 · 空格/Shift 升降 · 鼠标转视角 · ESC 释放</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.161.0/build/three.module.js" } }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* ==================================================================
+   0. 全局参数
+   ================================================================== */
+const SEED   = 202261;
+const WORLD  = 1024;            // 世界边长（格）
+const CHUNK  = 16;             // 区块边长
+const NCHUNK = WORLD / CHUNK;  // 16 × 16 = 256 个区块
+const SEA    = 20;             // 海平面高度
+const MAXH   = 256;
+
+const SCALE = (() => {
+  const p = new URLSearchParams(location.search).get('scale');
+  return p ? parseFloat(p) : 0.2;
+})();
+const F = 1 / SCALE;   // 频率乘数
+
+
+/* ==================================================================
+   1. 噪声：哈希梯度噪声 + fBm + ridged
+   ================================================================== */
+
+function hash2i(x, y, s) {
+  let h = Math.imul(x | 0, 0x27d4eb2d) ^ Math.imul(y | 0, 0x165667b1) ^ Math.imul(s | 0, 0x9e3779b1);
+  h ^= h >>> 15;
+  h = Math.imul(h, 0x85ebca6b);
+  h ^= h >>> 13;
+  h = Math.imul(h, 0xc2b2ae35);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+
+const GRAD = new Float32Array([
+   1, 0,  -1, 0,   0, 1,   0,-1,
+   0.70710678, 0.70710678,  -0.70710678, 0.70710678,
+   0.70710678,-0.70710678,  -0.70710678,-0.70710678
+]);
+
+function gdot(ix, iy, dx, dy, s) {
+  const k = (hash2i(ix, iy, s) * 8) | 0;
+  return GRAD[k * 2] * dx + GRAD[k * 2 + 1] * dy;
+}
+
+function noise2(x, y, s) {
+  const xi = Math.floor(x), yi = Math.floor(y);
+  const xf = x - xi,         yf = y - yi;
+  const u = xf * xf * xf * (xf * (xf * 6 - 15) + 10);
+  const v = yf * yf * yf * (yf * (yf * 6 - 15) + 10);
+  const n00 = gdot(xi,     yi,     xf,     yf,     s);
+  const n10 = gdot(xi + 1, yi,     xf - 1, yf,     s);
+  const n01 = gdot(xi,     yi + 1, xf,     yf - 1, s);
+  const n11 = gdot(xi + 1, yi + 1, xf - 1, yf - 1, s);
+  const nx0 = n00 + u * (n10 - n00);
+  const nx1 = n01 + u * (n11 - n01);
+  return (nx0 + v * (nx1 - nx0)) * 1.41421356;  // ≈ [-1,1]
+}
+
+function fbm(x, y, oct, seed) {
+  let amp = 1, freq = 1, sum = 0, norm = 0;
+  for (let i = 0; i < oct; i++) {
+    sum  += amp * noise2(x * freq, y * freq, seed + i * 1013);
+    norm += amp;
+    amp  *= 0.5;
+    freq *= 2.0;
+  }
+  return sum / norm;
+}
+
+function ridged(x, y, oct, seed, power = 2.0) {
+  let amp = 1, freq = 1, sum = 0, norm = 0;
+  for (let i = 0; i < oct; i++) {
+    let n = noise2(x * freq, y * freq, seed + i * 2113);
+    n = 1 - Math.abs(n);
+    n = Math.pow(n, power);           // ← 关键
+    sum  += amp * n;
+    norm += amp;
+    amp  *= 0.5;
+    freq *= 2.0;
+  }
+  return sum / norm;
+}
+function smoothstep(a, b, x) {
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+}
+
+/* ==================================================================
+   2. 高度场构造：域扭曲 → 大陆掩膜 → 地貌加权混合 → 细节
+   ================================================================== */
+
+function rawHeight(wx, wz) {
+  /* --- 域扭曲：频率乘 F，位移量固定 --- */
+  const w1 = fbm(wx * 0.0055 * F,        wz * 0.0055 * F,        3, SEED + 11);
+  const w2 = fbm(wx * 0.0055 * F + 37.7, wz * 0.0055 * F + 21.3, 3, SEED + 22);
+  const px = wx + w1 * 55;
+  const pz = wz + w2 * 55;
+
+  /* --- 大陆掩膜 --- */
+  const contN = fbm(px * 0.003 * F, pz * 0.003 * F, 4, SEED + 33);
+  let landMask = smoothstep(-0.28, 0.04, contN);
+  const edge = Math.min(wx, wz, WORLD - 1 - wx, WORLD - 1 - wz);
+  landMask *= smoothstep(0, 24, edge);
+
+  /* --- 山脉带掩膜 --- */
+  const rangeRaw  = fbm(px * 0.0018 * F, pz * 0.0018 * F, 3, SEED + 700);
+  const rangeMask = smoothstep(-0.10, 0.30, rangeRaw);
+
+  /* --- 地貌权重 --- */
+  const reliefN = fbm(px * 0.008 * F,       pz * 0.008 * F,       4, SEED + 44);
+  const beltN   = fbm(px * 0.005 * F + 4.3, pz * 0.005 * F + 2.9, 3, SEED + 55);
+  const relief  = 0.5 + 1.2 * reliefN;
+  const belt    = 0.5 + 1.2 * beltN;
+
+  // 山地 = relief 高 AND 落在山脉带里
+  const mW = smoothstep(0.52, 0.85, relief) * (0.15 + 0.85 * rangeMask);
+  const pW = smoothstep(0.55, 0.85, belt) * (1 - mW);
+  const hW = smoothstep(0.35, 0.62, relief) * (1 - mW) * (1 - pW);
+  const bW = smoothstep(0.42, 0.18, belt) * (1 - mW) * (1 - pW) * (1 - hW);
+  const lW = Math.max(0, 1 - mW - pW - hW - bW);
+  const ws = mW + pW + hW + bW + lW || 1;
+
+  /* --- 山地高度：三层 ridged 叠加，不乘 rangeAmp --- */
+  const skeleton  = ridged(px * 0.0038 * F, pz * 0.0038 * F, 4, SEED + 66, 2.2);
+  const secondary = ridged(px * 0.011  * F, pz * 0.011  * F, 3, SEED + 67, 2.0);
+  const detail    = ridged(px * 0.032  * F, pz * 0.032  * F, 3, SEED + 68, 2.6);
+  const ridgeSum  = skeleton * 0.65 + secondary * 0.25 + detail * 0.10;
+  const hMtn      = 30 + 90 * ridgeSum;
+
+  const hPlat  = 42 +  5 * fbm(px * 0.018 * F, pz * 0.018 * F, 3, SEED + 77);
+  const hHills = 30 +  7 * fbm(px * 0.019 * F, pz * 0.019 * F, 4, SEED + 88);
+  const hBasin = 22 -  6 * (fbm(px * 0.010 * F, pz * 0.010 * F, 3, SEED + 99) * 0.5 + 0.5);
+  const hPlain = 27 +  3 * fbm(px * 0.028 * F, pz * 0.028 * F, 3, SEED + 111);
+
+  let hLand = (mW * hMtn + pW * hPlat + hW * hHills + bW * hBasin + lW * hPlain) / ws;
+  hLand += 1.5 * fbm(px * 0.09 * F, pz * 0.09 * F, 2, SEED + 122);
+
+  /* --- 海底 --- */
+  const oceanN = fbm(px * 0.008 * F, pz * 0.008 * F, 4, SEED + 133) * 0.5 + 0.5;
+  const hOcean = SEA - 8 - 22 * oceanN;
+
+  const h = hOcean + (hLand - hOcean) * landMask;
+  return Math.max(1, Math.min(MAXH - 2, h));
+}
+/* ==================================================================
+   3. 热力侵蚀（不需要流向，纯局部操作 O(N)）
+   ================================================================== */
+
+let HEIGHTS = null;
+function thermalErode(iters, talus, rate) {
+  const W = WORLD;
+  const buf = new Float32Array(HEIGHTS);
+  const ox = [-1, 1, 0, 0, -1, 1, -1, 1];
+  const oz = [ 0, 0,-1, 1, -1,-1,  1, 1];
+  const ex = new Float32Array(8);   // ← 复用，避免每次分配
+
+  for (let it = 0; it < iters; it++) {
+    buf.set(HEIGHTS);
+    for (let z = 1; z < W - 1; z++) {
+      const row = z * W;
+      for (let x = 1; x < W - 1; x++) {
+        const i = row + x;
+        const h = HEIGHTS[i];
+        if (h < talus + 1) continue;
+
+        let sumExcess = 0;
+        for (let k = 0; k < 8; k++) {
+          const dh = h - HEIGHTS[i + ox[k] + oz[k] * W];
+          if (dh > talus) { ex[k] = dh - talus; sumExcess += ex[k]; }
+          else ex[k] = 0;
+        }
+        if (sumExcess < 1e-4) continue;
+
+        const totalMove = Math.min(sumExcess * rate, h * 0.5);
+        const inv = totalMove / sumExcess;
+
+        buf[i] -= totalMove;
+        for (let k = 0; k < 8; k++) {
+          if (ex[k] > 0) buf[i + ox[k] + oz[k] * W] += ex[k] * inv;
+        }
+      }
+    }
+    HEIGHTS.set(buf);
+  }
+}
+/* ==================================================================
+   4. 高度采样 & 着色
+   ================================================================== */
+
+function hAt(x, z) {
+  let ix = Math.round(x), iz = Math.round(z);
+  if (ix < 0) ix = 0; else if (ix >= WORLD) ix = WORLD - 1;
+  if (iz < 0) iz = 0; else if (iz >= WORLD) iz = WORLD - 1;
+  const v = HEIGHTS[iz * WORLD + ix];
+  return Number.isFinite(v) ? v : 1;
+}
+
+function slopeAt(x, z) {
+  const xm = x > 0 ? x - 1 : x, xp = x < WORLD - 1 ? x + 1 : x;
+  const zm = z > 0 ? z - 1 : z, zp = z < WORLD - 1 ? z + 1 : z;
+  const dx = hAt(xp, z) - hAt(xm, z);
+  const dz = hAt(x, zp) - hAt(x, zm);
+  return Math.sqrt(dx * dx + dz * dz) * 0.5;
+}
+
+/* --- 颜色 LUT：深海 → 浅海 → 沙滩 → 草地 → 森林 → 岩石 → 雪线 --- */
+const toLin = c => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+function lin(hex) {
+  return [
+    toLin(((hex >> 16) & 255) / 255),
+    toLin(((hex >>  8) & 255) / 255),
+    toLin(( hex        & 255) / 255)
+  ];
+}
+
+const C_DEEP   = lin(0x25384a);
+const C_SAND   = lin(0xa89a72);
+const C_BEACH  = lin(0xd9cba0);
+const C_GRASS  = lin(0x5b8a3c);
+const C_FOREST = lin(0x3f6b30);
+const C_ROCK   = lin(0x77736b);
+const C_SNOW   = lin(0xeef2f7);
+const C_GRASS_LOW  = lin(0x7ba845);   // 低地鲜绿
+const C_GRASS_HIGH = lin(0x4a7330);   // 高地深绿
+const C_DRYGRASS   = lin(0x9aa557);   // 干旱草
+const C_ROCK_LIGHT = lin(0x8a857b);
+const C_ROCK_DARK  = lin(0x5c5953);
+
+function mix3(a, b, t) {
+  const u = 1 - t;
+  return [a[0]*u + b[0]*t, a[1]*u + b[1]*t, a[2]*u + b[2]*t];
+}
+
+
+function colorAt(x, z, h, slope) {
+  const dh = h - SEA;
+  let c;
+
+  if (dh <= -12)      c = C_DEEP;
+  else if (dh <= -2)  c = C_SAND;
+  else if (dh <=  1)  c = C_BEACH;
+  else if (dh <= 58) {
+    if      (dh <= 14) c = mix3(C_GRASS_LOW, C_GRASS_HIGH, smoothstep(2, 14, dh));
+    else if (dh <= 28) c = mix3(C_GRASS_HIGH, C_FOREST,     smoothstep(14, 28, dh));
+    else if (dh <= 46) c = mix3(C_FOREST,     C_ROCK,       smoothstep(28, 46, dh));
+    else               c = mix3(C_ROCK,       C_SNOW,       smoothstep(46, 58, dh));
+
+    // 湿度扰动：频率乘 F，让大尺度下色块也一起放大
+    const moist = fbm(x * 0.018 * F, z * 0.018 * F, 3, SEED + 777) * 0.5 + 0.5;
+    c = mix3(C_DRYGRASS, c, smoothstep(0.2, 0.8, moist));
+  } else {
+    c = C_SNOW;
+  }
+
+  // 陡坡露岩：雪线以下才生效
+  if (slope > 5.5 && dh > 0 && dh < 58) {
+    const t = Math.min(1, (slope - 5.5) / 4.5);
+    c = mix3(c, C_ROCK_LIGHT, t * 0.85);
+  }
+
+  const v = (hash2i(x, z, SEED + 999) - 0.5) * 0.14;
+  return [Math.max(0, c[0] + v), Math.max(0, c[1] + v), Math.max(0, c[2] + v)];
+}
+/* --- 面光照（把 Lambert 烘焙进顶点色）--- */
+const LIGHT = { top: 0.95, px: 0.46, nx: 0.68, pz: 0.60, nz: 0.44 };
+
+/* ==================================================================
+   5. 区块几何构建
+   ================================================================== */
+
+function buildTerrainChunk(cx, cz) {
+  const pos = [], col = [], idx = [];
+  let vcount = 0;
+  const x0 = cx * CHUNK, z0 = cz * CHUNK;
+
+  function quad(a, b, c, d, light, r, g, bl) {
+    const base = vcount;
+    pos.push(a[0],a[1],a[2], b[0],b[1],b[2], c[0],c[1],c[2], d[0],d[1],d[2]);
+    const lr = r * light, lg = g * light, lb = bl * light;
+    col.push(lr,lg,lb, lr,lg,lb, lr,lg,lb, lr,lg,lb);
+    idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+    vcount += 4;
+  }
+
+  for (let lz = 0; lz < CHUNK; lz++) {
+    for (let lx = 0; lx < CHUNK; lx++) {
+      const wx = x0 + lx, wz = z0 + lz;
+      const h  = Math.round(hAt(wx, wz));
+      const c  = colorAt(wx, wz, h, slopeAt(wx, wz));
+      const r = c[0], g = c[1], b = c[2];
+
+      // 顶面
+      quad([wx,h,wz], [wx,h,wz+1], [wx+1,h,wz+1], [wx+1,h,wz], LIGHT.top, r,g,b);
+
+      // +X
+      let nh = Math.round(hAt(wx + 1, wz));
+      if (nh < h) quad([wx+1,h,wz], [wx+1,h,wz+1], [wx+1,nh,wz+1], [wx+1,nh,wz], LIGHT.px, r,g,b);
+      // -X
+      nh = Math.round(hAt(wx - 1, wz));
+      if (nh < h) quad([wx,h,wz+1], [wx,h,wz], [wx,nh,wz], [wx,nh,wz+1], LIGHT.nx, r,g,b);
+      // +Z
+      nh = Math.round(hAt(wx, wz + 1));
+      if (nh < h) quad([wx+1,h,wz+1], [wx,h,wz+1], [wx,nh,wz+1], [wx+1,nh,wz+1], LIGHT.pz, r,g,b);
+      // -Z
+      nh = Math.round(hAt(wx, wz - 1));
+      if (nh < h) quad([wx,h,wz], [wx+1,h,wz], [wx+1,nh,wz], [wx,nh,wz], LIGHT.nz, r,g,b);
+    }
+  }
+
+  if (vcount === 0) return null;
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color',    new THREE.Float32BufferAttribute(col, 3));
+  geo.setIndex(new THREE.Uint16BufferAttribute(idx, 1));
+  geo.computeBoundingSphere();
+  return geo;
+}
+
+function buildWaterChunk(cx, cz) {
+  const pos = [], idx = [];
+  let vcount = 0;
+  const x0 = cx * CHUNK, z0 = cz * CHUNK;
+  const y = SEA + 0.03;
+
+  for (let lz = 0; lz < CHUNK; lz++) {
+    for (let lx = 0; lx < CHUNK; lx++) {
+      const wx = x0 + lx, wz = z0 + lz;
+      if (hAt(wx, wz) >= SEA) continue;
+      const base = vcount;
+      pos.push(wx,y,wz,  wx,y,wz+1,  wx+1,y,wz+1,  wx+1,y,wz);
+      idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+      vcount += 4;
+    }
+  }
+
+  if (vcount === 0) return null;
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex(new THREE.Uint16BufferAttribute(idx, 1));
+  geo.computeBoundingSphere();
+  return geo;
+}
+
+/* ==================================================================
+   6. three.js 场景
+   ================================================================== */
+
+const SKY = 0x9fc4e8;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(SKY);
+
+// 雾和远平面随 F 缩放
+scene.fog = new THREE.Fog(SKY, 250 * F, 1100 * F);
+
+const BASE_FOV = 72;
+const camera = new THREE.PerspectiveCamera(
+  BASE_FOV, window.innerWidth / window.innerHeight, 0.1,
+  Math.max(2000, 4000 * F)
+);
+camera.rotation.order = 'YXZ';
+
+const terrainMat = new THREE.MeshBasicMaterial({ vertexColors: true });
+const waterMat = new THREE.MeshBasicMaterial({
+  color: 0x2f6f9e, transparent: true, opacity: 0.72, depthWrite: false
+});
+/* ==================================================================
+   7. 加载流程
+   ================================================================== */
+
+const overlay   = document.getElementById('overlay');
+const statusEl  = document.getElementById('status');
+const barEl     = document.querySelector('#bar > i');
+const hudEl     = document.getElementById('hud');
+const hintEl    = document.getElementById('hint');
+
+const setStatus   = t => { statusEl.textContent = t; };
+const setProgress = p => { barEl.style.width = (p * 100).toFixed(1) + '%'; };
+const yieldTask   = () => new Promise(r => setTimeout(r, 0));
+
+async function buildWorld() {
+  const terrainGroup = new THREE.Group();
+  const waterGroup   = new THREE.Group();
+  scene.add(terrainGroup, waterGroup);
+
+  const total = NCHUNK * NCHUNK;
+  let done = 0;
+
+  for (let cz = 0; cz < NCHUNK; cz++) {
+    for (let cx = 0; cx < NCHUNK; cx++) {
+      const tg = buildTerrainChunk(cx, cz);
+      if (tg) {
+        const m = new THREE.Mesh(tg, terrainMat);
+        m.matrixAutoUpdate = false;
+        terrainGroup.add(m);
+      }
+      const wg = buildWaterChunk(cx, cz);
+      if (wg) {
+        const m = new THREE.Mesh(wg, waterMat);
+        m.matrixAutoUpdate = false;
+        waterGroup.add(m);
+      }
+      done++;
+      if (done % 12 === 0) {
+        setProgress(0.6 + 0.4 * (done / total));
+        await yieldTask();
+      }
+    }
+  }
+  setProgress(1);
+}
+async function boot() {
+  console.log(`世界尺度 SCALE = ${SCALE}（F = ${F.toFixed(3)}）`);
+  console.log(`世界尺寸 WORLD = ${WORLD}，区块数 = ${NCHUNK * NCHUNK}`);
+
+  /* 1) 高度场（按行分帧） */
+  setStatus(`构造高度场 (SCALE=${SCALE})…`);
+  await yieldTask();
+  HEIGHTS = new Float32Array(WORLD * WORLD);
+  for (let z = 0; z < WORLD; z++) {
+    for (let x = 0; x < WORLD; x++) {
+      HEIGHTS[z * WORLD + x] = rawHeight(x, z);
+    }
+    if ((z & 15) === 0) {
+      setProgress((z / WORLD) * 0.4);
+      await yieldTask();
+    }
+  }
+
+  /* 峰值诊断 */
+  let maxBefore = 0, argmax = -1;
+  for (let i = 0; i < HEIGHTS.length; i++) {
+    if (HEIGHTS[i] > maxBefore) { maxBefore = HEIGHTS[i]; argmax = i; }
+  }
+  console.log(`rawHeight 峰值 ${maxBefore.toFixed(2)} @ (${argmax % WORLD}, ${Math.floor(argmax / WORLD)})`);
+
+  /* 2) 热力侵蚀 */
+  setStatus('热力侵蚀…');
+  await yieldTask();
+  thermalErode(5, 2, 0.06);
+
+  /* 直方图 */
+  const bins = new Int32Array(10);
+  for (let i = 0; i < HEIGHTS.length; i++) {
+    const b = Math.min(9, Math.floor(HEIGHTS[i] / (MAXH / 10)));
+    bins[b]++;
+  }
+  console.log('高度直方图:', Array.from(bins));
+
+  /* 陆地占比 */
+  let landCount = 0;
+  for (let i = 0; i < HEIGHTS.length; i++) if (HEIGHTS[i] > SEA) landCount++;
+  console.log('陆地占比', (landCount / HEIGHTS.length).toFixed(3));
+
+  /* 侵蚀后清洗 */
+  for (let i = 0; i < HEIGHTS.length; i++) {
+    let v = HEIGHTS[i];
+    if (!Number.isFinite(v)) { HEIGHTS[i] = 1; continue; }
+    if (v < 1)          HEIGHTS[i] = 1;
+    else if (v > MAXH)  HEIGHTS[i] = MAXH;
+  }
+
+  /* 3) 构建网格 */
+  setStatus('构建体素网格…');
+  await yieldTask();
+  await buildWorld();
+
+  /* 4) 就绪 */
+  setStatus('完成');
+  overlay.style.opacity = '0';
+  setTimeout(() => overlay.remove(), 520);
+
+  camera.position.set(WORLD * 0.5, Math.min(MAXH + 40, 120), WORLD * 0.78);
+  yaw = 0;
+  pitch = -0.30;
+
+  animate();
+}
+
+/* ==================================================================
+   8. 相机控制
+   ================================================================== */
+let yaw = 0, pitch = 0;
+let fovZoom = 1.0;                    // 滚轮缩放系数
+const keys = Object.create(null);
+
+renderer.domElement.addEventListener('click', () => {
+  if (document.pointerLockElement === renderer.domElement) return;
+  try { renderer.domElement.requestPointerLock(); } catch (e) {}
+});
+
+document.addEventListener('pointerlockchange', () => {
+  const locked = document.pointerLockElement === renderer.domElement;
+  hintEl.style.opacity = locked ? '0' : '0.85';
+});
+
+document.addEventListener('mousemove', e => {
+  if (document.pointerLockElement !== renderer.domElement) return;
+  yaw   -= e.movementX * 0.0022;
+  pitch -= e.movementY * 0.0022;
+  const lim = Math.PI / 2 - 0.02;
+  pitch = Math.max(-lim, Math.min(lim, pitch));
+});
+
+/* 滚轮缩放：改 FOV */
+addEventListener('wheel', e => {
+  fovZoom = Math.max(0.25, Math.min(4.0, fovZoom * (1 - e.deltaY * 0.0012)));
+  camera.fov = BASE_FOV / fovZoom;
+  camera.updateProjectionMatrix();
+}, { passive: true });
+
+document.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.code === 'Space') e.preventDefault();
+});
+document.addEventListener('keyup', e => { keys[e.code] = false; });
+/* ==================================================================
+   9. 渲染循环
+   ================================================================== */
+
+const clock = new THREE.Clock();
+let frames = 0, fpsTimer = 0, fps = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  const dt = Math.min(clock.getDelta(), 0.1);
+
+  // ---- 相机朝向 ----
+  camera.rotation.set(pitch, yaw, 0);
+
+  // ---- 移动 ----
+  const boost = keys['ShiftLeft'] || keys['ShiftRight'] ? 3.2 : 1;
+  const speed = 22 * boost * dt;
+
+  const fx = -Math.sin(yaw), fz = -Math.cos(yaw);   // 前
+  const rx =  Math.cos(yaw), rz = -Math.sin(yaw);   // 右
+
+  let mx = 0, my = 0, mz = 0;
+  if (keys['KeyW']) { mx += fx; mz += fz; }
+  if (keys['KeyS']) { mx -= fx; mz -= fz; }
+  if (keys['KeyD']) { mx += rx; mz += rz; }
+  if (keys['KeyA']) { mx -= rx; mz -= rz; }
+  if (keys['Space'])       my += 1;
+  if (keys['ControlLeft'] || keys['KeyC']) my -= 1;
+
+  const len = Math.hypot(mx, mz);
+  if (len > 0) { mx /= len; mz /= len; }
+
+  camera.position.x += mx * speed;
+  camera.position.z += mz * speed;
+  camera.position.y += my * speed;
+
+  // 别掉到地下
+  const gh = hAt(camera.position.x | 0, camera.position.z | 0);
+  if (camera.position.y < gh + 1.8) camera.position.y = gh + 1.8;
+  if (camera.position.y > MAXH + 60) camera.position.y = MAXH + 60;
+
+  renderer.render(scene, camera);
+
+  // ---- HUD ----
+  frames++;
+  fpsTimer += dt;
+  if (fpsTimer >= 0.5) {
+    fps = Math.round(frames / fpsTimer);
+    frames = 0;
+    fpsTimer = 0;
+hudEl.textContent =
+  `FPS  ${fps}   SCALE=${SCALE}\n` +
+  `XYZ  ${camera.position.x.toFixed(1)}, ${camera.position.y.toFixed(1)}, ${camera.position.z.toFixed(1)}\n` +
+  `三角 ${renderer.info.render.triangles.toLocaleString()}\n` +
+  `区块 ${NCHUNK}×${NCHUNK}  海平面 y=${SEA}`;
+  }
+}
+
+/* ==================================================================
+   10. 窗口缩放
+   ================================================================== */
+
+addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+/* ---- 启动 ---- */
+boot();
+</script>
+</body>
+</html>

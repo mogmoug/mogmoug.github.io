@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voxel World — 体素世界</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #8ec5f0; }
+  canvas { display: block; }
+
+  #crosshair {
+    position: fixed; left: 50%; top: 50%;
+    width: 20px; height: 20px; margin: -10px 0 0 -10px;
+    pointer-events: none; z-index: 10; opacity: .85;
+  }
+  #crosshair::before, #crosshair::after {
+    content: ''; position: absolute; background: #fff;
+    box-shadow: 0 0 2px rgba(0,0,0,.8);
+  }
+  #crosshair::before { left: 9px; top: 0; width: 2px; height: 20px; }
+  #crosshair::after  { top: 9px; left: 0; height: 2px; width: 20px; }
+
+  #debug {
+    position: fixed; left: 10px; top: 10px; z-index: 20;
+    font: 12px/1.55 'SF Mono', Consolas, Monaco, monospace;
+    color: #eaf6ff; background: rgba(6, 18, 32, .72);
+    padding: 10px 14px; border-radius: 6px;
+    white-space: pre; pointer-events: none;
+    border: 1px solid rgba(120, 200, 255, .25);
+    text-shadow: 0 1px 2px rgba(0,0,0,.9);
+    display: none;
+    max-width: 60vw;
+  }
+
+  #overlay {
+    position: fixed; inset: 0; z-index: 30;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 50% 40%, rgba(20,40,70,.55), rgba(5,12,22,.88));
+    color: #eaf6ff; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    backdrop-filter: blur(3px); cursor: pointer; user-select: none;
+  }
+  #overlay h1 { font-size: 42px; letter-spacing: 4px; margin-bottom: 6px; font-weight: 800;
+                text-shadow: 0 4px 22px rgba(90,180,255,.6); }
+  #overlay .sub { opacity: .65; margin-bottom: 26px; font-size: 14px; letter-spacing: 2px; }
+  #overlay .keys { font-size: 13px; line-height: 2; opacity: .82; text-align: left;
+                   background: rgba(0,0,0,.28); padding: 16px 26px; border-radius: 10px;
+                   border: 1px solid rgba(120,200,255,.18); }
+  #overlay .keys b { color: #7fd4ff; display: inline-block; min-width: 90px; }
+  #overlay .start { margin-top: 26px; font-size: 15px; opacity: .9;
+                    animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: .45 } 50% { opacity: 1 } }
+</style>
+</head>
+<body>
+
+<div id="crosshair"></div>
+<pre id="debug"></pre>
+
+<div id="overlay">
+  <h1>VOXEL WORLD</h1>
+  <div class="sub">无限体素世界 · 噪声地形生成</div>
+  <div class="keys">
+    <div><b>W A S D</b> 移动</div>
+    <div><b>鼠标</b> 环视</div>
+    <div><b>空格</b> 跳跃 / 上升</div>
+    <div><b>Shift</b> 疾跑 / 飞行下降</div>
+    <div><b>F</b> 切换飞行模式</div>
+    <div><b>F3</b> 调试信息</div>
+    <div><b>ESC</b> 释放鼠标</div>
+  </div>
+  <div class="start">点击任意位置开始游戏</div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* =========================================================
+   0. 常量
+   ========================================================= */
+const CHUNK_SIZE  = 16;
+const CHUNK_AREA  = CHUNK_SIZE * CHUNK_SIZE;
+const WORLD_HEIGHT = 64;
+const SEA_LEVEL   = 20;
+const RENDER_DIST = 8;          // 区块半径
+const EYE_HEIGHT  = 1.62;
+const SEED        = (Math.random() * 1e6) | 0;
+
+/* =========================================================
+   1. 噪声工具
+   ========================================================= */
+function hash2i(x, y, s) {
+  let h = Math.imul(x | 0, 374761393) ^ Math.imul(y | 0, 668265263) ^ Math.imul(s | 0, 1274126177);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+function hash3i(x, y, z, s) {
+  let h = Math.imul(x | 0, 374761393) ^ Math.imul(y | 0, 1103515245) ^
+          Math.imul(z | 0, 668265263) ^ Math.imul(s | 0, 1274126177);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+
+function valueNoise2D(x, y, s) {
+  const x0 = Math.floor(x), y0 = Math.floor(y);
+  const fx = x - x0, fy = y - y0;
+  const ux = fx * fx * (3 - 2 * fx);
+  const uy = fy * fy * (3 - 2 * fy);
+  const a = hash2i(x0, y0, s);
+  const b = hash2i(x0 + 1, y0, s);
+  const c = hash2i(x0, y0 + 1, s);
+  const d = hash2i(x0 + 1, y0 + 1, s);
+  const ab = a + (b - a) * ux;
+  const cd = c + (d - c) * ux;
+  return ab + (cd - ab) * uy;
+}
+
+function fbm2D(x, y, s, oct, lac = 2, gain = 0.5) {
+  let amp = 1, freq = 1, sum = 0, norm = 0;
+  for (let i = 0; i < oct; i++) {
+    sum += amp * valueNoise2D(x * freq, y * freq, s + i * 1013);
+    norm += amp;
+    amp *= gain;
+    freq *= lac;
+  }
+  return sum / norm;
+}
+
+/* =========================================================
+   2. 方块定义（26 种）
+   ========================================================= */
+const ID = {
+  AIR: 0,
+  STONE: 1, GRASS: 2, DIRT: 3, COBBLE: 4, PLANKS: 5,
+  SAND: 6, GRAVEL: 7, GOLD_BLOCK: 8, IRON_BLOCK: 9,
+  COAL_ORE: 10, IRON_ORE: 11, GOLD_ORE: 12, DIAMOND_ORE: 13,
+  LOG: 14, LEAVES: 15, WATER: 16, SNOW: 17, ICE: 18,
+  CACTUS: 19, PUMPKIN: 20, OBSIDIAN: 21, BRICK: 22,
+  GLASS: 23, BEDROCK: 24, MOSSY: 25, SANDSTONE: 26
+};
+
+const BLOCKS = [
+  null,
+  { n: '石头',     c: '#8b8b8b', s: 'plain',   j: 0.10 },
+  { n: '草方块',   c: '#63a83a', s: 'grass',   j: 0.14 },
+  { n: '泥土',     c: '#8b5a2b', s: 'plain',   j: 0.12 },
+  { n: '圆石',     c: '#7d7d7d', s: 'cobble',  j: 0.16 },
+  { n: '木板',     c: '#b3853f', s: 'planks',  j: 0.10 },
+  { n: '沙子',     c: '#e3d6a0', s: 'plain',   j: 0.08 },
+  { n: '沙砾',     c: '#9a9490', s: 'cobble',  j: 0.20 },
+  { n: '金块',     c: '#f2cf3a', s: 'plain',   j: 0.06 },
+  { n: '铁块',     c: '#d8d8d8', s: 'plain',   j: 0.05 },
+  { n: '煤矿石',   c: '#8b8b8b', s: 'ore',     j: 0.10, spot: '#252525' },
+  { n: '铁矿石',   c: '#8b8b8b', s: 'ore',     j: 0.10, spot: '#c9955f' },
+  { n: '金矿石',   c: '#8b8b8b', s: 'ore',     j: 0.10, spot: '#f0c419' },
+  { n: '钻石矿石', c: '#8b8b8b', s: 'ore',     j: 0.10, spot: '#4ff0e0' },
+  { n: '原木',     c: '#6b4a24', s: 'log',     j: 0.10 },
+  { n: '树叶',     c: '#3d8c2c', s: 'leaves',  j: 0.22 },
+  { n: '水',       c: '#3f76d8', s: 'plain',   j: 0.06 },
+  { n: '雪块',     c: '#f2f7ff', s: 'plain',   j: 0.04 },
+  { n: '冰',       c: '#a9d9f2', s: 'plain',   j: 0.06 },
+  { n: '仙人掌',   c: '#3f8f3f', s: 'cactus',  j: 0.10 },
+  { n: '南瓜',     c: '#dd8617', s: 'pumpkin', j: 0.10 },
+  { n: '黑曜石',   c: '#1b1130', s: 'plain',   j: 0.15 },
+  { n: '砖块',     c: '#a4503c', s: 'brick',   j: 0.10 },
+  { n: '玻璃',     c: '#cfe6f2', s: 'glass',   j: 0.05 },
+  { n: '基岩',     c: '#4a4a4a', s: 'cobble',  j: 0.25 },
+  { n: '苔石',     c: '#6d7f5a', s: 'cobble',  j: 0.18 },
+  { n: '砂岩',     c: '#dbcd97', s: 'layered', j: 0.08 }
+];
+
+function isSolid(id) { return id !== 0 && id !== ID.WATER; }
+
+/* =========================================================
+   3. 程序化纹理图集
+   ========================================================= */
+const TILE_PX = 32;
+const ATLAS_COLS = 8;
+const ATLAS_ROWS = 4;
+
+function drawTile(ctx, ox, oy, block) {
+  const PX = 2;
+  const N = TILE_PX / PX;   // 16 虚拟像素
+  const base = new THREE.Color(block.c);
+  const j = block.j ?? 0.1;
+
+  const put = (x, y, col, w = 1, h = 1) => {
+    ctx.fillStyle = col;
+    ctx.fillRect(ox + x * PX, oy + y * PX, w * PX, h * PX);
+  };
+  const shade = (c, amt) => {
+    const cc = c.clone();
+    cc.offsetHSL(0, 0, amt);
+    return '#' + cc.getHexString();
+  };
+  const R = (n) => Math.floor(Math.random() * n);
+
+  // 基础随机噪点
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      put(x, y, shade(base, (Math.random() - 0.5) * j));
+    }
+  }
+
+  switch (block.s) {
+    case 'cobble':
+      for (let i = 0; i < 16; i++) {
+        put(R(N - 2), R(N - 2), shade(base, -0.16 - Math.random() * 0.14), 1 + R(2), 1 + R(2));
+      }
+      break;
+    case 'ore': {
+      const spot = new THREE.Color(block.spot);
+      for (let i = 0; i < 7; i++) {
+        put(R(N - 2), R(N - 2), shade(spot, (Math.random() - 0.5) * 0.18), 1 + R(2), 1 + R(2));
+      }
+      break;
+    }
+    case 'planks':
+      for (let y = 3; y < N; y += 4) for (let x = 0; x < N; x++) put(x, y, shade(base, -0.22));
+      for (let y = 0; y < N; y += 4) {
+        const off = R(N);
+        put(off, y, shade(base, -0.22), 1, 1);
+        put((off + 1) % N, y, shade(base, -0.22), 1, 1);
+      }
+      break;
+    case 'log':
+      for (let x = 0; x < N; x++) if (x % 3 === 0)
+        for (let y = 0; y < N; y++) put(x, y, shade(base, -0.16));
+      break;
+    case 'leaves':
+      for (let i = 0; i < 44; i++) put(R(N), R(N), shade(base, -0.22 + Math.random() * 0.28));
+      break;
+    case 'grass':
+      for (let i = 0; i < 34; i++) put(R(N), R(N), shade(base, -0.13 + Math.random() * 0.22));
+      break;
+    case 'brick':
+      for (let y = 0; y < N; y++) {
+        for (let x = 0; x < N; x++) {
+          const row = Math.floor(y / 4);
+          const off = (row % 2) * 4;
+          if (y % 4 === 0 || (x + off) % 8 === 0) put(x, y, '#bfb6ac');
+        }
+      }
+      break;
+    case 'glass':
+      for (let i = 0; i < N; i++) { put(i, 0, '#9fc4d8'); put(i, N - 1, '#9fc4d8'); put(0, i, '#9fc4d8'); put(N - 1, i, '#9fc4d8'); }
+      put(3, 3, '#ffffff', 3, 1); put(3, 4, '#ffffff', 1, 2);
+      break;
+    case 'cactus':
+      for (let x = 0; x < N; x++) if (x % 5 === 2)
+        for (let y = 0; y < N; y++) put(x, y, shade(base, -0.18));
+      break;
+    case 'pumpkin':
+      for (let x = 0; x < N; x++) if (x % 4 === 1)
+        for (let y = 0; y < N; y++) put(x, y, shade(base, -0.16));
+      break;
+    case 'layered':
+      for (let y = 0; y < N; y++) if (y % 5 === 0)
+        for (let x = 0; x < N; x++) put(x, y, shade(base, -0.12));
+      break;
+  }
+}
+
+function buildAtlas() {
+  const canvas = document.createElement('canvas');
+  canvas.width = ATLAS_COLS * TILE_PX;
+  canvas.height = ATLAS_ROWS * TILE_PX;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  for (let id = 1; id < BLOCKS.length; id++) {
+    const idx = id - 1;
+    const ox = (idx % ATLAS_COLS) * TILE_PX;
+    const oy = Math.floor(idx / ATLAS_COLS) * TILE_PX;
+    drawTile(ctx, ox, oy, BLOCKS[id]);
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.NearestMipmapLinearFilter;
+  tex.generateMipmaps = true;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  return tex;
+}
+
+const ATLAS = buildAtlas();
+
+function tileUV(id, u, v) {
+  const idx = id - 1;
+  const col = idx % ATLAS_COLS;
+  const row = Math.floor(idx / ATLAS_COLS);
+  const du = 1 / ATLAS_COLS;
+  const dv = 1 / ATLAS_ROWS;
+  const padU = 0.5 / (ATLAS_COLS * TILE_PX);
+  const padV = 0.5 / (ATLAS_ROWS * TILE_PX);
+  const u0 = col * du + padU, u1 = (col + 1) * du - padU;
+  const v1 = 1 - row * dv - padV, v0 = 1 - (row + 1) * dv + padV;
+  return [u0 + u * (u1 - u0), v0 + v * (v1 - v0)];
+}
+
+/* =========================================================
+   4. 地形生成
+   ========================================================= */
+function terrainHeight(wx, wz) {
+  const cont   = fbm2D(wx * 0.0022, wz * 0.0022, SEED, 4);
+  const hills  = fbm2D(wx * 0.011,  wz * 0.011,  SEED + 555, 3);
+  const ridge0 = fbm2D(wx * 0.0055, wz * 0.0055, SEED + 777, 3);
+  const ridged = 1 - Math.abs(ridge0 * 2 - 1);
+  const mountain = Math.pow(Math.max(0, cont - 0.55) * 2.4, 2) * 34 * ridged * ridged;
+
+  let h = SEA_LEVEL + (cont - 0.45) * 44 + (hills - 0.5) * 7 + mountain;
+  return Math.max(1, Math.min(WORLD_HEIGHT - 10, Math.floor(h)));
+}
+
+function temperature(wx, wz) {
+  return fbm2D(wx * 0.0016, wz * 0.0016, SEED + 4242, 2);
+}
+
+function biomeAt(wx, wz) {
+  const h = terrainHeight(wx, wz);
+  const t = temperature(wx, wz);
+  if (h < SEA_LEVEL) return '海洋';
+  if (t < 0.36) return h > SEA_LEVEL + 14 ? '雪山' : '雪原';
+  if (t > 0.64) return '沙漠';
+  if (h > 38) return '山地';
+  return '平原';
+}
+
+function setVoxDirect(vox, lx, y, lz, id) {
+  if (lx < 0 || lx >= 16 || lz < 0 || lz >= 16) return;
+  if (y < 0 || y >= WORLD_HEIGHT) return;
+  vox[(y * CHUNK_SIZE + lz) * CHUNK_SIZE + lx] = id;
+}
+function setVoxIfAir(vox, lx, y, lz, id) {
+  if (lx < 0 || lx >= 16 || lz < 0 || lz >= 16) return;
+  if (y < 0 || y >= WORLD_HEIGHT) return;
+  const i = (y * CHUNK_SIZE + lz) * CHUNK_SIZE + lx;
+  if (vox[i] === 0) vox[i] = id;
+}
+
+function generateChunkData(cx, cz) {
+  const vox = new Uint8Array(CHUNK_AREA * WORLD_HEIGHT);
+  const bx = cx * CHUNK_SIZE, bz = cz * CHUNK_SIZE;
+
+  /* --- 地形柱 --- */
+  for (let lz = 0; lz < CHUNK_SIZE; lz++) {
+    for (let lx = 0; lx < CHUNK_SIZE; lx++) {
+      const wx = bx + lx, wz = bz + lz;
+      const h = terrainHeight(wx, wz);
+      const t = temperature(wx, wz);
+      const cold   = t < 0.36;
+      const desert = t > 0.64 && h > SEA_LEVEL + 1;
+
+      for (let y = 0; y <= h; y++) {
+        let id;
+        if (y === 0) {
+          id = ID.BEDROCK;
+        } else if (y < h - 3) {
+          id = ID.STONE;
+          if (y < 14 && hash3i(wx, y, wz, 11) < 0.0022)      id = ID.DIAMOND_ORE;
+          else if (y < 28 && hash3i(wx, y, wz, 12) < 0.0050) id = ID.GOLD_ORE;
+          else if (y < 46 && hash3i(wx, y, wz, 13) < 0.0120) id = ID.IRON_ORE;
+          else if (hash3i(wx, y, wz, 14) < 0.0160)           id = ID.COAL_ORE;
+        } else if (y < h) {
+          id = desert ? ID.SANDSTONE : ID.DIRT;
+        } else {
+          if (h <= SEA_LEVEL)          id = ID.SAND;
+          else if (desert)             id = ID.SAND;
+          else if (cold && h > SEA_LEVEL + 14) id = ID.SNOW;
+          else                         id = ID.GRASS;
+        }
+        vox[(y * CHUNK_SIZE + lz) * CHUNK_SIZE + lx] = id;
+      }
+
+      // 海洋 / 湖泊注水
+      for (let y = h + 1; y <= SEA_LEVEL; y++) {
+        vox[(y * CHUNK_SIZE + lz) * CHUNK_SIZE + lx] = ID.WATER;
+      }
+      // 寒冷区域水面结冰
+      if (cold && h < SEA_LEVEL) {
+        vox[(SEA_LEVEL * CHUNK_SIZE + lz) * CHUNK_SIZE + lx] = ID.ICE;
+      }
+    }
+  }
+
+  /* --- 植被（限制在区块内，避免跨界截断） --- */
+  for (let lz = 2; lz < CHUNK_SIZE - 2; lz++) {
+    for (let lx = 2; lx < CHUNK_SIZE - 2; lx++) {
+      const wx = bx + lx, wz = bz + lz;
+      const h = terrainHeight(wx, wz);
+      if (h <= SEA_LEVEL + 1) continue;
+      const t = temperature(wx, wz);
+
+      // 沙漠：仙人掌
+      if (t > 0.64) {
+        if (hash3i(wx, 0, wz, 31) < 0.005) {
+          const ch = 2 + Math.floor(hash3i(wx, 1, wz, 32) * 3);
+          for (let i = 1; i <= ch; i++) setVoxDirect(vox, lx, h + i, lz, ID.CACTUS);
+        }
+        continue;
+      }
+      // 雪原不长树
+      if (t < 0.36 && h > SEA_LEVEL + 14) continue;
+
+      // 普通树木
+      if (hash3i(wx, 0, wz, 21) < 0.009) {
+        const trunkH = 4 + Math.floor(hash3i(wx, 2, wz, 22) * 3);
+        const top = h + trunkH;
+        for (let i = 1; i <= trunkH; i++) setVoxDirect(vox, lx, h + i, lz, ID.LOG);
+
+        for (let dy = -2; dy <= 1; dy++) {
+          const y = top + dy;
+          const r = (dy <= -1) ? 2 : 1;
+          for (let dz = -r; dz <= r; dz++) {
+            for (let dx = -r; dx <= r; dx++) {
+              if (dx === 0 && dz === 0 && dy <= 0) continue;
+              if (r === 2 && Math.abs(dx) === 2 && Math.abs(dz) === 2 && dy === -2) continue;
+              setVoxIfAir(vox, lx + dx, y, lz + dz, ID.LEAVES);
+            }
+          }
+        }
+        setVoxIfAir(vox, lx, top + 2, lz, ID.LEAVES);
+      }
+    }
+  }
+
+  return vox;
+}
+
+/* =========================================================
+   5. 区块存储
+   ========================================================= */
+const chunks = new Map();
+
+function chunkKey(cx, cz) { return cx + ',' + cz; }
+
+function ensureChunkData(cx, cz) {
+  const k = chunkKey(cx, cz);
+  let c = chunks.get(k);
+  if (!c) {
+    c = {
+      cx, cz,
+      voxels: generateChunkData(cx, cz),
+      mesh: null,
+      waterMesh: null
+    };
+    chunks.set(k, c);
+  }
+  return c;
+}
+
+function getVoxel(x, y, z) {
+  if (y < 0) return ID.BEDROCK;
+  if (y >= WORLD_HEIGHT) return 0;
+  const cx = Math.floor(x / CHUNK_SIZE);
+  const cz = Math.floor(z / CHUNK_SIZE);
+  const c = ensureChunkData(cx, cz);
+  const lx = x - cx * CHUNK_SIZE;
+  const lz = z - cz * CHUNK_SIZE;
+  return c.voxels[(y * CHUNK_SIZE + lz) * CHUNK_SIZE + lx];
+}
+
+/* =========================================================
+   6. 网格构建
+   ========================================================= */
+const PAD = CHUNK_SIZE + 2;
+
+const FACES = [
+  { d: [ 1, 0, 0], s: 0.74, c: [[1,0,1],[1,0,0],[1,1,0],[1,1,1]], uv: [[0,0],[1,0],[1,1],[0,1]] },
+  { d: [-1, 0, 0], s: 0.74, c: [[0,0,0],[0,0,1],[0,1,1],[0,1,0]], uv: [[0,0],[1,0],[1,1],[0,1]] },
+  { d: [ 0, 1, 0], s: 1.00, c: [[0,1,1],[1,1,1],[1,1,0],[0,1,0]], uv: [[0,0],[1,0],[1,1],[0,1]] },
+  { d: [ 0,-1, 0], s: 0.50, c: [[0,0,0],[1,0,0],[1,0,1],[0,0,1]], uv: [[0,0],[1,0],[1,1],[0,1]] },
+  { d: [ 0, 0, 1], s: 0.88, c: [[0,0,1],[1,0,1],[1,1,1],[0,1,1]], uv: [[0,0],[1,0],[1,1],[0,1]] },
+  { d: [ 0, 0,-1], s: 0.88, c: [[1,0,0],[0,0,0],[0,1,0],[1,1,0]], uv: [[0,0],[1,0],[1,1],[0,1]] }
+];
+
+const blockMaterial = new THREE.MeshBasicMaterial({
+  map: ATLAS, vertexColors: true, fog: true
+});
+const waterMaterial = new THREE.MeshBasicMaterial({
+  map: ATLAS, vertexColors: true, fog: true,
+  transparent: true, opacity: 0.72,
+  depthWrite: false, side: THREE.DoubleSide
+});
+
+function disposeChunkMeshes(chunk) {
+  if (chunk.mesh) {
+    scene.remove(chunk.mesh);
+    chunk.mesh.geometry.dispose();
+    chunk.mesh = null;
+  }
+  if (chunk.waterMesh) {
+    scene.remove(chunk.waterMesh);
+    chunk.waterMesh.geometry.dispose();
+    chunk.waterMesh = null;
+  }
+}
+
+function buildChunkMesh(chunk) {
+  const cx = chunk.cx, cz = chunk.cz;
+  const bx = cx * CHUNK_SIZE, bz = cz * CHUNK_SIZE;
+
+  /* --- 构建带 1 格边界的体素缓存 --- */
+  const data = new Uint8Array(PAD * PAD * WORLD_HEIGHT);
+  for (let dx = -1; dx <= CHUNK_SIZE; dx++) {
+    for (let dz = -1; dz <= CHUNK_SIZE; dz++) {
+      const wx = bx + dx, wz = bz + dz;
+      const ncx = Math.floor(wx / CHUNK_SIZE);
+      const ncz = Math.floor(wz / CHUNK_SIZE);
+      const nc = ensureChunkData(ncx, ncz);
+      const lx = wx - ncx * CHUNK_SIZE;
+      const lz = wz - ncz * CHUNK_SIZE;
+      const dstBase = ((dx + 1) * PAD + (dz + 1)) * WORLD_HEIGHT;
+      const srcBase = lz * CHUNK_SIZE + lx;
+      for (let y = 0; y < WORLD_HEIGHT; y++) {
+        data[dstBase + y] = nc.voxels[y * CHUNK_AREA + srcBase];
+      }
+    }
+  }
+  const at = (x, y, z) => data[((x + 1) * PAD + (z + 1)) * WORLD_HEIGHT + y];
+
+  /* --- 收集面 --- */
+  const pos = [], uvs = [], cols = [], ind = [];
+  const wpos = [], wuvs = [], wcols = [], wind = [];
+  let vCount = 0, wCount = 0;
+
+  for (let y = 0; y < WORLD_HEIGHT; y++) {
+    for (let z = 0; z < CHUNK_SIZE; z++) {
+      for (let x = 0; x < CHUNK_SIZE; x++) {
+        const id = at(x, y, z);
+        if (id === 0) continue;
+
+        const water = (id === ID.WATER);
+        const P = water ? wpos : pos;
+        const U = water ? wuvs : uvs;
+        const C = water ? wcols : cols;
+        const I = water ? wind : ind;
+        let vc = water ? wCount : vCount;
+
+        const jitter = 0.93 + 0.14 * hash3i(bx + x, y, bz + z, 9127);
+
+        for (let fi = 0; fi < 6; fi++) {
+          const f = FACES[fi];
+          const ny = y + f.d[1];
+          let nb;
+          if (ny < 0) nb = ID.BEDROCK;
+          else if (ny >= WORLD_HEIGHT) nb = 0;
+          else nb = at(x + f.d[0], ny, z + f.d[2]);
+
+          if (water) {
+            if (nb !== 0) continue;              // 水只在与空气相邻时渲染
+          } else {
+            if (nb !== 0 && nb !== ID.WATER) continue;  // 实体面只在与空气/水相邻时渲染
+          }
+
+          const shade = f.s * jitter;
+          for (let k = 0; k < 4; k++) {
+            const cn = f.c[k];
+            P.push(x + cn[0], y + cn[1], z + cn[2]);
+            const uv = tileUV(id, f.uv[k][0], f.uv[k][1]);
+            U.push(uv[0], uv[1]);
+            C.push(shade, shade, shade);
+          }
+          I.push(vc, vc + 1, vc + 2, vc, vc + 2, vc + 3);
+          vc += 4;
+        }
+        if (water) wCount = vc; else vCount = vc;
+      }
+    }
+  }
+
+  /* --- 生成网格 --- */
+  disposeChunkMeshes(chunk);
+
+  if (pos.length) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+    g.setIndex(ind);
+    const m = new THREE.Mesh(g, blockMaterial);
+    m.position.set(bx, 0, bz);
+    m.matrixAutoUpdate = false;
+    m.updateMatrix();
+    scene.add(m);
+    chunk.mesh = m;
+  }
+
+  if (wpos.length) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(wpos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(wuvs, 2));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(wcols, 3));
+    g.setIndex(wind);
+    const m = new THREE.Mesh(g, waterMaterial);
+    m.position.set(bx, 0, bz);
+    m.renderOrder = 2;
+    m.matrixAutoUpdate = false;
+    m.updateMatrix();
+    scene.add(m);
+    chunk.waterMesh = m;
+  }
+}
+
+/* =========================================================
+   7. 场景 / 渲染器
+   ========================================================= */
+const SKY_COLOR = 0x8ec5f0;
+const FOG_NEAR = RENDER_DIST * 16 * 0.45;
+const FOG_FAR  = RENDER_DIST * 16 * 0.94;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(SKY_COLOR);
+scene.fog = new THREE.Fog(SKY_COLOR, FOG_NEAR, FOG_FAR);
+
+const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 600);
+camera.rotation.order = 'YXZ';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+/* =========================================================
+   8. 玩家
+   ========================================================= */
+const player = {
+  pos: new THREE.Vector3(0.5, 50, 0.5),
+  vel: new THREE.Vector3(),
+  yaw: 0,
+  pitch: 0,
+  onGround: false,
+  fly: false,
+  radius: 0.3,
+  height: 1.8
+};
+
+function findSpawn() {
+  for (let r = 0; r < 500; r += 8) {
+    const n = r === 0 ? 1 : 12;
+    for (let a = 0; a < n; a++) {
+      const ang = (a / n) * Math.PI * 2;
+      const x = Math.round(Math.cos(ang) * r);
+      const z = Math.round(Math.sin(ang) * r);
+      const h = terrainHeight(x, z);
+      if (h > SEA_LEVEL + 2 && h < 44) {
+        return new THREE.Vector3(x + 0.5, h + 2.5, z + 0.5);
+      }
+    }
+  }
+  return new THREE.Vector3(0.5, 50, 0.5);
+}
+player.pos.copy(findSpawn());
+
+/* ---- 碰撞 ---- */
+function collides() {
+  const p = player.pos, r = player.radius;
+  const x0 = Math.floor(p.x - r), x1 = Math.floor(p.x + r);
+  const y0 = Math.floor(p.y),     y1 = Math.floor(p.y + player.height);
+  const z0 = Math.floor(p.z - r), z1 = Math.floor(p.z + r);
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      for (let z = z0; z <= z1; z++) {
+        if (isSolid(getVoxel(x, y, z))) return true;
+      }
+    }
+  }
+  return false;
+}
+
+function moveWithCollision(dt) {
+  const p = player.pos, v = player.vel;
+  const dx = v.x * dt, dy = v.y * dt, dz = v.z * dt;
+  const maxC = Math.max(Math.abs(dx), Math.abs(dy), Math.abs(dz));
+  const steps = Math.max(1, Math.ceil(maxC / 0.2));
+  const sx = dx / steps, sy = dy / steps, sz = dz / steps;
+
+  for (let i = 0; i < steps; i++) {
+    p.x += sx;
+    if (collides()) { p.x -= sx; v.x = 0; }
+    p.z += sz;
+    if (collides()) { p.z -= sz; v.z = 0; }
+    p.y += sy;
+    if (collides()) {
+      p.y -= sy;
+      if (sy < 0) player.onGround = true;
+      v.y = 0;
+    }
+  }
+}
+
+/* ---- 输入 ---- */
+const keys = Object.create(null);
+let locked = false;
+const overlay = document.getElementById('overlay');
+
+addEventListener('keydown', (e) => {
+  keys[e.code] = true;
+  if (e.code === 'F3') { e.preventDefault(); toggleDebug(); }
+  if (e.code === 'KeyF') { player.fly = !player.fly; player.vel.y = 0; }
+  if (e.code === 'Space') e.preventDefault();
+});
+addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+/* ---- 指针锁定（点击任意位置开始） ---- */
+const canvas = renderer.domElement;
+
+function tryLock() {
+  if (document.pointerLockElement === canvas) return;
+  try {
+    const p = canvas.requestPointerLock();
+    // 新版浏览器返回 Promise，被拒绝时静默处理
+    if (p && typeof p.catch === 'function') {
+      p.catch(err => console.warn('指针锁定被拒绝：', err));
+    }
+  } catch (err) {
+    console.warn('指针锁定异常：', err);
+  }
+}
+
+// 关键修复：监听 document，这样点击 overlay 也能触发
+document.addEventListener('click', () => {
+  if (!locked) tryLock();
+});
+
+document.addEventListener('pointerlockchange', () => {
+  locked = (document.pointerLockElement === canvas);
+  overlay.style.display = locked ? 'none' : 'flex';
+});
+
+// 有些浏览器会抛出 pointerlockerror（例如 ESC 后立即重试）
+document.addEventListener('pointerlockerror', () => {
+  console.warn('pointerlockerror：请稍等 1 秒后再点击');
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!locked) return;
+  player.yaw   -= e.movementX * 0.0022;
+  player.pitch -= e.movementY * 0.0022;
+  const lim = Math.PI / 2 - 0.01;
+  player.pitch = Math.max(-lim, Math.min(lim, player.pitch));
+});
+
+/* ---- 玩家更新 ---- */
+function updatePlayer(dt) {
+  const fx = -Math.sin(player.yaw), fz = -Math.cos(player.yaw);
+  const rx =  Math.cos(player.yaw), rz = -Math.sin(player.yaw);
+
+  let mx = 0, mz = 0;
+  if (keys['KeyW']) { mx += fx; mz += fz; }
+  if (keys['KeyS']) { mx -= fx; mz -= fz; }
+  if (keys['KeyD']) { mx += rx; mz += rz; }
+  if (keys['KeyA']) { mx -= rx; mz -= rz; }
+  const len = Math.hypot(mx, mz);
+  if (len > 0) { mx /= len; mz /= len; }
+
+  const v = player.vel;
+  player.onGround = false;
+
+  if (player.fly) {
+    let sp = 24;
+    if (keys['ShiftLeft'] || keys['ShiftRight']) sp = 46;
+    v.x = mx * sp;
+    v.z = mz * sp;
+    v.y = 0;
+    if (keys['Space']) v.y = sp * 0.7;
+    if (keys['ControlLeft'] || keys['KeyC']) v.y = -sp * 0.7;
+  } else {
+    let sp = 5.2;
+    if (keys['ShiftLeft'] || keys['ShiftRight']) sp *= 1.8;
+    const accel = player.onGround ? 26 : 7;
+    const t = Math.min(1, accel * dt);
+    v.x += (mx * sp - v.x) * t;
+    v.z += (mz * sp - v.z) * t;
+
+    v.y -= 30 * dt;
+    if (v.y < -55) v.y = -55;
+    if (keys['Space'] && player.onGround) { v.y = 10; player.onGround = false; }
+  }
+
+  moveWithCollision(dt);
+}
+
+/* =========================================================
+   9. 区块调度
+   ========================================================= */
+let buildQueue = [];
+let lastCx = null, lastCz = null;
+
+function updateChunks() {
+  const pcx = Math.floor(player.pos.x / CHUNK_SIZE);
+  const pcz = Math.floor(player.pos.z / CHUNK_SIZE);
+
+  if (pcx !== lastCx || pcz !== lastCz) {
+    lastCx = pcx; lastCz = pcz;
+
+    // 卸载远处
+    for (const [k, ch] of chunks) {
+      const d = Math.max(Math.abs(ch.cx - pcx), Math.abs(ch.cz - pcz));
+      if (d > RENDER_DIST + 2) {
+        disposeChunkMeshes(ch);
+        chunks.delete(k);
+      } else if (d > RENDER_DIST && (ch.mesh || ch.waterMesh)) {
+        disposeChunkMeshes(ch);
+      }
+    }
+
+    // 构建待办队列
+    const cand = [];
+    const R2 = RENDER_DIST * RENDER_DIST + RENDER_DIST;
+    for (let dz = -RENDER_DIST; dz <= RENDER_DIST; dz++) {
+      for (let dx = -RENDER_DIST; dx <= RENDER_DIST; dx++) {
+        const d2 = dx * dx + dz * dz;
+        if (d2 > R2) continue;
+        const ch = ensureChunkData(pcx + dx, pcz + dz);
+        if (!ch.mesh) cand.push({ ch, d2 });
+      }
+    }
+    cand.sort((a, b) => a.d2 - b.d2);
+    buildQueue = cand.map(c => c.ch);
+  }
+
+  // 按时间预算构建
+  const t0 = performance.now();
+  while (buildQueue.length && performance.now() - t0 < 6) {
+    const ch = buildQueue.shift();
+    if (!ch.mesh) buildChunkMesh(ch);
+  }
+}
+
+/* =========================================================
+   10. 体素射线（用于 F3 显示注视方块）
+   ========================================================= */
+function voxelRaycast(origin, dir, maxDist) {
+  let x = Math.floor(origin.x), y = Math.floor(origin.y), z = Math.floor(origin.z);
+  const stepX = dir.x > 0 ? 1 : -1;
+  const stepY = dir.y > 0 ? 1 : -1;
+  const stepZ = dir.z > 0 ? 1 : -1;
+
+  const tDX = dir.x !== 0 ? Math.abs(1 / dir.x) : Infinity;
+  const tDY = dir.y !== 0 ? Math.abs(1 / dir.y) : Infinity;
+  const tDZ = dir.z !== 0 ? Math.abs(1 / dir.z) : Infinity;
+
+  let tMX = dir.x > 0 ? (x + 1 - origin.x) / dir.x : (dir.x < 0 ? (x - origin.x) / dir.x : Infinity);
+  let tMY = dir.y > 0 ? (y + 1 - origin.y) / dir.y : (dir.y < 0 ? (y - origin.y) / dir.y : Infinity);
+  let tMZ = dir.z > 0 ? (z + 1 - origin.z) / dir.z : (dir.z < 0 ? (z - origin.z) / dir.z : Infinity);
+
+  let t = 0;
+  for (let i = 0; i < 160; i++) {
+    if (t > maxDist) break;
+    const id = getVoxel(x, y, z);
+    if (id !== 0 && id !== ID.WATER) return { x, y, z, id };
+    if (tMX < tMY && tMX < tMZ)      { x += stepX; t = tMX; tMX += tDX; }
+    else if (tMY < tMZ)              { y += stepY; t = tMY; tMY += tDY; }
+    else                             { z += stepZ; t = tMZ; tMZ += tDZ; }
+  }
+  return null;
+}
+
+/* =========================================================
+   11. 水下效果
+   ========================================================= */
+let underwater = false;
+const WATER_FOG = 0x1e3f70;
+
+function updateUnderwater() {
+  const u = getVoxel(
+    Math.floor(camera.position.x),
+    Math.floor(camera.position.y),
+    Math.floor(camera.position.z)
+  ) === ID.WATER;
+
+  if (u === underwater) return;
+  underwater = u;
+
+  if (u) {
+    scene.background = new THREE.Color(WATER_FOG);
+    scene.fog.color.setHex(WATER_FOG);
+    scene.fog.near = 0.1;
+    scene.fog.far = 20;
+  } else {
+    scene.background = new THREE.Color(SKY_COLOR);
+    scene.fog.color.setHex(SKY_COLOR);
+    scene.fog.near = FOG_NEAR;
+    scene.fog.far = FOG_FAR;
+  }
+}
+
+/* =========================================================
+   12. F3 调试
+   ========================================================= */
+const debugEl = document.getElementById('debug');
+let debugVisible = false;
+let lastDebugAt = 0;
+
+function toggleDebug() {
+  debugVisible = !debugVisible;
+  debugEl.style.display = debugVisible ? 'block' : 'none';
+  if (debugVisible) updateDebug();
+}
+
+function updateDebug() {
+  const p = player.pos;
+  const cx = Math.floor(p.x / CHUNK_SIZE);
+  const cz = Math.floor(p.z / CHUNK_SIZE);
+
+  // 朝向
+  const fx = -Math.sin(player.yaw), fz = -Math.cos(player.yaw);
+  let facing;
+  if (Math.abs(fx) > Math.abs(fz)) facing = fx > 0 ? '东 (+X)' : '西 (-X)';
+  else                            facing = fz > 0 ? '南 (+Z)' : '北 (-Z)';
+
+  // 注视方块
+  const dir = new THREE.Vector3(0, 0, -1).applyEuler(camera.rotation);
+  const hit = voxelRaycast(camera.position, dir, 6);
+  const lookStr = hit
+    ? `${BLOCKS[hit.id].n} (id:${hit.id}) @ ${hit.x},${hit.y},${hit.z}`
+    : '—';
+
+  // 统计
+  let meshCount = 0, waterCount = 0;
+  for (const ch of chunks.values()) {
+    if (ch.mesh) meshCount++;
+    if (ch.waterMesh) waterCount++;
+  }
+
+  const mem = performance.memory
+    ? (performance.memory.usedJSHeapSize / 1048576).toFixed(1) + ' MB'
+    : 'N/A';
+
+  const lines = [
+    `§ Voxel World — F3 调试`,
+    `FPS              : ${fps}`,
+    `坐标             : X ${p.x.toFixed(2)}  Y ${p.y.toFixed(2)}  Z ${p.z.toFixed(2)}`,
+    `脚下方块         : ${blockNameAt(Math.floor(p.x), Math.floor(p.y - 0.2), Math.floor(p.z))}`,
+    `区块             : (${cx}, ${cz})`,
+    `朝向             : ${facing}   yaw ${(player.yaw * 57.2958).toFixed(1)}°  pitch ${(player.pitch * 57.2958).toFixed(1)}°`,
+    `注视方块         : ${lookStr}`,
+    `生物群系         : ${biomeAt(Math.floor(p.x), Math.floor(p.z))}`,
+    `飞行模式         : ${player.fly ? '开' : '关'}   着地: ${player.onGround ? '是' : '否'}`,
+    `已渲染区块       : ${meshCount} / ${buildQueue.length} 待构建   水面: ${waterCount}`,
+    `渲染距离         : ${RENDER_DIST} 区块 (${RENDER_DIST * 16} 格)`,
+    `三角面 / 绘制调用: ${renderer.info.render.triangles} / ${renderer.info.render.calls}`,
+    `JS 堆内存        : ${mem}`,
+    `世界种子         : ${SEED}`
+  ];
+  debugEl.textContent = lines.join('\n');
+}
+
+function blockNameAt(x, y, z) {
+  const id = getVoxel(x, y, z);
+  return id === 0 ? '空气' : BLOCKS[id].n + ` (id:${id})`;
+}
+
+/* =========================================================
+   13. 主循环
+   ========================================================= */
+let fps = 0;
+let frames = 0, fpsAcc = 0;
+let lastTime = performance.now();
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  const now = performance.now();
+  let dt = (now - lastTime) / 1000;
+  lastTime = now;
+  dt = Math.min(dt, 0.05);
+
+  // FPS 统计
+  frames++; fpsAcc += dt;
+  if (fpsAcc >= 0.5) {
+    fps = Math.round(frames / fpsAcc);
+    frames = 0; fpsAcc = 0;
+  }
+
+  updatePlayer(dt);
+  updateChunks();
+
+  camera.position.set(player.pos.x, player.pos.y + EYE_HEIGHT, player.pos.z);
+  camera.rotation.set(player.pitch, player.yaw, 0);
+
+  updateUnderwater();
+  renderer.render(scene, camera);
+
+  if (debugVisible && now - lastDebugAt > 120) {
+    lastDebugAt = now;
+    updateDebug();
+  }
+}
+
+// 预热出生点区块，避免第一帧穿模
+(function preload() {
+  const pcx = Math.floor(player.pos.x / CHUNK_SIZE);
+  const pcz = Math.floor(player.pos.z / CHUNK_SIZE);
+  for (let dz = -2; dz <= 2; dz++) {
+    for (let dx = -2; dx <= 2; dx++) {
+      const ch = ensureChunkData(pcx + dx, pcz + dz);
+      buildChunkMesh(ch);
+    }
+  }
+})();
+
+animate();
+
+// 暴露到全局便于调试
+window.__voxel = { scene, player, chunks, getVoxel, SEED };
+</script>
+</body>
+</html>

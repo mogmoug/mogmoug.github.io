@@ -1,0 +1,1832 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图灵机模拟器 - Turing Machine Simulator</title>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --panel: #1a1d27;
+            --panel-light: #222634;
+            --border: #2e3440;
+            --text: #e4e6eb;
+            --text-dim: #9ca3af;
+            --accent: #60a5fa;
+            --accent-hover: #3b82f6;
+            --accent-glow: rgba(96, 165, 250, 0.3);
+            --green: #34d399;
+            --green-bg: rgba(52, 211, 153, 0.15);
+            --red: #f87171;
+            --red-bg: rgba(248, 113, 113, 0.15);
+            --yellow: #fbbf24;
+            --yellow-bg: rgba(251, 191, 36, 0.15);
+            --purple: #a78bfa;
+            --purple-bg: rgba(167, 139, 250, 0.15);
+            --tape-cell: #262b3a;
+            --tape-cell-hover: #303647;
+            --head-cell: #fbbf24;
+            --head-cell-bg: rgba(251, 191, 36, 0.25);
+            --head-cell-border: #fbbf24;
+            --radius: 8px;
+            --radius-sm: 4px;
+            --transition: 0.2s ease;
+            --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', 'Monaco', monospace;
+            --font-sans: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: var(--panel);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+        .header-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .header-title .icon {
+            font-size: 1.8rem;
+        }
+        .header-badge {
+            background: var(--accent-glow);
+            color: var(--accent);
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            border: 1px solid rgba(96, 165, 250, 0.4);
+        }
+        .header-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--panel-light);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all var(--transition);
+            font-family: var(--font-sans);
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            user-select: none;
+        }
+        .btn:hover {
+            background: #2d3348;
+            border-color: #4a5268;
+            transform: translateY(-1px);
+        }
+        .btn:active {
+            transform: translateY(0);
+            background: #252a3a;
+        }
+        .btn-primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #0f1117;
+            font-weight: 600;
+        }
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+            box-shadow: 0 4px 15px var(--accent-glow);
+        }
+        .btn-success {
+            background: var(--green);
+            border-color: var(--green);
+            color: #0f1117;
+            font-weight: 600;
+        }
+        .btn-success:hover {
+            background: #2dd4a0;
+            border-color: #2dd4a0;
+            box-shadow: 0 4px 15px rgba(52, 211, 153, 0.3);
+        }
+        .btn-danger {
+            background: transparent;
+            border-color: var(--red);
+            color: var(--red);
+        }
+        .btn-danger:hover {
+            background: var(--red-bg);
+            border-color: var(--red);
+            box-shadow: 0 4px 15px rgba(248, 113, 113, 0.2);
+        }
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 0.75rem;
+        }
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        /* Layout */
+        .main-container {
+            display: flex;
+            gap: 16px;
+            padding: 16px 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+        .left-panel {
+            flex: 1 1 500px;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .right-panel {
+            flex: 1 1 420px;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            max-width: 580px;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px 18px;
+            transition: border-color var(--transition);
+        }
+        .card:hover {
+            border-color: #3a4153;
+        }
+        .card-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--text-dim);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card-title .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.4;
+                transform: scale(0.8);
+            }
+        }
+
+        /* Tape Display */
+        .tape-container {
+            overflow-x: auto;
+            padding: 8px 0;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
+            position: relative;
+        }
+        .tape-container::-webkit-scrollbar {
+            height: 6px;
+        }
+        .tape-container::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+        .tape {
+            display: flex;
+            gap: 2px;
+            min-width: max-content;
+            padding: 6px 4px;
+            position: relative;
+        }
+        .tape-cell {
+            width: 44px;
+            height: 52px;
+            background: var(--tape-cell);
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            position: relative;
+            flex-shrink: 0;
+            user-select: none;
+            font-family: var(--font-mono);
+        }
+        .tape-cell:hover {
+            background: var(--tape-cell-hover);
+            border-color: #4a5268;
+            transform: translateY(-2px);
+        }
+        .tape-cell .cell-symbol {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text);
+            line-height: 1;
+            transition: color 0.2s;
+        }
+        .tape-cell .cell-index {
+            font-size: 0.6rem;
+            color: var(--text-dim);
+            position: absolute;
+            bottom: 2px;
+            font-family: var(--font-mono);
+            font-weight: 400;
+        }
+        .tape-cell.head-cell {
+            border-color: var(--head-cell-border);
+            background: var(--head-cell-bg);
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.35), 0 0 5px rgba(251, 191, 36, 0.5);
+            transform: translateY(-3px);
+            z-index: 2;
+            animation: headPulse 1.8s ease-in-out infinite;
+        }
+        .tape-cell.head-cell .cell-symbol {
+            color: var(--head-cell);
+            font-size: 1.6rem;
+        }
+        .tape-cell.head-cell .cell-index {
+            color: var(--head-cell);
+        }
+        @keyframes headPulse {
+            0%,
+            100% {
+                box-shadow: 0 0 20px rgba(251, 191, 36, 0.35), 0 0 5px rgba(251, 191, 36, 0.5);
+            }
+            50% {
+                box-shadow: 0 0 35px rgba(251, 191, 36, 0.55), 0 0 12px rgba(251, 191, 36, 0.7);
+            }
+        }
+        .tape-cell.blank-cell .cell-symbol {
+            color: #4a5268;
+            font-weight: 400;
+        }
+        .tape-cell.blank-cell.head-cell .cell-symbol {
+            color: var(--head-cell);
+            font-weight: 700;
+        }
+
+        /* Status bar */
+        .status-bar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--panel-light);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+        .status-item .label {
+            color: var(--text-dim);
+            font-family: var(--font-sans);
+            font-weight: 500;
+        }
+        .status-item .value {
+            color: var(--accent);
+            font-weight: 700;
+        }
+        .status-item .value.green {
+            color: var(--green);
+        }
+        .status-item .value.red {
+            color: var(--red);
+        }
+        .status-item .value.yellow {
+            color: var(--yellow);
+        }
+        .status-item .value.purple {
+            color: var(--purple);
+        }
+
+        /* Controls */
+        .controls-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            margin-left: auto;
+        }
+        .speed-control input[type="range"] {
+            width: 100px;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+        .speed-label {
+            font-family: var(--font-mono);
+            color: var(--text);
+            min-width: 45px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        /* Inputs */
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 10px;
+        }
+        .input-group label {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+        .input-group input,
+        .input-group select {
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--panel-light);
+            color: var(--text);
+            font-size: 0.9rem;
+            font-family: var(--font-mono);
+            transition: border-color var(--transition);
+            outline: none;
+            width: 100%;
+        }
+        .input-group input:focus,
+        .input-group select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+        .input-group input::placeholder {
+            color: #4a5268;
+        }
+        .input-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .input-row .input-group {
+            flex: 1;
+            min-width: 100px;
+        }
+
+        /* Rules table */
+        .rules-table-wrapper {
+            overflow-x: auto;
+            max-height: 320px;
+            overflow-y: auto;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
+        }
+        .rules-table-wrapper::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        .rules-table-wrapper::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+        .rules-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+        }
+        .rules-table th {
+            background: var(--panel-light);
+            padding: 8px 10px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-dim);
+            position: sticky;
+            top: 0;
+            z-index: 3;
+            border-bottom: 2px solid var(--border);
+        }
+        .rules-table td {
+            padding: 4px 6px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+        .rules-table tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .rules-table tr.active-rule td {
+            background: var(--accent-glow);
+            box-shadow: inset 2px 0 0 var(--accent);
+        }
+        .rules-table input,
+        .rules-table select {
+            padding: 5px 8px;
+            border-radius: 3px;
+            border: 1px solid var(--border);
+            background: var(--panel-light);
+            color: var(--text);
+            font-size: 0.8rem;
+            font-family: var(--font-mono);
+            width: 100%;
+            min-width: 55px;
+            outline: none;
+            transition: border-color var(--transition);
+        }
+        .rules-table input:focus,
+        .rules-table select:focus {
+            border-color: var(--accent);
+        }
+        .rules-table .arrow-cell {
+            text-align: center;
+            color: var(--text-dim);
+            font-weight: 700;
+            font-size: 1rem;
+            padding: 4px 2px;
+            white-space: nowrap;
+        }
+        .rule-delete-btn {
+            background: transparent;
+            border: none;
+            color: var(--red);
+            cursor: pointer;
+            font-size: 1.1rem;
+            padding: 4px 6px;
+            border-radius: 3px;
+            transition: background var(--transition);
+            line-height: 1;
+        }
+        .rule-delete-btn:hover {
+            background: var(--red-bg);
+        }
+        .rule-index {
+            color: var(--text-dim);
+            font-size: 0.7rem;
+            font-weight: 400;
+            white-space: nowrap;
+            text-align: center;
+            min-width: 25px;
+        }
+
+        /* Guide */
+        .guide-section {
+            max-width: 1600px;
+            margin: 0 auto 30px;
+            padding: 0 20px;
+        }
+        .guide-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 12px 18px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-weight: 600;
+            font-size: 0.9rem;
+            user-select: none;
+            transition: all var(--transition);
+            width: 100%;
+            text-align: left;
+            font-family: var(--font-sans);
+            color: var(--text);
+        }
+        .guide-toggle:hover {
+            border-color: #4a5268;
+            background: var(--panel-light);
+        }
+        .guide-toggle .arrow {
+            transition: transform 0.3s ease;
+            font-size: 0.8rem;
+        }
+        .guide-toggle .arrow.open {
+            transform: rotate(90deg);
+        }
+        .guide-content {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 var(--radius) var(--radius);
+            padding: 20px 24px;
+            display: none;
+            font-size: 0.88rem;
+            line-height: 1.8;
+        }
+        .guide-content.open {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .guide-content h3 {
+            color: var(--accent);
+            font-size: 1rem;
+            margin-top: 16px;
+            margin-bottom: 8px;
+            letter-spacing: 0.3px;
+        }
+        .guide-content h3:first-child {
+            margin-top: 0;
+        }
+        .guide-content p,
+        .guide-content li {
+            color: var(--text-dim);
+        }
+        .guide-content ul,
+        .guide-content ol {
+            padding-left: 24px;
+            margin: 6px 0;
+        }
+        .guide-content code {
+            background: var(--panel-light);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--accent);
+            border: 1px solid var(--border);
+        }
+        .guide-content .highlight {
+            color: var(--yellow);
+            font-weight: 600;
+        }
+        .guide-content .example-box {
+            background: var(--panel-light);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 12px 16px;
+            margin: 8px 0;
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            overflow-x: auto;
+        }
+        .guide-content .formula {
+            text-align: center;
+            padding: 12px;
+            font-style: italic;
+            color: var(--purple);
+            font-size: 0.95rem;
+            background: var(--purple-bg);
+            border-radius: var(--radius-sm);
+            margin: 10px 0;
+            border: 1px solid rgba(167, 139, 250, 0.3);
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            padding: 12px 18px;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            font-weight: 500;
+            z-index: 200;
+            animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.5s forwards;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+            max-width: 350px;
+        }
+        .notification.success {
+            background: var(--green-bg);
+            border: 1px solid var(--green);
+            color: var(--green);
+        }
+        .notification.error {
+            background: var(--red-bg);
+            border: 1px solid var(--red);
+            color: var(--red);
+        }
+        .notification.info {
+            background: var(--accent-glow);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+            to {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .main-container {
+                flex-direction: column;
+                padding: 10px 12px;
+            }
+            .right-panel {
+                max-width: 100%;
+                flex: 1 1 auto;
+            }
+            .left-panel {
+                flex: 1 1 auto;
+            }
+            .header {
+                padding: 12px 16px;
+            }
+            .header-title {
+                font-size: 1.1rem;
+            }
+            .tape-cell {
+                width: 36px;
+                height: 44px;
+            }
+            .tape-cell .cell-symbol {
+                font-size: 1.1rem;
+            }
+            .tape-cell.head-cell .cell-symbol {
+                font-size: 1.3rem;
+            }
+            .controls-row {
+                flex-wrap: wrap;
+            }
+            .speed-control {
+                margin-left: 0;
+                width: 100%;
+                justify-content: flex-end;
+            }
+        }
+        @media (max-width: 480px) {
+            .tape-cell {
+                width: 30px;
+                height: 38px;
+            }
+            .tape-cell .cell-symbol {
+                font-size: 0.9rem;
+            }
+            .tape-cell.head-cell .cell-symbol {
+                font-size: 1.1rem;
+            }
+            .status-item {
+                font-size: 0.7rem;
+                padding: 4px 8px;
+            }
+            .btn {
+                padding: 6px 10px;
+                font-size: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-title">
+            <span class="icon">⚙️</span>
+            <span>图灵机模拟器</span>
+            <span class="header-badge">图灵完备 · Turing Complete</span>
+        </div>
+        <div class="header-actions">
+            <button class="btn" onclick="toggleGuide()">📖 操作指南</button>
+            <button class="btn btn-danger" onclick="resetMachine()">🔄 重置</button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Left Panel: Tape & Status -->
+        <div class="left-panel">
+            <!-- Tape Card -->
+            <div class="card">
+                <div class="card-title"><span class="dot"></span> 纸带 (Tape) — 点击单元格可编辑</div>
+                <div class="tape-container" id="tapeContainer">
+                    <div class="tape" id="tapeDisplay"></div>
+                </div>
+            </div>
+
+            <!-- Status Card -->
+            <div class="card">
+                <div class="card-title"><span class="dot"></span> 运行状态</div>
+                <div class="status-bar" id="statusBar">
+                    <div class="status-item"><span class="label">当前状态:</span> <span class="value" id="currentState">q0</span></div>
+                    <div class="status-item"><span class="label">读取符号:</span> <span class="value yellow" id="currentSymbol">_</span></div>
+                    <div class="status-item"><span class="label">步数:</span> <span class="value purple" id="stepCount">0</span></div>
+                    <div class="status-item"><span class="label">读写头:</span> <span class="value" id="headPosition">0</span></div>
+                    <div class="status-item"><span class="label">状态:</span> <span class="value green" id="machineStatus">就绪</span></div>
+                </div>
+                <div style="margin-top:12px;">
+                    <div class="controls-row">
+                        <button class="btn btn-success" id="btnRun" onclick="runMachine()">▶ 运行</button>
+                        <button class="btn" id="btnPause" onclick="pauseMachine()" disabled>⏸ 暂停</button>
+                        <button class="btn" id="btnStep" onclick="stepMachine()">⏭ 单步</button>
+                        <button class="btn btn-primary" id="btnReset" onclick="resetMachine()">🔄 重置</button>
+                        <div class="speed-control">
+                            <span>速度:</span>
+                            <input type="range" id="speedSlider" min="1" max="50" value="10" oninput="updateSpeed(this.value)">
+                            <span class="speed-label" id="speedLabel">10 步/秒</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Examples Card -->
+            <div class="card">
+                <div class="card-title"><span class="dot"></span> 示例程序</div>
+                <div class="controls-row">
+                    <select id="exampleSelect" style="flex:1;min-width:150px;padding:8px 10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--panel-light);color:var(--text);font-size:0.85rem;font-family:var(--font-sans);outline:none;">
+                        <option value="">— 选择示例 —</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="loadExample()">📥 加载示例</button>
+                </div>
+                <div id="exampleDescription" style="margin-top:8px;font-size:0.8rem;color:var(--text-dim);"></div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Settings & Rules -->
+        <div class="right-panel">
+            <!-- Machine Settings -->
+            <div class="card">
+                <div class="card-title"><span class="dot"></span> 机器设置</div>
+                <div class="input-row">
+                    <div class="input-group">
+                        <label>初始状态 (Initial State)</label>
+                        <input type="text" id="initialState" value="q0" placeholder="例如: q0">
+                    </div>
+                    <div class="input-group">
+                        <label>接受状态 (Accept States, 逗号分隔)</label>
+                        <input type="text" id="acceptStates" value="halt" placeholder="例如: halt, accept">
+                    </div>
+                </div>
+                <div class="input-group" style="margin-bottom:0;">
+                    <label>初始输入字符串 (放置在纸带中央)</label>
+                    <input type="text" id="initialInput" value="" placeholder="例如: 101 (留空则全为空白)">
+                </div>
+            </div>
+
+            <!-- Rules Editor -->
+            <div class="card">
+                <div class="card-title">
+                    <span class="dot"></span> 转换规则 (Transition Rules)
+                    <span style="margin-left:auto;font-size:0.7rem;color:var(--text-dim);font-weight:400;">格式: (状态, 读) → (写, 移, 新状态)</span>
+                </div>
+                <div class="rules-table-wrapper">
+                    <table class="rules-table" id="rulesTable">
+                        <thead>
+                            <tr>
+                                <th style="width:25px;">#</th>
+                                <th>当前状态</th>
+                                <th>读取</th>
+                                <th class="arrow-cell">→</th>
+                                <th>写入</th>
+                                <th>移动</th>
+                                <th>下一状态</th>
+                                <th style="width:35px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="rulesBody"></tbody>
+                    </table>
+                </div>
+                <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="btn btn-primary btn-sm" onclick="addRule()">➕ 添加规则</button>
+                    <button class="btn btn-sm" onclick="clearAllRules()">🗑 清空规则</button>
+                    <button class="btn btn-sm" onclick="exportRules()">📤 导出</button>
+                    <button class="btn btn-sm" onclick="importRules()">📥 导入</button>
+                    <span style="font-size:0.7rem;color:var(--text-dim);align-self:center;">移动: L=左, R=右, N=不动 | 空白用 _</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Guide Section -->
+    <div class="guide-section">
+        <button class="guide-toggle" onclick="toggleGuide()">
+            <span class="arrow" id="guideArrow">▶</span>
+            📖 操作指南 — 图灵机使用说明与图灵完备性解释
+        </button>
+        <div class="guide-content" id="guideContent">
+            <h3>🧠 什么是图灵机？</h3>
+            <p>图灵机(Turing Machine)是英国数学家艾伦·图灵于1936年提出的抽象计算模型，由以下部分组成：</p>
+            <ul>
+                <li><strong>无限长的纸带(Tape)</strong>：被划分为一个个单元格，每个单元格可存储一个符号</li>
+                <li><strong>读写头(Head)</strong>：可以在纸带上左右移动，读取和写入符号</li>
+                <li><strong>有限状态集(States)</strong>：机器处于有限个状态之一</li>
+                <li><strong>转换规则(Transition Rules)</strong>：根据当前状态和读取的符号，决定写入什么符号、向哪个方向移动、进入哪个新状态</li>
+            </ul>
+            <div class="formula">M = (Q, Σ, Γ, δ, q₀, q<sub>accept</sub>, q<sub>reject</sub>)</div>
+
+            <h3>🔧 如何编写图灵机程序？</h3>
+            <ol>
+                <li><strong>设置初始状态</strong>：在"机器设置"中指定初始状态（如 <code>q0</code>）</li>
+                <li><strong>设置接受状态</strong>：指定哪些状态为接受状态（如 <code>halt</code>），机器进入这些状态时停机接受</li>
+                <li><strong>输入初始字符串</strong>：在"初始输入"中输入要处理的数据</li>
+                <li><strong>编写转换规则</strong>：每条规则是一个五元组 <code>(当前状态, 读取符号) → (写入符号, 移动方向, 下一状态)</code></li>
+                <li><strong>运行机器</strong>：点击"运行"或"单步"观察执行过程</li>
+            </ol>
+            <div class="example-box">
+                规则示例: (q0, 0) → (1, R, q1)<br>
+                含义: 在状态q0读取到符号0时，写入1，右移一格，进入状态q1<br>
+                空白符号使用 <code>_</code> 表示
+            </div>
+
+            <h3>📐 转换规则详解</h3>
+            <ul>
+                <li><span class="highlight">当前状态</span>：机器执行此规则前所处的状态</li>
+                <li><span class="highlight">读取符号</span>：读写头当前所指单元格中的符号</li>
+                <li><span class="highlight">写入符号</span>：替换到当前单元格的新符号</li>
+                <li><span class="highlight">移动方向</span>：<code>L</code>=左移一格，<code>R</code>=右移一格，<code>N</code>=原地不动</li>
+                <li><span class="highlight">下一状态</span>：执行规则后机器进入的新状态</li>
+            </ul>
+            <p><strong>注意</strong>：每个(状态, 符号)组合最多只能有一条规则（确定性图灵机）。如果机器找不到匹配规则，将停机。</p>
+
+            <h3>✅ 停机条件</h3>
+            <ul>
+                <li><strong>接受</strong>：机器进入接受状态（在设置中指定）</li>
+                <li><strong>拒绝</strong>：没有匹配规则且当前状态不是接受状态</li>
+                <li><strong>手动停止</strong>：用户点击暂停或重置</li>
+            </ul>
+
+            <h3>💡 图灵完备性 (Turing Completeness)</h3>
+            <p>图灵机是<span class="highlight">图灵完备</span>的计算模型，这意味着它可以计算任何"可计算函数"。任何现代计算机能解决的问题，图灵机都能解决（尽管效率可能极低）。</p>
+            <p>图灵完备性的关键在于：</p>
+            <ul>
+                <li><strong>条件分支</strong>：通过不同状态和符号组合实现if-else逻辑</li>
+                <li><strong>循环</strong>：通过状态循环实现重复操作</li>
+                <li><strong>无限内存</strong>：无限长的纸带提供了无限存储空间</li>
+                <li><strong>可编程性</strong>：转换规则本身就是程序</li>
+            </ul>
+            <p>在本模拟器中，你可以编写任意复杂的图灵机程序。通过组合状态和规则，可以实现算术运算、字符串处理、模式识别等任何可计算任务。</p>
+
+            <h3>📝 示例程序说明</h3>
+            <ul>
+                <li><strong>二进制加1</strong>：对二进制数执行+1操作，展示基本算术</li>
+                <li><strong>回文判断</strong>：判断输入的0/1字符串是否为回文，展示条件分支和字符串处理</li>
+                <li><strong>一元加法</strong>：计算形如 <code>111+111</code> 的一元数加法，经典图灵机示例</li>
+                <li><strong>忙碌海狸(BB-4)</strong>：4状态忙碌海狸问题，展示简单规则产生复杂行为</li>
+                <li><strong>字符串反转</strong>：反转二进制字符串，展示更复杂的操作</li>
+            </ul>
+
+            <h3>🎯 操作提示</h3>
+            <ul>
+                <li>点击纸带上的单元格可以直接编辑该位置的符号</li>
+                <li>使用<strong>单步执行</strong>可以逐条观察规则的应用</li>
+                <li>调整<strong>速度</strong>可以控制自动运行的步速</li>
+                <li>运行时匹配的规则会在规则表中<strong>高亮显示</strong></li>
+                <li>可以随时<strong>重置</strong>机器回到初始状态</li>
+                <li>规则可以<strong>导出/导入</strong>，方便保存和分享程序</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // 图灵机模拟器 - 核心逻辑
+        // ============================================
+
+        // 全局状态
+        let tape = new Map(); // 纸带: Map<number, string>，默认 '_'
+        let headPos = 0;
+        let currentState = 'q0';
+        let stepCounter = 0;
+        let isRunning = false;
+        let isPaused = false;
+        let runInterval = null;
+        let machineStatus = 'ready'; // 'ready' | 'running' | 'paused' | 'accepted' | 'rejected' | 'halted'
+        let rules = []; // 规则数组: [{currentState, readSymbol, writeSymbol, moveDir, nextState}]
+        let activeRuleIndex = -1;
+        let speed = 10; // 步/秒
+
+        const BLANK = '_';
+        const TAPE_DISPLAY_RANGE = 18; // 左右各显示18格
+        const MIN_TAPE_INDEX = -100;
+        const MAX_TAPE_INDEX = 100;
+
+        // DOM 元素引用
+        const tapeDisplay = document.getElementById('tapeDisplay');
+        const tapeContainer = document.getElementById('tapeContainer');
+        const currentStateEl = document.getElementById('currentState');
+        const currentSymbolEl = document.getElementById('currentSymbol');
+        const stepCountEl = document.getElementById('stepCount');
+        const headPositionEl = document.getElementById('headPosition');
+        const machineStatusEl = document.getElementById('machineStatus');
+        const rulesBody = document.getElementById('rulesBody');
+        const initialStateInput = document.getElementById('initialState');
+        const acceptStatesInput = document.getElementById('acceptStates');
+        const initialInputInput = document.getElementById('initialInput');
+        const speedSlider = document.getElementById('speedSlider');
+        const speedLabel = document.getElementById('speedLabel');
+        const btnRun = document.getElementById('btnRun');
+        const btnPause = document.getElementById('btnPause');
+        const btnStep = document.getElementById('btnStep');
+        const btnReset = document.getElementById('btnReset');
+        const exampleSelect = document.getElementById('exampleSelect');
+        const exampleDescription = document.getElementById('exampleDescription');
+
+        // ============================================
+        // 示例程序定义
+        // ============================================
+        const examples = [{
+            id: 'binary_increment',
+            name: '二进制加1 (Binary Increment)',
+            description: '对输入的二进制数执行+1操作。输入如"101"，输出"110"。展示基本算术运算。',
+            initialState: 'q0',
+            acceptStates: ['halt'],
+            initialInput: '101',
+            rules: [
+                ['q0', '0', '0', 'R', 'q0'],
+                ['q0', '1', '1', 'R', 'q0'],
+                ['q0', '_', '_', 'L', 'q1'],
+                ['q1', '0', '1', 'N', 'halt'],
+                ['q1', '1', '0', 'L', 'q1'],
+                ['q1', '_', '1', 'N', 'halt'],
+            ]
+        }, {
+            id: 'palindrome',
+            name: '回文判断 (Palindrome Check)',
+            description: '判断输入的0/1字符串是否为回文。是则接受，否则拒绝。展示条件分支。',
+            initialState: 'q0',
+            acceptStates: ['accept'],
+            initialInput: '1001',
+            rules: [
+                ['q0', '0', '_', 'R', 'q1'],
+                ['q0', '1', '_', 'R', 'q2'],
+                ['q0', '_', '_', 'N', 'accept'],
+                ['q1', '0', '0', 'R', 'q1'],
+                ['q1', '1', '1', 'R', 'q1'],
+                ['q1', '_', '_', 'L', 'q3'],
+                ['q2', '0', '0', 'R', 'q2'],
+                ['q2', '1', '1', 'R', 'q2'],
+                ['q2', '_', '_', 'L', 'q4'],
+                ['q3', '0', '_', 'L', 'q5'],
+                ['q3', '_', '_', 'N', 'accept'],
+                ['q3', '1', '1', 'N', 'reject'],
+                ['q4', '1', '_', 'L', 'q5'],
+                ['q4', '_', '_', 'N', 'accept'],
+                ['q4', '0', '0', 'N', 'reject'],
+                ['q5', '0', '0', 'L', 'q5'],
+                ['q5', '1', '1', 'L', 'q5'],
+                ['q5', '_', '_', 'R', 'q0'],
+            ]
+        }, {
+            id: 'unary_add',
+            name: '一元加法 (Unary Addition)',
+            description: '计算形如"111+111"的一元数加法，结果为"111111"。经典图灵机示例。',
+            initialState: 'q0',
+            acceptStates: ['halt'],
+            initialInput: '111+111',
+            rules: [
+                ['q0', '1', '1', 'R', 'q0'],
+                ['q0', '+', '1', 'R', 'q1'],
+                ['q0', '_', '_', 'L', 'q2'],
+                ['q1', '1', '1', 'R', 'q1'],
+                ['q1', '_', '_', 'L', 'q2'],
+                ['q2', '1', '_', 'N', 'halt'],
+                ['q2', '_', '_', 'N', 'halt'],
+            ]
+        }, {
+            id: 'busy_beaver',
+            name: '忙碌海狸 BB-4 (Busy Beaver)',
+            description: '4状态忙碌海狸问题。在停机前尽可能多地写入1。展示简单规则产生复杂行为。',
+            initialState: 'A',
+            acceptStates: ['HALT'],
+            initialInput: '',
+            rules: [
+                ['A', '_', '1', 'R', 'B'],
+                ['A', '1', '1', 'L', 'B'],
+                ['B', '_', '1', 'L', 'A'],
+                ['B', '1', '_', 'L', 'C'],
+                ['C', '_', '1', 'R', 'HALT'],
+                ['C', '1', '1', 'L', 'D'],
+                ['D', '_', '1', 'R', 'D'],
+                ['D', '1', '_', 'R', 'A'],
+            ]
+        }, {
+            id: 'string_reverse',
+            name: '字符串反转 (String Reverse)',
+            description: '反转二进制字符串。输入"1010"输出"0101"。展示复杂字符串操作。',
+            initialState: 'q0',
+            acceptStates: ['halt'],
+            initialInput: '1010',
+            rules: [
+                ['q0', '0', '_', 'R', 'q1'],
+                ['q0', '1', '_', 'R', 'q2'],
+                ['q0', '_', '_', 'L', 'q7'],
+                ['q1', '0', '0', 'R', 'q1'],
+                ['q1', '1', '1', 'R', 'q1'],
+                ['q1', '_', '_', 'R', 'q3'],
+                ['q2', '0', '0', 'R', 'q2'],
+                ['q2', '1', '1', 'R', 'q2'],
+                ['q2', '_', '_', 'R', 'q4'],
+                ['q3', '0', '0', 'R', 'q3'],
+                ['q3', '1', '1', 'R', 'q3'],
+                ['q3', '_', '0', 'L', 'q5'],
+                ['q4', '0', '0', 'R', 'q4'],
+                ['q4', '1', '1', 'R', 'q4'],
+                ['q4', '_', '1', 'L', 'q5'],
+                ['q5', '0', '0', 'L', 'q5'],
+                ['q5', '1', '1', 'L', 'q5'],
+                ['q5', '_', '_', 'L', 'q6'],
+                ['q6', '0', '0', 'L', 'q6'],
+                ['q6', '1', '1', 'L', 'q6'],
+                ['q6', '_', '_', 'R', 'q0'],
+                ['q7', '_', '_', 'R', 'halt'],
+                ['q7', '0', '0', 'L', 'q7'],
+                ['q7', '1', '1', 'L', 'q7'],
+            ]
+        }, ];
+
+        // ============================================
+        // 初始化
+        // ============================================
+        function init() {
+            // 填充示例下拉菜单
+            examples.forEach((ex, idx) => {
+                const opt = document.createElement('option');
+                opt.value = idx;
+                opt.textContent = ex.name;
+                exampleSelect.appendChild(opt);
+            });
+
+            // 设置事件
+            exampleSelect.addEventListener('change', () => {
+                const idx = parseInt(exampleSelect.value);
+                if (!isNaN(idx) && examples[idx]) {
+                    exampleDescription.textContent = examples[idx].description;
+                } else {
+                    exampleDescription.textContent = '';
+                }
+            });
+
+            // 初始化纸带
+            resetMachine();
+
+            // 初始渲染
+            renderRulesTable();
+            updateStatusDisplay();
+            renderTape();
+        }
+
+        // ============================================
+        // 纸带操作
+        // ============================================
+        function getTapeValue(pos) {
+            return tape.get(pos) || BLANK;
+        }
+
+        function setTapeValue(pos, value) {
+            if (value === BLANK) {
+                tape.delete(pos);
+            } else {
+                tape.set(pos, value);
+            }
+        }
+
+        function initializeTape(inputStr) {
+            tape.clear();
+            headPos = 0;
+            if (inputStr && inputStr.length > 0) {
+                for (let i = 0; i < inputStr.length; i++) {
+                    const ch = inputStr[i];
+                    if (ch === BLANK) {
+                        // 允许用户在输入中使用下划线表示空白
+                        continue;
+                    }
+                    setTapeValue(i, ch);
+                }
+            }
+        }
+
+        function renderTape() {
+            tapeDisplay.innerHTML = '';
+            const start = headPos - TAPE_DISPLAY_RANGE;
+            const end = headPos + TAPE_DISPLAY_RANGE;
+
+            for (let i = start; i <= end; i++) {
+                const cell = document.createElement('div');
+                const val = getTapeValue(i);
+                const isHead = (i === headPos);
+                const isBlank = (val === BLANK);
+
+                cell.className = 'tape-cell';
+                if (isHead) cell.classList.add('head-cell');
+                if (isBlank && !isHead) cell.classList.add('blank-cell');
+
+                const symbolSpan = document.createElement('span');
+                symbolSpan.className = 'cell-symbol';
+                symbolSpan.textContent = isBlank ? '□' : val;
+                cell.appendChild(symbolSpan);
+
+                const indexSpan = document.createElement('span');
+                indexSpan.className = 'cell-index';
+                indexSpan.textContent = i;
+                cell.appendChild(indexSpan);
+
+                cell.addEventListener('click', () => editCell(i));
+                cell.title = `位置 ${i}，点击编辑`;
+
+                tapeDisplay.appendChild(cell);
+            }
+
+            // 滚动使读写头居中
+            const headCellEl = tapeDisplay.querySelector('.head-cell');
+            if (headCellEl) {
+                const containerWidth = tapeContainer.clientWidth;
+                const headOffset = headCellEl.offsetLeft;
+                const headWidth = headCellEl.offsetWidth;
+                const targetScroll = headOffset - (containerWidth / 2) + (headWidth / 2);
+                tapeContainer.scrollTo({ left: Math.max(0, targetScroll), behavior: 'smooth' });
+            }
+        }
+
+        function editCell(pos) {
+            if (isRunning && !isPaused) {
+                showNotification('请先暂停机器再编辑纸带', 'error');
+                return;
+            }
+            const currentVal = getTapeValue(pos);
+            const displayVal = currentVal === BLANK ? '□' : currentVal;
+            const input = prompt(`编辑纸带位置 ${pos}\n当前符号: ${displayVal}\n请输入新符号（单个字符，空白用 _ 表示）:`, currentVal);
+            if (input === null) return;
+            if (input.length === 0) {
+                setTapeValue(pos, BLANK);
+            } else if (input.length === 1) {
+                setTapeValue(pos, input);
+            } else if (input === BLANK) {
+                setTapeValue(pos, BLANK);
+            } else {
+                showNotification('请输入单个字符或 _ (空白)', 'error');
+                return;
+            }
+            renderTape();
+            updateStatusDisplay();
+        }
+
+        // ============================================
+        // 规则操作
+        // ============================================
+        function renderRulesTable() {
+            rulesBody.innerHTML = '';
+            if (rules.length === 0) {
+                const row = document.createElement('tr');
+                const td = document.createElement('td');
+                td.colSpan = 8;
+                td.style.textAlign = 'center';
+                td.style.color = 'var(--text-dim)';
+                td.style.padding = '20px';
+                td.style.fontSize = '0.85rem';
+                td.textContent = '暂无规则，请添加或加载示例';
+                row.appendChild(td);
+                rulesBody.appendChild(row);
+                return;
+            }
+
+            rules.forEach((rule, idx) => {
+                const row = document.createElement('tr');
+                if (idx === activeRuleIndex) {
+                    row.classList.add('active-rule');
+                }
+                row.dataset.ruleIndex = idx;
+
+                // 索引
+                const idxCell = document.createElement('td');
+                idxCell.className = 'rule-index';
+                idxCell.textContent = idx + 1;
+                row.appendChild(idxCell);
+
+                // 当前状态
+                const stateCell = document.createElement('td');
+                const stateInput = document.createElement('input');
+                stateInput.type = 'text';
+                stateInput.value = rule.currentState;
+                stateInput.placeholder = 'q0';
+                stateInput.addEventListener('change', () => {
+                    rule.currentState = stateInput.value.trim() || 'q0';
+                    updateStatusDisplay();
+                });
+                stateCell.appendChild(stateInput);
+                row.appendChild(stateCell);
+
+                // 读取符号
+                const readCell = document.createElement('td');
+                const readInput = document.createElement('input');
+                readInput.type = 'text';
+                readInput.value = rule.readSymbol;
+                readInput.maxLength = 1;
+                readInput.style.width = '45px';
+                readInput.style.textAlign = 'center';
+                readInput.addEventListener('change', () => {
+                    let v = readInput.value.trim();
+                    if (v.length === 0) v = BLANK;
+                    if (v.length > 1) v = v[0];
+                    rule.readSymbol = v;
+                    readInput.value = v;
+                });
+                readCell.appendChild(readInput);
+                row.appendChild(readCell);
+
+                // 箭头
+                const arrowCell = document.createElement('td');
+                arrowCell.className = 'arrow-cell';
+                arrowCell.textContent = '→';
+                row.appendChild(arrowCell);
+
+                // 写入符号
+                const writeCell = document.createElement('td');
+                const writeInput = document.createElement('input');
+                writeInput.type = 'text';
+                writeInput.value = rule.writeSymbol;
+                writeInput.maxLength = 1;
+                writeInput.style.width = '45px';
+                writeInput.style.textAlign = 'center';
+                writeInput.addEventListener('change', () => {
+                    let v = writeInput.value.trim();
+                    if (v.length === 0) v = BLANK;
+                    if (v.length > 1) v = v[0];
+                    rule.writeSymbol = v;
+                    writeInput.value = v;
+                });
+                writeCell.appendChild(writeInput);
+                row.appendChild(writeCell);
+
+                // 移动方向
+                const moveCell = document.createElement('td');
+                const moveSelect = document.createElement('select');
+                ['L', 'R', 'N'].forEach(dir => {
+                    const opt = document.createElement('option');
+                    opt.value = dir;
+                    opt.textContent = dir === 'L' ? 'L (左)' : dir === 'R' ? 'R (右)' : 'N (不动)';
+                    if (dir === rule.moveDir) opt.selected = true;
+                    moveSelect.appendChild(opt);
+                });
+                moveSelect.addEventListener('change', () => {
+                    rule.moveDir = moveSelect.value;
+                });
+                moveCell.appendChild(moveSelect);
+                row.appendChild(moveCell);
+
+                // 下一状态
+                const nextCell = document.createElement('td');
+                const nextInput = document.createElement('input');
+                nextInput.type = 'text';
+                nextInput.value = rule.nextState;
+                nextInput.placeholder = 'q1';
+                nextInput.addEventListener('change', () => {
+                    rule.nextState = nextInput.value.trim() || 'q0';
+                });
+                nextCell.appendChild(nextInput);
+                row.appendChild(nextCell);
+
+                // 删除按钮
+                const delCell = document.createElement('td');
+                delCell.style.textAlign = 'center';
+                const delBtn = document.createElement('button');
+                delBtn.className = 'rule-delete-btn';
+                delBtn.innerHTML = '✕';
+                delBtn.title = '删除此规则';
+                delBtn.addEventListener('click', () => deleteRule(idx));
+                delCell.appendChild(delBtn);
+                row.appendChild(delCell);
+
+                rulesBody.appendChild(row);
+            });
+        }
+
+        function addRule() {
+            // 从当前设置获取默认值
+            const defaultState = initialStateInput.value.trim() || 'q0';
+            rules.push({
+                currentState: defaultState,
+                readSymbol: BLANK,
+                writeSymbol: BLANK,
+                moveDir: 'R',
+                nextState: defaultState,
+            });
+            renderRulesTable();
+            updateStatusDisplay();
+            // 滚动到新行
+            const rows = rulesBody.querySelectorAll('tr');
+            if (rows.length > 0) {
+                rows[rows.length - 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        function deleteRule(idx) {
+            rules.splice(idx, 1);
+            if (activeRuleIndex === idx) activeRuleIndex = -1;
+            if (activeRuleIndex > idx) activeRuleIndex--;
+            renderRulesTable();
+            updateStatusDisplay();
+        }
+
+        function clearAllRules() {
+            if (rules.length === 0) return;
+            if (confirm('确定要清空所有规则吗？')) {
+                rules = [];
+                activeRuleIndex = -1;
+                renderRulesTable();
+                updateStatusDisplay();
+            }
+        }
+
+        function exportRules() {
+            const data = {
+                initialState: initialStateInput.value.trim(),
+                acceptStates: acceptStatesInput.value.trim(),
+                initialInput: initialInputInput.value,
+                rules: rules,
+            };
+            const json = JSON.stringify(data, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'turing_machine_program.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            showNotification('规则已导出', 'success');
+        }
+
+        function importRules() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        if (data.rules && Array.isArray(data.rules)) {
+                            rules = data.rules.filter(r =>
+                                r.currentState && r.readSymbol &&
+                                r.writeSymbol && r.moveDir && r.nextState
+                            );
+                            initialStateInput.value = data.initialState || 'q0';
+                            acceptStatesInput.value = data.acceptStates || 'halt';
+                            initialInputInput.value = data.initialInput || '';
+                            renderRulesTable();
+                            resetMachine();
+                            showNotification('规则已导入', 'success');
+                        } else {
+                            showNotification('无效的规则文件格式', 'error');
+                        }
+                    } catch (err) {
+                        showNotification('解析文件失败: ' + err.message, 'error');
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+
+        // ============================================
+        // 机器操作
+        // ============================================
+        function getAcceptStates() {
+            const str = acceptStatesInput.value.trim();
+            if (!str) return [];
+            return str.split(',').map(s => s.trim()).filter(s => s.length > 0);
+        }
+
+        function findMatchingRule(state, symbol) {
+            for (let i = 0; i < rules.length; i++) {
+                if (rules[i].currentState === state && rules[i].readSymbol === symbol) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        function stepMachine() {
+            if (machineStatus === 'accepted' || machineStatus === 'rejected' || machineStatus === 'halted') {
+                showNotification('机器已停机，请重置', 'error');
+                return;
+            }
+
+            const acceptStates = getAcceptStates();
+            const symbol = getTapeValue(headPos);
+            const ruleIdx = findMatchingRule(currentState, symbol);
+
+            if (ruleIdx === -1) {
+                // 没有匹配规则
+                activeRuleIndex = -1;
+                if (acceptStates.includes(currentState)) {
+                    machineStatus = 'accepted';
+                    showNotification('✓ 机器接受！', 'success');
+                } else {
+                    machineStatus = 'rejected';
+                    showNotification('✗ 无匹配规则，机器拒绝（停机）', 'error');
+                }
+                isRunning = false;
+                isPaused = false;
+                stopInterval();
+                updateStatusDisplay();
+                renderRulesTable();
+                renderTape();
+                return;
+            }
+
+            const rule = rules[ruleIdx];
+            activeRuleIndex = ruleIdx;
+
+            // 执行规则
+            currentState = rule.nextState;
+            setTapeValue(headPos, rule.writeSymbol);
+
+            if (rule.moveDir === 'L') {
+                headPos--;
+            } else if (rule.moveDir === 'R') {
+                headPos++;
+            }
+            // 'N' - 不动
+
+            stepCounter++;
+
+            // 检查是否到达接受状态
+            if (acceptStates.includes(currentState)) {
+                machineStatus = 'accepted';
+                isRunning = false;
+                isPaused = false;
+                stopInterval();
+                showNotification('✓ 机器接受！共 ' + stepCounter + ' 步', 'success');
+                updateStatusDisplay();
+                renderRulesTable();
+                renderTape();
+                return;
+            }
+
+            // 检查是否超出纸带范围
+            if (headPos < MIN_TAPE_INDEX || headPos > MAX_TAPE_INDEX) {
+                machineStatus = 'halted';
+                isRunning = false;
+                isPaused = false;
+                stopInterval();
+                showNotification('⚠ 读写头超出纸带边界', 'error');
+                updateStatusDisplay();
+                renderRulesTable();
+                renderTape();
+                return;
+            }
+
+            updateStatusDisplay();
+            renderRulesTable();
+            renderTape();
+        }
+
+        function runMachine() {
+            if (machineStatus === 'accepted' || machineStatus === 'rejected' || machineStatus === 'halted') {
+                resetMachine();
+                setTimeout(() => runMachine(), 100);
+                return;
+            }
+
+            if (isRunning && !isPaused) {
+                return; // 已经在运行
+            }
+
+            if (isRunning && isPaused) {
+                // 恢复运行
+                isPaused = false;
+                startInterval();
+                updateButtonState();
+                return;
+            }
+
+            if (rules.length === 0) {
+                showNotification('请先添加转换规则', 'error');
+                return;
+            }
+
+            isRunning = true;
+            isPaused = false;
+            machineStatus = 'running';
+            startInterval();
+            updateButtonState();
+            updateStatusDisplay();
+        }
+
+        function startInterval() {
+            stopInterval();
+            const delay = 1000 / speed;
+            runInterval = setInterval(() => {
+                if (!isRunning || isPaused) return;
+                stepMachine();
+                if (machineStatus === 'accepted' || machineStatus === 'rejected' || machineStatus === 'halted') {
+                    stopInterval();
+                    isRunning = false;
+                    isPaused = false;
+                    updateButtonState();
+                    updateStatusDisplay();
+                }
+            }, delay);
+        }
+
+        function stopInterval() {
+            if (runInterval) {
+                clearInterval(runInterval);
+                runInterval = null;
+            }
+        }
+
+        function pauseMachine() {
+            if (isRunning && !isPaused) {
+                isPaused = true;
+                machineStatus = 'paused';
+                stopInterval();
+                updateButtonState();
+                updateStatusDisplay();
+            } else if (isRunning && isPaused) {
+                isPaused = false;
+                machineStatus = 'running';
+                startInterval();
+                updateButtonState();
+                updateStatusDisplay();
+            }
+        }
+
+        function resetMachine() {
+            stopInterval();
+            isRunning = false;
+            isPaused = false;
+            stepCounter = 0;
+            activeRuleIndex = -1;
+            machineStatus = 'ready';
+
+            currentState = initialStateInput.value.trim() || 'q0';
+            const inputStr = initialInputInput.value;
+            initializeTape(inputStr);
+
+            updateStatusDisplay();
+            renderRulesTable();
+            renderTape();
+            updateButtonState();
+        }
+
+        function updateButtonState() {
+            btnRun.disabled = (machineStatus === 'accepted' || machineStatus === 'rejected' || machineStatus ===
+                'halted');
+            btnRun.textContent = (isRunning && !isPaused) ? '⏸ 运行中...' :
+                (isRunning && isPaused) ? '▶ 继续' : '▶ 运行';
+            btnPause.disabled = !isRunning || machineStatus === 'accepted' || machineStatus === 'rejected' ||
+                machineStatus === 'halted';
+            btnPause.textContent = (isRunning && !isPaused) ? '⏸ 暂停' : '▶ 继续';
+            btnStep.disabled = (machineStatus === 'accepted' || machineStatus === 'rejected' || machineStatus ===
+                'halted');
+            btnReset.disabled = false;
+        }
+
+        function updateStatusDisplay() {
+            currentStateEl.textContent = currentState;
+            const sym = getTapeValue(headPos);
+            currentSymbolEl.textContent = sym === BLANK ? '□ (_)' : sym;
+            stepCountEl.textContent = stepCounter;
+            headPositionEl.textContent = headPos;
+
+            switch (machineStatus) {
+                case 'ready':
+                    machineStatusEl.textContent = '就绪';
+                    machineStatusEl.className = 'value green';
+                    break;
+                case 'running':
+                    machineStatusEl.textContent = '运行中';
+                    machineStatusEl.className = 'value yellow';
+                    break;
+                case 'paused':
+                    machineStatusEl.textContent = '已暂停';
+                    machineStatusEl.className = 'value yellow';
+                    break;
+                case 'accepted':
+                    machineStatusEl.textContent = '✓ 接受';
+                    machineStatusEl.className = 'value green';
+                    break;
+                case 'rejected':
+                    machineStatusEl.textContent = '✗ 拒绝';
+                    machineStatusEl.className = 'value red';
+                    break;
+                case 'halted':
+                    machineStatusEl.textContent = '停机';
+                    machineStatusEl.className = 'value red';
+                    break;
+                default:
+                    machineStatusEl.textContent = machineStatus;
+                    machineStatusEl.className = 'value';
+            }
+
+            updateButtonState();
+        }
+
+        function updateSpeed(val) {
+            speed = parseInt(val);
+            speedLabel.textContent = speed + ' 步/秒';
+            if (isRunning && !isPaused) {
+                startInterval();
+            }
+        }
+
+        // ============================================
+        // 示例加载
+        // ============================================
+        function loadExample() {
+            const idx = parseInt(exampleSelect.value);
+            if (isNaN(idx) || !examples[idx]) {
+                showNotification('请选择一个示例', 'error');
+                return;
+            }
+
+            const ex = examples[idx];
+
+            // 设置状态
+            initialStateInput.value = ex.initialState;
+            acceptStatesInput.value = ex.acceptStates.join(', ');
+            initialInputInput.value = ex.initialInput;
+
+            // 设置规则
+            rules = ex.rules.map(r => ({
+                currentState: r[0],
+                readSymbol: r[1],
+                writeSymbol: r[2],
+                moveDir: r[3],
+                nextState: r[4],
+            }));
+
+            // 重置机器
+            resetMachine();
+            renderRulesTable();
+            updateStatusDisplay();
+            renderTape();
+            exampleDescription.textContent = ex.description;
+
+            showNotification('已加载示例: ' + ex.name, 'success');
+        }
+
+        // ============================================
+        // 指南切换
+        // ============================================
+        function toggleGuide() {
+            const content = document.getElementById('guideContent');
+            const arrow = document.getElementById('guideArrow');
+            content.classList.toggle('open');
+            arrow.classList.toggle('open');
+        }
+
+        // ============================================
+        // 通知
+        // ============================================
+        function showNotification(message, type = 'info') {
+            // 移除旧通知
+            const oldNotifs = document.querySelectorAll('.notification');
+            oldNotifs.forEach(n => n.remove());
+
+            const notif = document.createElement('div');
+            notif.className = 'notification ' + type;
+            notif.textContent = message;
+            document.body.appendChild(notif);
+
+            setTimeout(() => {
+                if (notif.parentNode) notif.remove();
+            }, 2800);
+        }
+
+        // ============================================
+        // 键盘快捷键
+        // ============================================
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
+                return; // 不干扰输入
+            }
+            switch (e.key.toLowerCase()) {
+                case 'r':
+                    if (e.ctrlKey || e.metaKey) {
+                        e.preventDefault();
+                        resetMachine();
+                    }
+                    break;
+                case ' ':
+                    e.preventDefault();
+                    if (isRunning && !isPaused) {
+                        pauseMachine();
+                    } else {
+                        runMachine();
+                    }
+                    break;
+                case 's':
+                    if (!e.ctrlKey && !e.metaKey) {
+                        stepMachine();
+                    }
+                    break;
+                case 'g':
+                    if (!e.ctrlKey && !e.metaKey) {
+                        toggleGuide();
+                    }
+                    break;
+            }
+        });
+
+        // 监听设置变化
+        initialStateInput.addEventListener('change', () => {
+            if (!isRunning) {
+                currentState = initialStateInput.value.trim() || 'q0';
+                updateStatusDisplay();
+            }
+        });
+
+        initialInputInput.addEventListener('change', () => {
+            if (!isRunning) {
+                resetMachine();
+            }
+        });
+
+        // ============================================
+        // 启动
+        // ============================================
+        init();
+
+        // 初始示例描述
+        if (examples.length > 0) {
+            exampleDescription.textContent = '选择一个示例以查看描述，然后点击"加载示例"';
+        }
+
+        console.log('🎛️ 图灵机模拟器已加载');
+        console.log('📖 按 G 打开/关闭操作指南');
+        console.log('⌨️ 快捷键: 空格=运行/暂停, S=单步, Ctrl+R=重置');
+        console.log('💡 图灵完备: 通过编写转换规则，可计算任何可计算函数');
+    </script>
+</body>
+</html>

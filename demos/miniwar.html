@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>迷你领地战 · 双人对战</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0f1218;
+  --panel: #171b23;
+  --panel2: #1f2531;
+  --line: #2b3242;
+  --text: #d6dce8;
+  --muted: #6f7a90;
+  --p1: #4a9eff;
+  --p2: #ff6b6b;
+  --gold: #e3c069;
+  --green: #79d979;
+}
+
+html, body { height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100vh;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 12px;
+  gap: 10px;
+}
+
+/* ===== 顶栏 ===== */
+#topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+
+.tb-turn {
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.tb-turn b { color: var(--text); font-size: 16px; }
+
+.pcard {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #131720;
+  opacity: .5;
+  transition: opacity .2s, border-color .2s, background .2s;
+  overflow: hidden;
+}
+.pcard.active { opacity: 1; }
+.pcard.p1.active {
+  border-color: var(--p1);
+  background: #12233a;
+  box-shadow: 0 0 0 1px rgba(74,158,255,.25);
+}
+.pcard.p2.active {
+  border-color: var(--p2);
+  background: #331619;
+  box-shadow: 0 0 0 1px rgba(255,107,107,.25);
+}
+
+.pname {
+  font-size: 11.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pcard.p1.active .pname { color: var(--p1); }
+.pcard.p2.active .pname { color: var(--p2); }
+
+.pres {
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: .3px;
+  white-space: nowrap;
+}
+.pres .sep { color: var(--line); margin: 0 2px; }
+
+#topbar .btn {
+  width: auto;
+  padding: 10px 18px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ===== 主体 ===== */
+#main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 12px;
+  min-height: 0;
+}
+
+#mapWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#mapGrid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  grid-template-rows: repeat(6, 1fr);
+  gap: 6px;
+  width: min(58vh, 460px, 100%);
+  aspect-ratio: 1 / 1;
+}
+
+/* ===== 格子 ===== */
+.tile {
+  position: relative;
+  border-radius: 8px;
+  border: 2px solid var(--line);
+  background: #1a1f2a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  transition: transform .1s, border-color .12s, background .12s, box-shadow .12s;
+}
+.tile:hover { border-color: #46506a; }
+
+.tile .tchar {
+  font-size: 19px;
+  font-weight: 700;
+  color: #7d8698;
+  line-height: 1;
+}
+
+.tile .tnum {
+  position: absolute;
+  right: 3px;
+  bottom: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #cfd6e4;
+  background: rgba(0,0,0,.5);
+  border-radius: 4px;
+  padding: 0 4px;
+  line-height: 15px;
+}
+
+.tile .acted {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffcc44;
+  box-shadow: 0 0 6px rgba(255,204,68,.7);
+}
+
+/* 归属配色 */
+.tile.own1 { background: #14273d; border-color: #2c66a3; }
+.tile.own2 { background: #331619; border-color: #a44242; }
+.tile.own1:hover { border-color: var(--p1); }
+.tile.own2:hover { border-color: var(--p2); }
+
+/* 地形字色 */
+.tile.ter-farm .tchar { color: #b8d96a; }
+.tile.ter-mountain .tchar { color: #a2907c; }
+.tile.ter-waste .tchar { color: #59606e; }
+.tile.ter-city .tchar { color: #ffd166; }
+
+/* 状态 */
+.tile.sel {
+  border-color: #ffffff !important;
+  box-shadow: 0 0 0 2px rgba(255,255,255,.22), 0 0 14px rgba(255,255,255,.18);
+  transform: scale(1.05);
+  z-index: 3;
+}
+.tile.reach {
+  border-color: var(--green) !important;
+  box-shadow: 0 0 0 2px rgba(121,217,121,.22);
+  cursor: crosshair;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.tile.target {
+  border-color: var(--gold) !important;
+  box-shadow: 0 0 0 2px rgba(227,192,105,.4);
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(121,217,121,.15); }
+  50%      { box-shadow: 0 0 0 4px rgba(121,217,121,.35); }
+}
+
+/* ===== 侧栏 ===== */
+#panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+#panel h3 {
+  font-size: 15px;
+  margin-bottom: 10px;
+  color: #e8edf6;
+  font-weight: 600;
+}
+
+.rows .row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid #212836;
+  font-size: 13px;
+}
+.rows .row:last-child { border-bottom: none; }
+.rows .row span { color: var(--muted); }
+.rows .row b { font-weight: 600; }
+
+.c0 { color: var(--muted); }
+.c1 { color: var(--p1); }
+.c2 { color: var(--p2); }
+.gold { color: var(--gold); }
+
+.acts { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+
+.btn {
+  display: block;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel2);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .12s, border-color .12s, transform .06s;
+  text-align: center;
+}
+.btn:hover:not(:disabled) { background: #2a3242; border-color: #3d475c; }
+.btn:active:not(:disabled) { transform: scale(.985); }
+.btn:disabled { opacity: .32; cursor: not-allowed; }
+
+.btn.primary {
+  background: #2b5c96;
+  border-color: #3d7ac0;
+  color: #fff;
+}
+.btn.primary:hover:not(:disabled) { background: #3570b3; }
+
+.btn .cost {
+  color: var(--gold);
+  font-size: 12px;
+  margin-left: 4px;
+}
+
+.tip {
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.tip.warn { color: #e0a54a; }
+
+.hint { color: var(--muted); font-size: 13px; line-height: 1.9; }
+.hint p { margin-bottom: 4px; }
+.hint hr { border: none; border-top: 1px solid var(--line); margin: 12px 0; }
+
+/* 出击确认 */
+.preview {
+  margin-top: 12px;
+  padding: 9px 11px;
+  border-radius: 8px;
+  background: #12161f;
+  border: 1px solid var(--line);
+  font-size: 12.5px;
+  color: #a8b2c6;
+  line-height: 1.6;
+}
+
+.troop-pick { margin-top: 14px; }
+
+#troopRange {
+  width: 100%;
+  margin-bottom: 8px;
+  accent-color: var(--p1);
+  cursor: pointer;
+}
+
+.pick-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.pick-row > span { flex: 1; }
+.pick-row b { color: var(--text); font-size: 14px; }
+
+.mini {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--panel2);
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.mini:hover { background: #2a3242; }
+
+/* 游戏结束 */
+.over-box { text-align: center; padding-top: 10px; }
+.over-title {
+  font-size: 12px;
+  letter-spacing: 4px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.over-win {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.over-win.c1 { color: var(--p1); }
+.over-win.c2 { color: var(--p2); }
+.over-reason {
+  font-size: 13px;
+  color: #9aa4b8;
+  margin-bottom: 20px;
+  line-height: 1.7;
+}
+
+/* ===== 日志 ===== */
+#logWrap {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 12px;
+  max-height: 100px;
+  overflow-y: auto;
+  font-size: 12.5px;
+}
+
+.log-item {
+  padding: 3px 0;
+  color: #8e98ac;
+  border-bottom: 1px solid rgba(255,255,255,.025);
+  line-height: 1.5;
+}
+.log-item:last-child { border-bottom: none; }
+.log-item.lp1 { color: #9dc7f2; }
+.log-item.lp2 { color: #f0a3a3; }
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2c3446; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #3b465e; }
+
+/* 响应式 */
+@media (max-width: 820px) {
+  #main { grid-template-columns: 1fr; grid-template-rows: minmax(0,1fr) auto; }
+  #panel { max-height: 260px; }
+  #mapGrid { width: min(48vh, 100%); }
+  .tb-turn { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header id="topbar"></header>
+  <div id="main">
+    <div id="mapWrap"><div id="mapGrid"></div></div>
+    <aside id="panel"></aside>
+  </div>
+  <div id="logWrap"></div>
+</div>
+
+<script>
+(function () {
+'use strict';
+
+/* ============================================================
+   配置
+   ============================================================ */
+const CFG = {
+  SIZE: 6,
+  START_FOOD: 50,
+  CITY_TROOPS: 10,
+  MAX_TROOPS: 99,
+  RECRUIT_COST: 10,
+  RECRUIT_NORMAL: 5,
+  RECRUIT_CITY: 7,
+  FARM_COST: 20,
+  FARM_COST_STEP: 10,
+  MAX_FARM: 3,
+  CITY_FOOD: 5,
+  FARM_YIELD: [0, 4, 7, 10],
+  DEF_MUL: { flat: 1.0, mountain: 1.3, waste: 0.9, city: 1.5 },
+  RAND_LO: 0.85,
+  RAND_HI: 1.15,
+  LOG_MAX: 40
+};
+
+const PNAME = { 1: '玩家 1', 2: '玩家 2' };
+
+/* ============================================================
+   状态
+   ============================================================ */
+let S = null;
+
+function newGame() {
+  S = {
+    turn: 1,
+    current: 1,
+    food: { 1: CFG.START_FOOD, 2: CFG.START_FOOD },
+    grid: buildGrid(),
+    sel: null,
+    mode: 'idle',        // idle | move | confirm
+    target: null,
+    logs: [],
+    over: false,
+    winner: 0,
+    overReason: ''
+  };
+  startTurn();
+  render();
+}
+
+/* ============================================================
+   地图生成
+   ============================================================ */
+function buildGrid() {
+  const g = [];
+  for (let y = 0; y < CFG.SIZE; y++) {
+    const row = [];
+    for (let x = 0; x < CFG.SIZE; x++) {
+      const r = Math.random();
+      let terrain;
+      if (r < 0.18) terrain = 'mountain';
+      else if (r < 0.30) terrain = 'waste';
+      else terrain = 'flat';
+
+      row.push({
+        x: x, y: y,
+        terrain: terrain,
+        owner: 0,
+        troops: 0,
+        farmLevel: 0,
+        acted: false,
+        isCity: false
+      });
+    }
+    g.push(row);
+  }
+
+  // 中立守军
+  for (let y = 0; y < CFG.SIZE; y++) {
+    for (let x = 0; x < CFG.SIZE; x++) {
+      const t = g[y][x];
+      if (t.terrain === 'mountain') t.troops = rnd(0, 4);
+      else if (t.terrain === 'waste') t.troops = rnd(0, 1);
+      else t.troops = rnd(0, 3);
+    }
+  }
+
+  // 双方主城
+  setCity(g[0][0], 1);
+  setCity(g[CFG.SIZE - 1][CFG.SIZE - 1], 2);
+
+  // 保证主城有出路
+  ensureExit(g, 0, 0);
+  ensureExit(g, CFG.SIZE - 1, CFG.SIZE - 1);
+
+  return g;
+}
+
+function setCity(t, owner) {
+  t.terrain = 'city';
+  t.owner = owner;
+  t.troops = CFG.CITY_TROOPS;
+  t.isCity = true;
+  t.farmLevel = 0;
+  t.acted = false;
+}
+
+function ensureExit(g, cx, cy) {
+  const nb = [];
+  if (cx + 1 < CFG.SIZE) nb.push([cx + 1, cy]);
+  if (cx - 1 >= 0) nb.push([cx - 1, cy]);
+  if (cy + 1 < CFG.SIZE) nb.push([cx, cy + 1]);
+  if (cy - 1 >= 0) nb.push([cx, cy - 1]);
+
+  let passable = 0;
+  nb.forEach(function (p) {
+    if (g[p[1]][p[0]].terrain !== 'mountain') passable++;
+  });
+
+  for (let i = 0; i < nb.length && passable < 2; i++) {
+    const t = g[nb[i][1]][nb[i][0]];
+    if (t.terrain === 'mountain') {
+      t.terrain = 'flat';
+      t.troops = Math.min(t.troops, 2);
+      passable++;
+    }
+  }
+}
+
+/* ============================================================
+   工具函数
+   ============================================================ */
+function rnd(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+function rand(a, b) { return Math.random() * (b - a) + a; }
+
+function tileAt(x, y) { return S.grid[y][x]; }
+function selTile() { return S.sel ? S.grid[S.sel.y][S.sel.x] : null; }
+
+function forEachTile(fn) {
+  for (let y = 0; y < CFG.SIZE; y++) {
+    for (let x = 0; x < CFG.SIZE; x++) {
+      fn(S.grid[y][x]);
+    }
+  }
+}
+
+function coord(t) {
+  return String.fromCharCode(65 + t.x) + (t.y + 1);
+}
+
+function isAdjacent(a, b) {
+  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y) === 1;
+}
+
+function troopsOf(p) {
+  let s = 0;
+  forEachTile(function (t) { if (t.owner === p) s += t.troops; });
+  return s;
+}
+
+function countTiles(p) {
+  let c = 0;
+  forEachTile(function (t) { if (t.owner === p) c++; });
+  return c;
+}
+
+function yieldOf(t) {
+  let v = 0;
+  if (t.terrain === 'flat' && t.farmLevel > 0) v += CFG.FARM_YIELD[t.farmLevel];
+  if (t.isCity) v += CFG.CITY_FOOD;
+  return v;
+}
+
+function defMulOf(t) {
+  let m = CFG.DEF_MUL[t.terrain] || 1;
+  if (t.terrain === 'flat' && t.farmLevel > 0) m += 0.05 * t.farmLevel;
+  return m;
+}
+
+function terrainName(t) {
+  if (t.terrain === 'city') return '城池';
+  if (t.terrain === 'mountain') return '山地';
+  if (t.terrain === 'waste') return '荒地';
+  if (t.farmLevel > 0) return '农田 Lv.' + t.farmLevel;
+  return '平原';
+}
+
+function terrainChar(t) {
+  if (t.terrain === 'city') return '城';
+  if (t.terrain === 'mountain') return '山';
+  if (t.terrain === 'waste') return '荒';
+  if (t.farmLevel === 0) return '平';
+  return '田' + ['', '¹', '²', '³'][t.farmLevel];
+}
+
+function farmCostOf(t) {
+  return CFG.FARM_COST + t.farmLevel * CFG.FARM_COST_STEP;
+}
+
+function pushLog(msg, player) {
+  S.logs.push({ msg: msg, player: player || 0 });
+  if (S.logs.length > CFG.LOG_MAX) S.logs.shift();
+}
+
+/* ============================================================
+   回合流程
+   ============================================================ */
+function startTurn() {
+  // 重置全部地块行动标记
+  forEachTile(function (t) { t.acted = false; });
+
+  // 当前玩家领地产粮
+  let gained = 0;
+  forEachTile(function (t) {
+    if (t.owner === S.current) gained += yieldOf(t);
+  });
+  S.food[S.current] += gained;
+
+  if (gained > 0) {
+    pushLog('— 第 ' + S.turn + ' 回合 · ' + PNAME[S.current] +
+            ' 领地产出 ' + gained + ' 粮食 —', S.current);
+  } else {
+    pushLog('— 第 ' + S.turn + ' 回合 · ' + PNAME[S.current] + ' 行动 —', S.current);
+  }
+}
+
+function doEndTurn() {
+  if (S.over) return;
+
+  S.sel = null;
+  S.mode = 'idle';
+  S.target = null;
+
+  if (S.current === 1) {
+    S.current = 2;
+  } else {
+    S.current = 1;
+    S.turn++;
+  }
+
+  startTurn();
+  render();
+}
+
+/* ============================================================
+   操作：开垦
+   ============================================================ */
+function doFarm() {
+  const t = selTile();
+  if (!t || t.owner !== S.current || t.acted) return;
+  if (t.terrain !== 'flat' || t.farmLevel >= CFG.MAX_FARM) return;
+
+  const cost = farmCostOf(t);
+  if (S.food[S.current] < cost) return;
+
+  S.food[S.current] -= cost;
+  t.farmLevel++;
+  t.acted = true;
+
+  pushLog(PNAME[S.current] + ' 在 ' + coord(t) + ' 开垦，农田升至 Lv.' +
+          t.farmLevel + '（-' + cost + ' 🌾）', S.current);
+  render();
+}
+
+/* ============================================================
+   操作：征兵
+   ============================================================ */
+function doRecruit() {
+  const t = selTile();
+  if (!t || t.owner !== S.current || t.acted) return;
+  if (S.food[S.current] < CFG.RECRUIT_COST) return;
+  if (t.troops >= CFG.MAX_TROOPS) return;
+
+  const amt = t.isCity ? CFG.RECRUIT_CITY : CFG.RECRUIT_NORMAL;
+  S.food[S.current] -= CFG.RECRUIT_COST;
+  t.troops = Math.min(CFG.MAX_TROOPS, t.troops + amt);
+  t.acted = true;
+
+  pushLog(PNAME[S.current] + ' 在 ' + coord(t) + ' 征兵 +' + amt +
+          '（-' + CFG.RECRUIT_COST + ' 🌾）', S.current);
+  render();
+}
+
+/* ============================================================
+   操作：移动 / 进攻
+   ============================================================ */
+function doStartMove() {
+  const t = selTile();
+  if (!t || t.owner !== S.current || t.acted || t.troops <= 0) return;
+  S.mode = 'move';
+  S.target = null;
+  render();
+}
+
+function doCancelMove() {
+  if (S.target) {
+    S.target = null;
+    S.mode = 'move';
+  } else {
+    S.mode = 'idle';
+  }
+  render();
+}
+
+function setTroopValue(v) {
+  const range = document.getElementById('troopRange');
+  const label = document.getElementById('troopVal');
+  if (!range || !label) return;
+
+  const max = parseInt(range.max, 10);
+  let n;
+  if (v === 'max') n = max;
+  else if (v === 'half') n = Math.max(1, Math.floor(max / 2));
+  else n = Math.min(max, Math.max(1, parseInt(v, 10) || 1));
+
+  range.value = n;
+  label.textContent = n;
+}
+
+function doConfirmMove() {
+  if (!S.sel || !S.target) return;
+
+  const src = selTile();
+  const dst = tileAt(S.target.x, S.target.y);
+  const range = document.getElementById('troopRange');
+
+  let n = range ? parseInt(range.value, 10) : src.troops;
+  n = Math.max(1, Math.min(src.troops, n));
+
+  S.mode = 'idle';
+  S.target = null;
+
+  executeMove(src, dst, n);
+  render();
+}
+
+function executeMove(src, dst, n) {
+  const me = S.current;
+  const from = coord(src);
+  const to = coord(dst);
+
+  src.troops -= n;
+  src.acted = true;
+
+  if (dst.owner === me) {
+    // 增援
+    const before = dst.troops;
+    dst.troops = Math.min(CFG.MAX_TROOPS, dst.troops + n);
+    pushLog(PNAME[me] + ' ' + from + ' → ' + to + ' 增援 ' + n +
+            ' 兵（' + before + ' → ' + dst.troops + '）', me);
+
+  } else if (dst.troops === 0) {
+    // 空城占领
+    const oldOwner = dst.owner;
+    dst.owner = me;
+    dst.troops = n;
+    dst.acted = true;
+
+    const label = oldOwner === 0 ? '中立' : PNAME[oldOwner] + '的';
+    pushLog(PNAME[me] + ' ' + from + ' → ' + to + ' 占领' +
+            label + terrainName(dst), me);
+
+    if (dst.isCity && oldOwner !== 0) {
+      finishGame(me, '攻占了 ' + PNAME[oldOwner] + ' 的主城');
+      return;
+    }
+
+  } else {
+    // 战斗
+    resolveBattle(src, dst, n, me, from, to);
+  }
+
+  if (!S.over) checkElimination();
+}
+
+function resolveBattle(src, dst, n, me, from, to) {
+  const dm = defMulOf(dst);
+  const defender = dst.owner;
+  const defTroops = dst.troops;
+
+  const atkRoll = n * rand(CFG.RAND_LO, CFG.RAND_HI);
+  const defRoll = defTroops * dm * rand(CFG.RAND_LO, CFG.RAND_HI);
+
+  if (atkRoll > defRoll) {
+    // 进攻方胜
+    const remain = Math.max(1, Math.round(n - defTroops * dm));
+    dst.owner = me;
+    dst.troops = Math.min(CFG.MAX_TROOPS, remain);
+    dst.acted = true;
+
+    pushLog('⚔ ' + PNAME[me] + ' 从 ' + from + ' 进攻 ' + to +
+            '，击溃 ' + defTroops + ' 守军，占领该地（余 ' + dst.troops + ' 兵）', me);
+
+    if (dst.isCity) {
+      finishGame(me, '攻占了 ' + PNAME[defender] + ' 的主城');
+    }
+
+  } else {
+    // 防守方胜
+    const remain = Math.max(1, Math.round(defTroops - n / dm));
+    dst.troops = remain;
+
+    pushLog('⚔ ' + PNAME[me] + ' 从 ' + from + ' 进攻 ' + to +
+            ' 失败，' + n + ' 兵全军覆没，守军余 ' + remain, me);
+  }
+}
+
+/* ============================================================
+   胜负判定
+   ============================================================ */
+function checkElimination() {
+  for (let p = 1; p <= 2; p++) {
+    if (countTiles(p) === 0) {
+      finishGame(p === 1 ? 2 : 1, PNAME[p] + ' 失去了全部领地');
+      return;
+    }
+  }
+}
+
+function finishGame(winner, reason) {
+  S.over = true;
+  S.winner = winner;
+  S.overReason = reason;
+  S.mode = 'idle';
+  S.target = null;
+  pushLog('🏆 ' + PNAME[winner] + ' 获胜：' + reason, winner);
+}
+
+/* ============================================================
+   渲染：顶栏
+   ============================================================ */
+function renderTop() {
+  const t1 = troopsOf(1);
+  const t2 = troopsOf(2);
+
+  document.getElementById('topbar').innerHTML =
+    '<div class="tb-turn">第 <b>' + S.turn + '</b> 回合</div>' +
+    '<div class="pcard p1' + (S.current === 1 ? ' active' : '') + '">' +
+      '<div class="pname">玩家 1' + (S.current === 1 && !S.over ? ' · 行动中' : '') + '</div>' +
+      '<div class="pres">🌾 ' + S.food[1] + '<span class="sep">|</span>⚔ ' + t1 + '</div>' +
+    '</div>' +
+    '<div class="pcard p2' + (S.current === 2 ? ' active' : '') + '">' +
+      '<div class="pname">玩家 2' + (S.current === 2 && !S.over ? ' · 行动中' : '') + '</div>' +
+      '<div class="pres">🌾 ' + S.food[2] + '<span class="sep">|</span>⚔ ' + t2 + '</div>' +
+    '</div>' +
+    '<button class="btn primary" data-action="endTurn"' +
+      (S.over ? ' disabled' : '') + '>结束回合</button>';
+}
+
+/* ============================================================
+   渲染：地图
+   ============================================================ */
+function renderMap() {
+  let html = '';
+  for (let y = 0; y < CFG.SIZE; y++) {
+    for (let x = 0; x < CFG.SIZE; x++) {
+      html += tileHTML(S.grid[y][x]);
+    }
+  }
+  document.getElementById('mapGrid').innerHTML = html;
+}
+
+function tileHTML(t) {
+  const cls = ['tile', 'own' + t.owner];
+
+  if (t.terrain === 'mountain') cls.push('ter-mountain');
+  else if (t.terrain === 'waste') cls.push('ter-waste');
+  else if (t.terrain === 'city') cls.push('ter-city');
+  else if (t.farmLevel > 0) cls.push('ter-farm');
+
+  if (S.sel && S.sel.x === t.x && S.sel.y === t.y) cls.push('sel');
+
+  if (S.mode === 'move' && S.sel && !S.target) {
+    if (Math.abs(t.x - S.sel.x) + Math.abs(t.y - S.sel.y) === 1) cls.push('reach');
+  }
+
+  if (S.target && S.target.x === t.x && S.target.y === t.y) cls.push('target');
+
+  const showActed = t.acted && t.owner === S.current && !S.over;
+
+  return '<div class="' + cls.join(' ') + '" data-tile="' + t.x + ',' + t.y + '">' +
+    (showActed ? '<span class="acted"></span>' : '') +
+    '<span class="tchar">' + terrainChar(t) + '</span>' +
+    (t.troops > 0 ? '<span class="tnum">' + t.troops + '</span>' : '') +
+  '</div>';
+}
+
+/* ============================================================
+   渲染：侧栏
+   ============================================================ */
+function renderPanel() {
+  document.getElementById('panel').innerHTML = panelHTML();
+}
+
+function panelHTML() {
+  if (S.over) return overHTML();
+  if (S.mode === 'confirm' && S.target && S.sel) return confirmHTML();
+  if (!S.sel) return hintHTML();
+  return infoHTML(selTile());
+}
+
+function hintHTML() {
+  return '<div class="hint">' +
+    '<p>当前行动：<b class="c' + S.current + '">' + PNAME[S.current] + '</b></p>' +
+    '<hr>' +
+    '<p>点击地图上的地块查看信息。</p>' +
+    '<p>点击自己颜色的地块可进行操作。</p>' +
+    '<hr>' +
+    '<p style="font-size:12px">· 开垦：把平原变为农田，提升产粮</p>' +
+    '<p style="font-size:12px">· 征兵：消耗粮食换取兵力</p>' +
+    '<p style="font-size:12px">· 移动/进攻：派兵到相邻地块</p>' +
+    '<p style="font-size:12px">· 每块地每回合只能行动一次</p>' +
+  '</div>';
+}
+
+function infoHTML(t) {
+  const mine = t.owner === S.current;
+  const ownerLabel = t.owner === 0 ? '中立' : PNAME[t.owner];
+
+  let rows = '';
+  rows += row('坐标', coord(t), '');
+  rows += row('地形', terrainName(t), '');
+  rows += row('归属', ownerLabel, 'c' + t.owner);
+  rows += row('驻军', String(t.troops), '');
+
+  if (t.terrain === 'flat' && t.farmLevel > 0) {
+    rows += row('产出', '+' + yieldOf(t) + ' 粮/回合', 'gold');
+  }
+  if (t.isCity) {
+    rows += row('产出', '+' + CFG.CITY_FOOD + ' 粮/回合', 'gold');
+  }
+  if (t.terrain !== 'city' && t.terrain !== 'waste') {
+    rows += row('防御', '×' + defMulOf(t).toFixed(2), '');
+  }
+
+  let actions = '';
+
+  if (mine && !S.over) {
+    if (S.mode === 'move') {
+      actions =
+        '<div class="tip">请点击相邻的高亮地块作为目标</div>' +
+        '<div class="acts">' +
+          '<button class="btn" data-action="cancelMove">取消</button>' +
+        '</div>';
+    } else {
+      const canFarm = t.terrain === 'flat' && t.farmLevel < CFG.MAX_FARM;
+      const farmCost = farmCostOf(t);
+      const canRecruit =
+        S.food[S.current] >= CFG.RECRUIT_COST && t.troops < CFG.MAX_TROOPS;
+      const canMove = t.troops > 0;
+
+      if (t.acted) {
+        actions += '<div class="tip warn">该地块本回合已行动</div>';
+      }
+
+      actions += '<div class="acts">';
+
+      if (canFarm) {
+        actions +=
+          '<button class="btn" data-action="farm"' +
+          (t.acted || S.food[S.current] < farmCost ? ' disabled' : '') + '>' +
+          (t.farmLevel === 0 ? '开垦为农田' : '升级农田 Lv.' + (t.farmLevel + 1)) +
+          '<span class="cost">-' + farmCost + ' 🌾</span></button>';
+      }
+
+      if (canRecruit) {
+        const amt = t.isCity ? CFG.RECRUIT_CITY : CFG.RECRUIT_NORMAL;
+        actions +=
+          '<button class="btn" data-action="recruit"' +
+          (t.acted ? ' disabled' : '') + '>征兵 +' + amt +
+          '<span class="cost">-' + CFG.RECRUIT_COST + ' 🌾</span></button>';
+      }
+
+      if (canMove) {
+        actions +=
+          '<button class="btn" data-action="move"' +
+          (t.acted ? ' disabled' : '') + '>移动 / 进攻</button>';
+      }
+
+      actions += '</div>';
+    }
+  } else if (t.owner !== 0) {
+    actions = '<div class="tip">这是 ' + PNAME[t.owner] + ' 的领地，无法操作</div>';
+  } else {
+    actions = '<div class="tip">中立地块，需要派兵占领</div>';
+  }
+
+  return '<div class="info"><h3>' + coord(t) + ' · ' + terrainName(t) + '</h3>' +
+    '<div class="rows">' + rows + '</div>' + actions + '</div>';
+}
+
+function row(label, value, cls) {
+  return '<div class="row"><span>' + label + '</span><b class="' + cls + '">' +
+    value + '</b></div>';
+}
+
+function confirmHTML() {
+  const src = selTile();
+  const dst = tileAt(S.target.x, S.target.y);
+  const max = src.troops;
+  const dm = defMulOf(dst);
+
+  let preview;
+  if (dst.owner === S.current) {
+    preview = '目标为己方领地，将增援 ' + dst.troops + ' → ' +
+              Math.min(CFG.MAX_TROOPS, dst.troops + max) + '（按派出量）';
+  } else if (dst.troops === 0) {
+    preview = '目标无守军，可直接占领。';
+  } else {
+    preview = '敌军守备 ' + dst.troops + ' 兵，地形防御 ×' + dm.toFixed(2) +
+              '。建议派出 ' + Math.ceil(dst.troops * dm) + ' 以上兵力。';
+  }
+
+  const dstOwner = dst.owner === 0 ? '中立' : PNAME[dst.owner];
+
+  return '<div class="info">' +
+    '<h3>出击：' + coord(src) + ' → ' + coord(dst) + '</h3>' +
+    '<div class="rows">' +
+      row('目标归属', dstOwner, 'c' + dst.owner) +
+      row('目标驻军', String(dst.troops), '') +
+      row('可派兵力', String(max), '') +
+    '</div>' +
+    '<div class="preview">' + preview + '</div>' +
+    '<div class="troop-pick">' +
+      '<input type="range" id="troopRange" min="1" max="' + max +
+        '" value="' + max + '">' +
+      '<div class="pick-row">' +
+        '<span>派出 <b id="troopVal">' + max + '</b> 兵力</span>' +
+        '<button class="mini" data-action="setTroop" data-v="1">1</button>' +
+        '<button class="mini" data-action="setTroop" data-v="half">半</button>' +
+        '<button class="mini" data-action="setTroop" data-v="max">全</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="acts">' +
+      '<button class="btn primary" data-action="confirmMove">确认出击</button>' +
+      '<button class="btn" data-action="cancelMove">取消</button>' +
+    '</div>' +
+  '</div>';
+}
+
+function overHTML() {
+  return '<div class="over-box">' +
+    '<div class="over-title">游 戏 结 束</div>' +
+    '<div class="over-win c' + S.winner + '">' + PNAME[S.winner] + ' 获胜</div>' +
+    '<div class="over-reason">' + S.overReason + '</div>' +
+    '<button class="btn primary" data-action="restart">再来一局</button>' +
+  '</div>';
+}
+
+/* ============================================================
+   渲染：日志
+   ============================================================ */
+function renderLog() {
+  const items = S.logs.slice(-24).reverse();
+  let html = '';
+  for (let i = 0; i < items.length; i++) {
+    const l = items[i];
+    html += '<div class="log-item' +
+      (l.player ? ' lp' + l.player : '') + '">' + l.msg + '</div>';
+  }
+  document.getElementById('logWrap').innerHTML = html;
+}
+
+/* ============================================================
+   主渲染
+   ============================================================ */
+function render() {
+  renderTop();
+  renderMap();
+  renderPanel();
+  renderLog();
+}
+
+/* ============================================================
+   交互
+   ============================================================ */
+function onTileClick(x, y) {
+  if (S.over) return;
+  const t = tileAt(x, y);
+
+  if (S.mode === 'move' && S.sel) {
+    if (Math.abs(x - S.sel.x) + Math.abs(y - S.sel.y) === 1) {
+      S.target = { x: x, y: y };
+      S.mode = 'confirm';
+      render();
+      return;
+    }
+    if (t.owner === S.current) {
+      S.sel = { x: x, y: y };
+      S.target = null;
+      S.mode = 'idle';
+      render();
+      return;
+    }
+    return;
+  }
+
+  if (S.mode === 'confirm') return;
+
+  S.sel = { x: x, y: y };
+  S.mode = 'idle';
+  S.target = null;
+  render();
+}
+
+function handleAction(action, el) {
+  if (S.over && action !== 'restart') return;
+
+  switch (action) {
+    case 'endTurn':     doEndTurn(); break;
+    case 'farm':        doFarm(); break;
+    case 'recruit':     doRecruit(); break;
+    case 'move':        doStartMove(); break;
+    case 'cancelMove':  doCancelMove(); break;
+    case 'confirmMove': doConfirmMove(); break;
+    case 'restart':     newGame(); break;
+    case 'setTroop':    setTroopValue(el.dataset.v); break;
+  }
+}
+
+/* 全局事件委托 */
+document.addEventListener('click', function (e) {
+  const tileEl = e.target.closest('.tile');
+  if (tileEl) {
+    const parts = tileEl.dataset.tile.split(',');
+    onTileClick(parseInt(parts[0], 10), parseInt(parts[1], 10));
+    return;
+  }
+
+  const actEl = e.target.closest('[data-action]');
+  if (actEl && !actEl.disabled) {
+    handleAction(actEl.dataset.action, actEl);
+  }
+});
+
+/* 滑块实时更新数值 */
+document.addEventListener('input', function (e) {
+  if (e.target.id === 'troopRange') {
+    const label = document.getElementById('troopVal');
+    if (label) label.textContent = e.target.value;
+  }
+});
+
+/* ============================================================
+   启动
+   ============================================================ */
+newGame();
+
+})();
+</script>
+</body>
+</html>

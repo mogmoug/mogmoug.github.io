@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>真实地形生成器 · Procedural Terrain Generator</title>
+<style>
+  :root{
+    --bg:#0b0e13; --panel:#141922; --panel2:#1b212c; --border:#2a3342;
+    --text:#d6dee9; --dim:#8593a6; --accent:#4aa3ff; --accent2:#2c7ad1;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font:13px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    display:flex; min-height:100vh; overflow-x:hidden;
+  }
+  aside{
+    width:286px; flex:0 0 286px; background:var(--panel);
+    border-right:1px solid var(--border); padding:20px 18px;
+    display:flex; flex-direction:column; gap:18px;
+    position:sticky; top:0; height:100vh; overflow-y:auto;
+  }
+  h1{font-size:15px;margin:0;letter-spacing:.5px;font-weight:600}
+  h1 span{color:var(--accent)}
+  .sub{font-size:11px;color:var(--dim);margin-top:2px;letter-spacing:.3px}
+  .field{display:flex;flex-direction:column;gap:6px}
+  label{font-size:11px;color:var(--dim);letter-spacing:.5px;text-transform:uppercase}
+  input[type=text]{
+    width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--border);
+    background:var(--panel2);color:var(--text);font:13px/1 ui-monospace,Menlo,Consolas,monospace;
+    outline:none;transition:border-color .15s;
+  }
+  input[type=text]:focus{border-color:var(--accent)}
+  .row{display:flex;gap:8px}
+  button{
+    flex:1;padding:9px 12px;border-radius:8px;border:1px solid transparent;
+    background:var(--accent);color:#04121f;font-weight:600;font-size:13px;
+    cursor:pointer;transition:filter .15s,transform .05s;font-family:inherit;
+  }
+  button:hover{filter:brightness(1.1)}
+  button:active{transform:translateY(1px)}
+  button.ghost{background:var(--panel2);color:var(--text);border-color:var(--border);font-weight:500}
+  button:disabled{opacity:.5;cursor:default;filter:none}
+  .legend{display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--dim)}
+  .legend .item{display:flex;align-items:center;gap:7px}
+  .sw{width:11px;height:11px;border-radius:3px;flex:0 0 auto;border:1px solid rgba(255,255,255,.12)}
+  .divider{height:1px;background:var(--border);margin:2px 0}
+  .stats{font:11px/1.7 ui-monospace,Menlo,Consolas,monospace;color:var(--dim)}
+  .stats b{color:var(--text);font-weight:500}
+  main{flex:1;min-width:0;padding:20px}
+  .grid{
+    display:grid;gap:16px;
+    grid-template-columns:repeat(auto-fit,minmax(340px,1fr));
+  }
+  .card{
+    background:var(--panel);border:1px solid var(--border);border-radius:12px;
+    overflow:hidden;display:flex;flex-direction:column;
+  }
+  .card header{
+    padding:9px 13px;display:flex;align-items:baseline;gap:8px;
+    border-bottom:1px solid var(--border);background:var(--panel2);
+  }
+  .card header b{font-size:12.5px;font-weight:600;letter-spacing:.3px}
+  .card header em{font-style:normal;font-size:10.5px;color:var(--dim)}
+  .card canvas{
+    display:block;width:100%;height:auto;aspect-ratio:1/1;background:#05070a;
+  }
+  .loading{
+    position:fixed;inset:0;background:rgba(6,9,14,.86);backdrop-filter:blur(3px);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+    z-index:99;opacity:0;pointer-events:none;transition:opacity .25s;
+  }
+  .loading.on{opacity:1;pointer-events:auto}
+  .spinner{
+    width:34px;height:34px;border-radius:50%;
+    border:3px solid rgba(74,163,255,.18);border-top-color:var(--accent);
+    animation:spin .8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #loadText{font-size:12.5px;color:var(--dim);letter-spacing:.5px}
+  @media(max-width:760px){
+    body{flex-direction:column}
+    aside{width:100%;flex:none;height:auto;position:static;border-right:none;border-bottom:1px solid var(--border)}
+  }
+</style>
+</head>
+<body>
+
+<aside>
+  <div>
+    <h1>真实地形<span>生成器</span></h1>
+    <div class="sub">1024 × 1024 · 程序化地貌</div>
+  </div>
+
+  <div class="field">
+    <label>随机种子</label>
+    <input id="seedInput" type="text" value="20240517" spellcheck="false">
+  </div>
+
+  <div class="row">
+    <button id="btnGen">生成地形</button>
+    <button id="btnRand" class="ghost" style="flex:0 0 70px">随机</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="legend">
+    <div class="item"><span class="sw" style="background:#4aa3ff"></span>地形图 · 高程着色 + 山体阴影</div>
+    <div class="item"><span class="sw" style="background:#d9787a"></span>岩性图 · 地层与断层结构</div>
+    <div class="item"><span class="sw" style="background:#e5a13a"></span>坡度图 · 地表倾斜度</div>
+    <div class="item"><span class="sw" style="background:#6d7fe0"></span>降水图 · 地形雨与雨影</div>
+    <div class="item"><span class="sw" style="background:#7fd0ff"></span>水系图 · 山脊谷线叠合</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="stats" id="stats">等待生成…</div>
+</aside>
+
+<main>
+  <div class="grid" id="grid"></div>
+</main>
+
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <div id="loadText">正在生成…</div>
+</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   0. 常量与工具
+   ========================================================================= */
+const N = 1024;
+const NN = N * N;
+const OFFS8 = [-N-1, -N, -N+1, -1, 1, N-1, N, N+1];
+const DXS   = [-1, 0, 1, -1, 1, -1, 0, 1];
+const DYS   = [-1, -1, -1, 0, 0, 1, 1, 1];
+const DIST8 = [1.41421356, 1, 1.41421356, 1, 1, 1.41421356, 1, 1.41421356];
+
+const clamp = (v,a,b)=> v<a?a:(v>b?b:v);
+const lerp  = (a,b,t)=> a + (b-a)*t;
+function smoothstep(e0,e1,x){
+  const t = clamp((x-e0)/(e1-e0), 0, 1);
+  return t*t*(3-2*t);
+}
+const nextFrame = ()=> new Promise(r=> requestAnimationFrame(()=> setTimeout(r,0)));
+
+/* =========================================================================
+   1. 噪声系统
+   ========================================================================= */
+const TSIZE = 1024, TMASK = 1023;
+const TBL = new Float32Array(TSIZE*TSIZE);
+
+function initNoise(seed){
+  let s = (seed|0) || 1;
+  if (s < 0) s = -s;
+  const t = TBL, L = t.length;
+  for (let i=0;i<L;i++){
+    s ^= s << 13; s >>>= 0;
+    s ^= s >>> 17;
+    s ^= s << 5;  s >>>= 0;
+    t[i] = s * 2.3283064365386963e-10;
+  }
+}
+
+function vnoise(x, y, o){
+  const xi = Math.floor(x), yi = Math.floor(y);
+  const xf = x - xi, yf = y - yi;
+  const u = xf*xf*(3-2*xf);
+  const v = yf*yf*(3-2*yf);
+  const x0 = (xi + o) & TMASK, x1 = (x0 + 1) & TMASK;
+  const y0 = (yi + o*3) & TMASK, y1 = (y0 + 1) & TMASK;
+  const r0 = y0 << 10, r1 = y1 << 10;
+  const a = TBL[r0|x0], b = TBL[r0|x1];
+  const c = TBL[r1|x0], d = TBL[r1|x1];
+  const ab = a + (b-a)*u;
+  const cd = c + (d-c)*u;
+  return ab + (cd-ab)*v;
+}
+
+function fbm(x, y, o, oct){
+  let sum=0, amp=1, norm=0, fx=x, fy=y;
+  for (let i=0;i<oct;i++){
+    sum += amp * vnoise(fx, fy, o + i*17);
+    norm += amp;
+    amp *= 0.5;
+    fx *= 2.0; fy *= 2.0;
+  }
+  return sum / norm;
+}
+
+function ridgedFbm(x, y, o, oct){
+  let sum=0, amp=1, norm=0, fx=x, fy=y;
+  for (let i=0;i<oct;i++){
+    const n = vnoise(fx, fy, o + i*29);
+    const r = 1 - Math.abs(n*2 - 1);
+    sum += amp * r * r;
+    norm += amp;
+    amp *= 0.5;
+    fx *= 2.0; fy *= 2.0;
+  }
+  return sum / norm;
+}
+
+/* =========================================================================
+   2. 高度场
+   ========================================================================= */
+function buildHeight(seed){
+  const H = new Float32Array(NN);
+  const oW1=101, oW2=233, oC=17, oD=311, oR=57, oB=89, oM=143, oO=421;
+
+  for (let y=0;y<N;y++){
+    const fy = y / N;
+    for (let x=0;x<N;x++){
+      const fx = x / N;
+
+      const w1 = fbm(fx*2.2 + 3.1, fy*2.2 + 7.7, oW1, 2) - 0.5;
+      const w2 = fbm(fx*2.2 - 4.3, fy*2.2 + 1.9, oW2, 2) - 0.5;
+      const wx = fx + 0.15*w1;
+      const wy = fy + 0.15*w2;
+
+      let cont = fbm(wx*1.65, wy*1.65, oC, 4);
+      cont = 0.5 + (cont - 0.5) * 2.6;
+      cont += (fbm(fx*13 + 1.7, fy*13 - 2.3, oD, 3) - 0.5) * 0.10;
+      cont = clamp(cont, 0, 1);
+
+      const relief = fbm(fx*3.4 + 5.5, fy*3.4 - 3.7, oR, 4);
+      const belt   = fbm(fx*1.45 - 6.1, fy*1.45 + 2.9, oB, 3);
+      const landMask = smoothstep(0.44, 0.56, cont);
+
+      const mW = smoothstep(0.58, 0.80, relief);
+      const pW = smoothstep(0.56, 0.72, belt) * (1 - mW);
+      const hW = smoothstep(0.36, 0.58, relief) * (1 - mW) * (1 - pW);
+      const bW = smoothstep(0.44, 0.30, belt) * (1 - mW) * (1 - pW) * (1 - hW) * 0.55;
+      const lW = Math.max(0, 1 - mW - pW - hW - bW);
+
+      const ridged = ridgedFbm(fx*5.2 + 2.1, fy*5.2 + 8.3, oM, 4);
+      const det    = fbm(fx*9.5 + 4.4, fy*9.5 - 1.1, oD + 77, 3) - 0.5;
+
+      const mtnH   = 0.10 + 0.58*ridged + 0.05*det;
+      const platH  = 0.26 + 0.030*det + 0.045*relief;
+      const hillH  = 0.045 + 0.115*relief + 0.020*det;
+      const basinH = -0.022 + 0.014*relief;
+      const plainH = 0.006 + 0.022*relief + 0.004*det;
+
+      let hLand = mW*mtnH + pW*platH + hW*hillH + bW*basinH + lW*plainH;
+
+      /* 平原微起伏 */
+      const micro = vnoise(fx*160 + 31, fy*160 + 17, oD + 91) - 0.5;
+      hLand += micro * (0.0045*lW + 0.0022*hW);
+
+      /* 海洋：加入海底起伏，避免出现同心圆状的等深环 */
+      let hOcean = -0.010 - 0.42 * Math.pow(1 - cont, 1.7);
+      hOcean += (fbm(fx*5.0 + 11.3, fy*5.0 - 7.1, oO, 4) - 0.5) * 0.07;
+      hOcean += (fbm(fx*17.0 - 3.7, fy*17.0 + 4.9, oO + 61, 3) - 0.5) * 0.014;
+
+      H[y*N + x] = hOcean + (hLand - hOcean) * landMask;
+    }
+  }
+  return H;
+}
+
+/* =========================================================================
+   3. 洼地填充（迭代松弛）
+   ========================================================================= */
+function fillPits(H){
+  const EPS = 1e-6;
+  for (let iter=0; iter<14; iter++){
+    for (let y=1;y<N-1;y++){
+      const row = y*N;
+      for (let x=1;x<N-1;x++){
+        const i = row + x;
+        const a = H[i-1], b = H[i+1], c = H[i-N], d = H[i+N];
+        let m = a;
+        if (b<m) m=b; if (c<m) m=c; if (d<m) m=d;
+        if (H[i] < m) H[i] = m + EPS;
+      }
+    }
+  }
+}
+
+/* =========================================================================
+   4. 流向 / 汇流累积（D8 + 桶排序）
+   ========================================================================= */
+function computeFlow(H){
+  const dir = new Int8Array(NN).fill(-1);
+
+  for (let y=1;y<N-1;y++){
+    const row = y*N;
+    for (let x=1;x<N-1;x++){
+      const i = row + x;
+      const h0 = H[i];
+      let best = -1, bestG = 0;
+      for (let k=0;k<8;k++){
+        const j = i + OFFS8[k];
+        const dh = h0 - H[j];
+        if (dh <= 0) continue;
+        const g = dh / DIST8[k];
+        if (g > bestG){ bestG = g; best = k; }
+      }
+      dir[i] = best;
+    }
+  }
+
+  let mn = Infinity, mx = -Infinity;
+  for (let i=0;i<NN;i++){ const v=H[i]; if(v<mn)mn=v; if(v>mx)mx=v; }
+  const range = (mx - mn) || 1;
+  const NB = 1<<16;
+  const cnt = new Int32Array(NB);
+  for (let i=0;i<NN;i++){
+    let b = ((H[i]-mn)/range*NB)|0;
+    if (b>=NB) b = NB-1; else if (b<0) b = 0;
+    cnt[b]++;
+  }
+  const start = new Int32Array(NB);
+  let acc = 0;
+  for (let b=0;b<NB;b++){ start[b]=acc; acc+=cnt[b]; }
+  const order = new Int32Array(NN);
+  const pos = start.slice();
+  for (let i=0;i<NN;i++){
+    let b = ((H[i]-mn)/range*NB)|0;
+    if (b>=NB) b = NB-1; else if (b<0) b = 0;
+    order[pos[b]++] = i;
+  }
+
+  const flow = new Float32Array(NN).fill(1);
+  for (let k=NN-1;k>=0;k--){
+    const i = order[k];
+    const d = dir[i];
+    if (d >= 0) flow[i + OFFS8[d]] += flow[i];
+  }
+
+  return { dir, flow };
+}
+
+/* =========================================================================
+   4b. 流向场微扰：打散 D8 造成的长直线河道
+   ========================================================================= */
+function makeFlowField(H, seed){
+  const Hf = new Float32Array(H);
+  const o = 900;
+  for (let y=0;y<N;y++){
+    const fy = y/N;
+    const row = y*N;
+    for (let x=0;x<N;x++){
+      const fx = x/N;
+      Hf[row+x] += (fbm(fx*95 + 3.3, fy*95 - 1.7, o, 2) - 0.5) * 0.0013
+                 + (fbm(fx*220 - 5.1, fy*220 + 2.9, o + 41, 2) - 0.5) * 0.0005;
+    }
+  }
+  return Hf;
+}
+
+/* =========================================================================
+   5. 岩性 / 地质结构
+   ========================================================================= */
+const LITHO_PAL = [
+  [214,120,122], // 0 花岗岩
+  [139,107,177], // 1 玄武岩
+  [168,213,226], // 2 石灰岩
+  [232,201,106], // 3 砂岩
+  [143,168,120], // 4 页岩
+  [201,143,168], // 5 片麻岩
+  [229,220,192], // 6 第四系冲积层
+];
+
+function hash01(a,b,s){
+  let h = Math.imul(a|0, 0x27d4eb2d) ^ Math.imul(b|0, 0x165667b1) ^ Math.imul(s|0, 0x9e3779b1);
+  h = Math.imul(h ^ (h>>>15), 0x2c1b3c6d);
+  h ^= h>>>12;
+  h = Math.imul(h, 0x297a2d39);
+  h ^= h>>>15;
+  return (h>>>0) * 2.3283064365386963e-10;
+}
+
+/* ---------- 5.1 断层：有限长度、弯曲、沿线变宽 ---------- */
+function stampFault(str, sXb, sYb, cx, cy, r, dx, dy, amp){
+  const R = r * 2.4 + 1.2;
+  const x0 = Math.max(0, Math.floor(cx - R));
+  const x1 = Math.min(N-1, Math.ceil(cx + R));
+  const y0 = Math.max(0, Math.floor(cy - R));
+  const y1 = Math.min(N-1, Math.ceil(cy + R));
+  const invSpan = 1 / (R - r + 1e-6);
+  for (let y=y0;y<=y1;y++){
+    const ddy = y - cy;
+    for (let x=x0;x<=x1;x++){
+      const ddx = x - cx;
+      const d = Math.sqrt(ddx*ddx + ddy*ddy);
+      if (d >= R) continue;
+      let t = d <= r ? 1 : 1 - (d - r) * invSpan;
+      t = t*t*(3-2*t);
+      const v = t * amp;
+      const i = y*N + x;
+      if (v > str[i]){ str[i] = v; sXb[i] = dx; sYb[i] = dy; }
+    }
+  }
+}
+
+function buildFaults(seed){
+  const str = new Float32Array(NN);
+  const sX  = new Float32Array(NN);
+  const sY  = new Float32Array(NN);
+
+  const NF = 13;
+  for (let k=0;k<NF;k++){
+    const r1 = hash01(k*11+1, 101, seed);
+    const r2 = hash01(k*11+2, 211, seed);
+    const r3 = hash01(k*11+3, 307, seed);
+    const r4 = hash01(k*11+4, 401, seed);
+    const r5 = hash01(k*11+5, 503, seed);
+
+    let x = 0.06 + r1 * 0.88;
+    let y = 0.06 + r2 * 0.88;
+    let ang = r3 * Math.PI * 2;
+
+    const len = 0.16 + r4 * 0.58;          // 走向长度（归一化）
+    const w0  = 0.0008 + r5 * 0.0017;      // 基础半宽
+    const step = 0.0016;
+    const steps = Math.max(12, Math.round(len / step));
+
+    for (let s=0;s<steps;s++){
+      const tt = s / (steps - 1);
+
+      // 走向缓慢弯曲（地质断层很少是直线）
+      const curv = (vnoise(s*0.18 + k*4.1, k*2.7, 620 + k*19) - 0.5) * 2.4;
+      ang += curv * 0.045;
+
+      x += Math.cos(ang) * step;
+      y += Math.sin(ang) * step;
+      if (x < 0.02 || x > 0.98 || y < 0.02 || y > 0.98) break;
+
+      // 两端收敛、沿线宽度起伏
+      const taper = Math.pow(Math.sin(Math.PI * tt), 0.7);
+      const wob   = 0.65 + 0.7 * vnoise(s*0.45, k*7.3, 740 + k*23);
+      const r = w0 * (0.22 + 0.78 * taper) * wob * N;
+
+      stampFault(str, sX, sY, x*N, y*N, r, Math.cos(ang), Math.sin(ang), taper);
+    }
+  }
+  return { str, sX, sY };
+}
+
+/* ---------- 5.2 岩性分布 ---------- */
+function buildLitho(seed, faults){
+  const litho = new Uint8Array(NN);
+  const shade = new Float32Array(NN);
+  const oL = 401, oS = 577;
+
+  for (let y=0;y<N;y++){
+    const fy = y/N;
+    const row = y*N;
+    for (let x=0;x<N;x++){
+      const fx = x/N;
+      const i = row + x;
+
+      const wx = fx + 0.16*(fbm(fx*2.0+9.1, fy*2.0+2.7, oL, 2) - 0.5);
+      const wy = fy + 0.16*(fbm(fx*2.0-3.3, fy*2.0+6.1, oL+91, 2) - 0.5);
+
+      const zf = fbm(wx*2.35, wy*2.35, oL, 4);
+      let zone = (zf*7)|0;
+      if (zone > 6) zone = 6; else if (zone < 0) zone = 0;
+
+      // 断层附近地层发生微小错动，让条带跟着断
+      const fs = faults.str[i];
+      let bfx, bfy;
+      if (fs > 0.01){
+        const nx = -faults.sY[i], ny = faults.sX[i];   // 垂直走向方向
+        const off = fs * 0.018;
+        bfx = (wx + nx*off)*12.0 + 4.4;
+        bfy = (wy + ny*off)*12.0 - 2.2;
+      } else {
+        bfx = wx*12.0 + 4.4;
+        bfy = wy*12.0 - 2.2;
+      }
+      const bf = fbm(bfx, bfy, oS, 3);
+      const band = Math.floor(bf*7);
+      const sh = 0.84 + 0.30 * ((bf*7) - band);
+
+      litho[i] = zone;
+      shade[i] = sh;
+    }
+  }
+  return { litho, shade };
+}
+
+/* =========================================================================
+   6. 坡度
+   ========================================================================= */
+function buildSlope(H){
+  const S = new Float32Array(NN);
+  const K = 300;
+  for (let y=1;y<N-1;y++){
+    const row = y*N;
+    for (let x=1;x<N-1;x++){
+      const i = row + x;
+      const gx = (H[i+1] - H[i-1]) * 0.5;
+      const gy = (H[i+N] - H[i-N]) * 0.5;
+      const s = Math.sqrt(gx*gx + gy*gy) * K;
+      S[i] = Math.atan(s) * 57.2957795;
+    }
+  }
+  return S;
+}
+
+/* =========================================================================
+   7. 降水
+   ========================================================================= */
+function buildPrecip(H, seed){
+  const P = new Float32Array(NN);
+  const oP = 809;
+  for (let y=0;y<N;y++){
+    const fy = y/N;
+    const row = y*N;
+    for (let x=0;x<N;x++){
+      const fx = x/N;
+      const i = row + x;
+      const h = H[i];
+
+      if (h < 0){
+        P[i] = clamp(0.82 + 0.30*(fbm(fx*2.6, fy*2.6, oP, 3) - 0.5), 0, 1);
+        continue;
+      }
+
+      let p = 0.46 + 0.70*(fbm(fx*2.45 + 1.3, fy*2.45 - 2.1, oP, 4) - 0.5);
+
+      const oro = smoothstep(0.0, 0.20, h) * (1 - smoothstep(0.24, 0.55, h));
+      p += 0.34 * oro;
+      p -= 0.20 * smoothstep(0.34, 0.72, h);
+      p += 0.05 * (fbm(fx*7.0, fy*7.0, oP+55, 2) - 0.5);
+
+      P[i] = clamp(p, 0, 1);
+    }
+  }
+  return P;
+}
+
+/* =========================================================================
+   8. 山脊 / 谷线
+   ========================================================================= */
+function boxBlurInto(src, dst, r){
+  const tmp = new Float32Array(NN);
+  const w = 2*r + 1;
+  for (let y=0;y<N;y++){
+    const row = y*N;
+    let sum = 0;
+    for (let k=-r;k<=r;k++) sum += src[row + clamp(k,0,N-1)];
+    for (let x=0;x<N;x++){
+      tmp[row+x] = sum / w;
+      const add = x + r + 1, sub = x - r;
+      sum += src[row + (add<N?add:N-1)] - src[row + (sub>0?sub:0)];
+    }
+  }
+  for (let x=0;x<N;x++){
+    let sum = 0;
+    for (let k=-r;k<=r;k++) sum += tmp[clamp(k,0,N-1)*N + x];
+    for (let y=0;y<N;y++){
+      dst[y*N+x] = sum / w;
+      const add = y + r + 1, sub = y - r;
+      sum += tmp[(add<N?add:N-1)*N + x] - tmp[(sub>0?sub:0)*N + x];
+    }
+  }
+}
+
+function buildRidges(H){
+  let S = new Float32Array(NN);
+  const S2 = new Float32Array(NN);
+  boxBlurInto(H, S, 2);
+  boxBlurInto(S, S2, 2);
+  S = S2;
+
+  const c = new Float32Array(NN);
+  let maxAbs = 0;
+  for (let y=1;y<N-1;y++){
+    const row = y*N;
+    for (let x=1;x<N-1;x++){
+      const i = row+x;
+      const lap = (S[i-1]+S[i+1]+S[i-N]+S[i+N]) * 0.25 - S[i];
+      c[i] = lap;
+      const a = lap < 0 ? -lap : lap;
+      if (a > maxAbs) maxAbs = a;
+    }
+  }
+  const th = maxAbs * 0.12;
+
+  const ridge  = new Uint8Array(NN);
+  const valley = new Uint8Array(NN);
+
+  for (let y=1;y<N-1;y++){
+    const row = y*N;
+    for (let x=1;x<N-1;x++){
+      const i = row+x;
+      const ci = c[i];
+      const ac = ci < 0 ? -ci : ci;
+      if (ac < th) continue;
+
+      let ok = true;
+      for (let k=0;k<8;k++){
+        const cn = c[i + OFFS8[k]];
+        const an = cn < 0 ? -cn : cn;
+        if (an > ac || (an === ac && cn > ci)){ ok = false; break; }
+      }
+      if (!ok) continue;
+
+      if (ci < 0) ridge[i] = 1;
+      else valley[i] = 1;
+    }
+  }
+  return { ridge, valley };
+}
+
+/* =========================================================================
+   9. 调色
+   ========================================================================= */
+const TERRAIN_STOPS = [
+  [-0.55, [  6, 18, 46]],
+  [-0.30, [ 12, 36, 76]],
+  [-0.12, [ 26, 68,118]],
+  [-0.02, [ 52,108,158]],
+  [-0.002,[116,164,192]],
+  [ 0.000,[206,196,156]],
+  [ 0.008,[172,186,126]],
+  [ 0.030,[118,156, 92]],
+  [ 0.080,[ 86,130, 74]],
+  [ 0.160,[104,122, 72]],
+  [ 0.260,[136,124, 78]],
+  [ 0.380,[156,128, 90]],
+  [ 0.520,[150,130,112]],
+  [ 0.660,[170,162,158]],
+  [ 0.800,[214,214,220]],
+  [ 0.950,[252,252,255]],
+];
+
+const LUTN = 4096, LUT_LO = -0.60, LUT_HI = 1.00;
+const LUT_R = new Uint8Array(LUTN), LUT_G = new Uint8Array(LUTN), LUT_B = new Uint8Array(LUTN);
+
+(function buildLUT(){
+  for (let i=0;i<LUTN;i++){
+    const h = LUT_LO + (LUT_HI-LUT_LO) * i/(LUTN-1);
+    let k = 0;
+    while (k < TERRAIN_STOPS.length-2 && h > TERRAIN_STOPS[k+1][0]) k++;
+    const a = TERRAIN_STOPS[k], b = TERRAIN_STOPS[k+1];
+    const t = clamp((h - a[0])/(b[0]-a[0] || 1), 0, 1);
+    LUT_R[i] = a[1][0] + (b[1][0]-a[1][0])*t;
+    LUT_G[i] = a[1][1] + (b[1][1]-a[1][1])*t;
+    LUT_B[i] = a[1][2] + (b[1][2]-a[1][2])*t;
+  }
+})();
+
+const SLOPE_STOPS = [
+  [ 0, [ 46, 118, 62]],
+  [ 5, [124, 178, 68]],
+  [12, [196, 200, 62]],
+  [22, [238, 152, 40]],
+  [32, [222, 76, 54]],
+  [42, [170, 44, 132]],
+  [55, [110, 30, 96]],
+  [80, [ 62, 22, 66]],
+];
+
+const PRECIP_STOPS = [
+  [0.00, [128,  78, 42]],
+  [0.14, [186, 146,  76]],
+  [0.28, [216, 214, 152]],
+  [0.42, [166, 214, 186]],
+  [0.56, [ 96, 186, 214]],
+  [0.70, [ 62, 130, 210]],
+  [0.84, [ 66,  76, 186]],
+  [1.00, [118,  52, 176]],
+];
+
+function rampColor(stops, v, out){
+  let k = 0;
+  while (k < stops.length-2 && v > stops[k+1][0]) k++;
+  const a = stops[k], b = stops[k+1];
+  const t = clamp((v - a[0])/((b[0]-a[0]) || 1), 0, 1);
+  out[0] = a[1][0] + (b[1][0]-a[1][0])*t;
+  out[1] = a[1][1] + (b[1][1]-a[1][1])*t;
+  out[2] = a[1][2] + (b[1][2]-a[1][2])*t;
+  return out;
+}
+
+/* =========================================================================
+   10. 状态 & 渲染
+   ========================================================================= */
+const state = { H:null, litho:null, shade:null, faults:null,
+                slope:null, precip:null, flow:null, dir:null,
+                ridge:null, valley:null, seed:0 };
+
+const sharedImg = new ImageData(N, N);
+const sharedBuf = new Uint32Array(sharedImg.data.buffer);
+
+function cc(v){ return v<0?0:(v>255?255:v|0); }
+function px(R,G,B){ return 0xff000000 | (cc(B)<<16) | (cc(G)<<8) | cc(R); }
+
+/* ---------- 10.1 地形图 ---------- */
+function renderTerrain(ctx){
+  const H = state.H, buf = sharedBuf;
+  const lx = -0.52, ly = -0.52, lz = 0.68;
+  const K = 55;
+  const lutScale = (LUTN-1)/(LUT_HI-LUT_LO);
+
+  for (let y=0;y<N;y++){
+    const row = y*N;
+    for (let x=0;x<N;x++){
+      const i = row+x;
+      const h = H[i];
+      let R,G,B;
+
+      if (h < 0){
+        const t = Math.min(1, -h/0.45);
+        R = lerp(104,10,t);
+        G = lerp(156,28,t);
+        B = lerp(198,66,t);
+        buf[i] = px(R,G,B);
+        continue;
+      }
+
+      let li = ((h - LUT_LO) * lutScale)|0;
+      if (li < 0) li = 0; else if (li >= LUTN) li = LUTN-1;
+      R = LUT_R[li]; G = LUT_G[li]; B = LUT_B[li];
+
+      const iL = x>0 ? i-1 : i;
+      const iR = x<N-1 ? i+1 : i;
+      const iU = y>0 ? i-N : i;
+      const iD = y<N-1 ? i+N : i;
+      const gx = (H[iR]-H[iL]) * 0.5 * K;
+      const gy = (H[iD]-H[iU]) * 0.5 * K;
+      const inv = 1/Math.sqrt(gx*gx + gy*gy + 1);
+      const nx = -gx*inv, ny = -gy*inv, nz = inv;
+      let lam = nx*lx + ny*ly + nz*lz;
+      if (lam < 0.22) lam = 0.22; else if (lam > 1.28) lam = 1.28;
+
+      buf[i] = px(R*lam, G*lam, B*lam);
+    }
+  }
+  ctx.putImageData(sharedImg, 0, 0);
+}
+
+/* ---------- 10.2 岩性图 ---------- */
+function renderLitho(ctx){
+  const buf = sharedBuf;
+  const litho = state.litho, shade = state.shade, H = state.H;
+  const fStr = state.faults.str;
+  const lx = -0.5, ly = -0.5, lz = 0.707;
+  const K = 45;
+
+  for (let y=0;y<N;y++){
+    const row = y*N;
+    for (let x=0;x<N;x++){
+      const i = row+x;
+
+      const pal = LITHO_PAL[litho[i]];
+      const s = shade[i];
+
+      const iL = x>0?i-1:i, iR = x<N-1?i+1:i;
+      const iU = y>0?i-N:i, iD = y<N-1?i+N:i;
+      const gx = (H[iR]-H[iL])*0.5*K;
+      const gy = (H[iD]-H[iU])*0.5*K;
+      const inv = 1/Math.sqrt(gx*gx+gy*gy+1);
+      let lam = (-gx*inv)*lx + (-gy*inv)*ly + inv*lz;
+      lam = clamp(lam, 0.35, 1.25);
+
+      let R = pal[0]*s*lam;
+      let G = pal[1]*s*lam;
+      let B = pal[2]*s*lam;
+
+      if (H[i] < 0){
+        const t = Math.min(1, -H[i]/0.35);
+        R = lerp(R, R*0.55+16, t);
+        G = lerp(G, G*0.62+28, t);
+        B = lerp(B, B*0.78+52, t);
+      }
+
+      // 断层：核心深色，边缘自然过渡
+      const fs = fStr[i];
+      if (fs > 0.015){
+        const k = Math.min(1, Math.pow(fs, 0.85) * 1.5);
+        R = lerp(R, 56, k);
+        G = lerp(G, 46, k);
+        B = lerp(B, 46, k);
+      }
+
+      buf[i] = px(R,G,B);
+    }
+  }
+  ctx.putImageData(sharedImg, 0, 0);
+}
+
+/* ---------- 10.3 坡度图 ---------- */
+function renderSlope(ctx){
+  const buf = sharedBuf;
+  const S = state.slope, H = state.H;
+  const tmp = [0,0,0];
+  const MAXD = 80;
+
+  for (let y=0;y<N;y++){
+    const row = y*N;
+    for (let x=0;x<N;x++){
+      const i = row+x;
+      if (H[i] < 0){
+        const t = Math.min(1, -H[i]/0.35);
+        buf[i] = px(lerp(38,10,t), lerp(58,20,t), lerp(84,38,t));
+        continue;
+      }
+      rampColor(SLOPE_STOPS, Math.min(S[i], MAXD), tmp);
+      buf[i] = px(tmp[0], tmp[1], tmp[2]);
+    }
+  }
+  ctx.putImageData(sharedImg, 0, 0);
+}
+
+/* ---------- 10.4 降水图 ---------- */
+function renderPrecip(ctx){
+  const buf = sharedBuf;
+  const P = state.precip;
+  const tmp = [0,0,0];
+
+  for (let y=0;y<N;y++){
+    const row = y*N;
+    for (let x=0;x<N;x++){
+      const i = row+x;
+      rampColor(PRECIP_STOPS, P[i], tmp);
+      buf[i] = px(tmp[0], tmp[1], tmp[2]);
+    }
+  }
+  ctx.putImageData(sharedImg, 0, 0);
+
+  ctx.save();
+  ctx.globalAlpha = 0.16;
+  ctx.fillStyle = '#ffffff';
+  const STEP = 0.1;
+  ctx.beginPath();
+  for (let y=1;y<N-1;y+=2){
+    const row = y*N;
+    for (let x=1;x<N-1;x+=2){
+      const i = row+x;
+      const a = P[i], b = P[i+1], c = P[i+N];
+      const la = Math.floor(a/STEP), lb = Math.floor(b/STEP), lc = Math.floor(c/STEP);
+      if (la !== lb) ctx.rect(x+1, y, 1, 1);
+      else if (la !== lc) ctx.rect(x, y+1, 1, 1);
+    }
+  }
+  ctx.fill();
+  ctx.restore();
+}
+
+/* ---------- 10.5 水系 · 山脊谷线 ---------- */
+
+/* 用二次贝塞尔穿过相邻中点，把 D8 折线抹圆 */
+function drawSmoothPath(ctx, p){
+  const n = p.length >> 1;
+  if (n < 2) return;
+  ctx.moveTo(p[0] + 0.5, p[1] + 0.5);
+  if (n === 2){
+    ctx.lineTo(p[2] + 0.5, p[3] + 0.5);
+    return;
+  }
+  for (let i=1; i<n-1; i++){
+    const x1 = p[i*2],   y1 = p[i*2+1];
+    const x2 = p[i*2+2], y2 = p[i*2+3];
+    const mx = (x1 + x2) * 0.5;
+    const my = (y1 + y2) * 0.5;
+    ctx.quadraticCurveTo(x1 + 0.5, y1 + 0.5, mx + 0.5, my + 0.5);
+  }
+  ctx.lineTo(p[(n-1)*2] + 0.5, p[(n-1)*2+1] + 0.5);
+}
+
+function renderWaterways(ctx){
+  const H = state.H, ridge = state.ridge, valley = state.valley, buf = sharedBuf;
+  const lx = -0.5, ly = -0.5, lz = 0.707;
+  const K = 55;
+
+  /* 底图：灰阶晕渲 */
+  for (let y=0;y<N;y++){
+    const row = y*N;
+    for (let x=0;x<N;x++){
+      const i = row+x;
+      const h = H[i];
+      if (h < 0){
+        const t = Math.min(1, -h/0.4);
+        buf[i] = px(lerp(24,8,t), lerp(44,16,t), lerp(74,36,t));
+        continue;
+      }
+      const iL = x>0?i-1:i, iR = x<N-1?i+1:i;
+      const iU = y>0?i-N:i, iD = y<N-1?i+N:i;
+      const gx = (H[iR]-H[iL])*0.5*K;
+      const gy = (H[iD]-H[iU])*0.5*K;
+      const inv = 1/Math.sqrt(gx*gx+gy*gy+1);
+      let lam = (-gx*inv)*lx + (-gy*inv)*ly + inv*lz;
+      lam = clamp(lam, 0.18, 1.2);
+      let g = 110 * lam + 26;
+      buf[i] = px(g, g*1.02, g*1.06);
+    }
+  }
+
+  /* 谷线（暗） */
+  for (let y=1;y<N-1;y++){
+    const row = y*N;
+    for (let x=1;x<N-1;x++){
+      const i = row+x;
+      if (valley[i]){
+        const o = buf[i];
+        buf[i] = px((o & 255)*0.62, ((o>>8) & 255)*0.68, ((o>>16) & 255)*0.82);
+      }
+    }
+  }
+
+  /* 山脊（亮） */
+  for (let y=1;y<N-1;y++){
+    const row = y*N;
+    for (let x=1;x<N-1;x++){
+      const i = row+x;
+      if (ridge[i]){
+        const o = buf[i];
+        buf[i] = px((o & 255)+62, ((o>>8) & 255)+62, ((o>>16) & 255)+58);
+      }
+    }
+  }
+
+  ctx.putImageData(sharedImg, 0, 0);
+
+  /* ---------- 树状水系：追踪路径 → 平滑描边 ---------- */
+  const flow = state.flow, dir = state.dir;
+
+  const levels = [
+    { min: 1800, w: 5.2, color: 'rgba(150,205,255,0.95)' },
+    { min:  650, w: 3.4, color: 'rgba(122,188,255,0.92)' },
+    { min:  220, w: 2.1, color: 'rgba(102,172,250,0.88)' },
+    { min:   80, w: 1.3, color: 'rgba( 88,156,238,0.80)' },
+    { min:   32, w: 0.8, color: 'rgba( 74,140,226,0.66)' },
+  ];
+
+  const inLevel = new Uint8Array(NN);
+  const hasUp   = new Uint8Array(NN);
+  const visited = new Uint8Array(NN);
+  const pts = [];
+
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  for (const lv of levels){
+    inLevel.fill(0);
+    hasUp.fill(0);
+    visited.fill(0);
+
+    let any = 0;
+    for (let i=0;i<NN;i++){
+      if (flow[i] >= lv.min && H[i] > 0.0015){ inLevel[i] = 1; any = 1; }
+    }
+    if (!any) continue;
+
+    // 标记“有上游”的格子，剩下的即为河源
+    for (let i=0;i<NN;i++){
+      if (!inLevel[i]) continue;
+      const d = dir[i];
+      if (d < 0) continue;
+      const j = i + OFFS8[d];
+      if (inLevel[j]) hasUp[j] = 1;
+    }
+
+    ctx.beginPath();
+    ctx.strokeStyle = lv.color;
+    ctx.lineWidth = lv.w;
+
+    // 从每个河源顺流而下，形成一条完整折线
+    for (let i=0;i<NN;i++){
+      if (!inLevel[i] || hasUp[i]) continue;
+
+      pts.length = 0;
+      let cur = i, guard = 0;
+      while (cur >= 0 && inLevel[cur] && !visited[cur] && guard++ < 6000){
+        visited[cur] = 1;
+        pts.push(cur % N, (cur / N) | 0);
+        const d = dir[cur];
+        if (d < 0) break;
+        cur += OFFS8[d];
+      }
+
+      if (pts.length >= 4) drawSmoothPath(ctx, pts);
+      else if (pts.length === 2){
+        ctx.moveTo(pts[0]+0.5, pts[1]+0.5);
+        ctx.lineTo(pts[0]+0.5, pts[1]+0.5);
+      }
+    }
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+/* =========================================================================
+   11. 主流程
+   ========================================================================= */
+const ctxMap = { terrain:null, litho:null, slope:null, precip:null, water:null };
+
+const LAYERS = [
+  { key:'terrain', title:'地形图',        note:'高程着色 + 山体阴影 + 海洋',  fn:renderTerrain },
+  { key:'litho',   title:'岩性图',        note:'地层条带 · 区域岩性 · 断层',  fn:renderLitho   },
+  { key:'slope',   title:'坡度图',        note:'地表倾斜角 · 0°–80°',         fn:renderSlope   },
+  { key:'precip',  title:'降水图',        note:'地形雨 · 雨影 · 等值线',      fn:renderPrecip  },
+  { key:'water',   title:'水系 · 山脊谷线', note:'树状河网 · 山脊 · 谷线',    fn:renderWaterways },
+];
+
+function buildUI(){
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  for (const L of LAYERS){
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<header><b>${L.title}</b><em>${L.note}</em></header>`;
+    const cv = document.createElement('canvas');
+    cv.width = N; cv.height = N;
+    card.appendChild(cv);
+    grid.appendChild(card);
+    ctxMap[L.key] = cv.getContext('2d', { alpha:false });
+  }
+}
+
+const loadingEl = document.getElementById('loading');
+const loadText  = document.getElementById('loadText');
+const statsEl   = document.getElementById('stats');
+const seedInput = document.getElementById('seedInput');
+const btnGen    = document.getElementById('btnGen');
+const btnRand   = document.getElementById('btnRand');
+
+function setStatus(t){ loadText.textContent = t; }
+
+function hashSeed(str){
+  if (/^-?\d+$/.test(str.trim())){
+    const v = parseInt(str.trim(), 10);
+    return (v >>> 0) || 1;
+  }
+  let h = 2166136261 >>> 0;
+  for (let i=0;i<str.length;i++){
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+async function generate(){
+  const raw = seedInput.value.trim() || '1';
+  const seed = hashSeed(raw);
+
+  loadingEl.classList.add('on');
+  btnGen.disabled = true; btnRand.disabled = true;
+  const t0 = performance.now();
+
+  try{
+    setStatus('初始化噪声表…');           await nextFrame();
+    initNoise(seed);
+
+    setStatus('构建高度场（大陆 · 山地 · 高原 · 盆地）…'); await nextFrame();
+    const H = buildHeight(seed);
+    state.H = H;
+
+    setStatus('填充洼地…');               await nextFrame();
+    fillPits(H);
+
+    setStatus('扰动流向场并计算汇流…');   await nextFrame();
+    const Hf = makeFlowField(H, seed);
+    fillPits(Hf);
+    const flowData = computeFlow(Hf);
+    state.dir = flowData.dir;
+    state.flow = flowData.flow;
+
+    setStatus('生成地质断层与岩性…');     await nextFrame();
+    const faults = buildFaults(seed);
+    state.faults = faults;
+    const l = buildLitho(seed, faults);
+    state.litho = l.litho; state.shade = l.shade;
+
+    setStatus('计算坡度…');               await nextFrame();
+    state.slope = buildSlope(H);
+
+    setStatus('模拟降水分布…');           await nextFrame();
+    state.precip = buildPrecip(H, seed);
+
+    setStatus('提取山脊线与谷线…');       await nextFrame();
+    const rv = buildRidges(H);
+    state.ridge = rv.ridge; state.valley = rv.valley;
+
+    setStatus('渲染图层…');               await nextFrame();
+    for (const L of LAYERS){
+      L.fn(ctxMap[L.key]);
+      await nextFrame();
+    }
+
+    state.seed = seed;
+
+    let mn = Infinity, mx = -Infinity, water = 0, land = 0;
+    for (let i=0;i<NN;i++){
+      const v = H[i];
+      if (v < mn) mn = v;
+      if (v > mx) mx = v;
+      if (v < 0) water++; else land++;
+    }
+    const dt = ((performance.now() - t0) / 1000).toFixed(2);
+    statsEl.innerHTML =
+      `种子 &nbsp;<b>${raw}</b> &nbsp;(${seed})<br>` +
+      `分辨率 &nbsp;<b>1024 × 1024</b><br>` +
+      `高程 &nbsp;<b>${mn.toFixed(3)} ~ ${mx.toFixed(3)}</b><br>` +
+      `陆地占比 &nbsp;<b>${(land/NN*100).toFixed(1)}%</b><br>` +
+      `耗时 &nbsp;<b>${dt}s</b>`;
+
+    setStatus('完成');
+  } catch(err){
+    console.error(err);
+    setStatus('生成失败：' + err.message);
+  } finally {
+    btnGen.disabled = false; btnRand.disabled = false;
+    setTimeout(()=> loadingEl.classList.remove('on'), 180);
+  }
+}
+
+/* =========================================================================
+   12. 启动
+   ========================================================================= */
+buildUI();
+
+btnGen.addEventListener('click', generate);
+btnRand.addEventListener('click', ()=>{
+  seedInput.value = String(Math.floor(Math.random()*9000000) + 1000000);
+  generate();
+});
+seedInput.addEventListener('keydown', e=>{
+  if (e.key === 'Enter') generate();
+});
+
+generate();
+</script>
+</body>
+</html>

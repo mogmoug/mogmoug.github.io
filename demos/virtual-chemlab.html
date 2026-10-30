@@ -1,0 +1,3948 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>启元虚拟化学实验室 · ChemLab Simulator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Noto+Serif+SC:wght@600;900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg0: #081019;
+        --bg1: #0d1c2a;
+        --panel: #0e2231;
+        --panel2: #0b1b28;
+        --line: #1c3a4f;
+        --line2: #28506c;
+        --ink: #e2f1fa;
+        --dim: #8db1c6;
+        --faint: #5d7f94;
+        --teal: #38c9be;
+        --amber: #ffb454;
+        --blue: #5db8ff;
+        --rose: #ff5d8f;
+        --green: #7bd88f;
+        --violet: #b98cff;
+        --glass: #bfe3f7;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        font-family:
+          "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
+        background:
+          radial-gradient(
+            1200px 500px at 70% -10%,
+            rgba(56, 201, 190, 0.07),
+            transparent 60%
+          ),
+          radial-gradient(
+            900px 600px at 8% 110%,
+            rgba(93, 184, 255, 0.06),
+            transparent 60%
+          ),
+          linear-gradient(180deg, var(--bg0), var(--bg1));
+        color: var(--ink);
+        overflow: hidden;
+        font-size: 13px;
+      }
+      .disp {
+        font-family: "Noto Serif SC", serif;
+      }
+      .num {
+        font-family: Rajdhani, "PingFang SC", sans-serif;
+        letter-spacing: 0.03em;
+      }
+      button {
+        font-family: inherit;
+        color: inherit;
+        background: none;
+        border: none;
+        cursor: pointer;
+      }
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #1e4258;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      /* ===== header ===== */
+      #hdr {
+        height: 54px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 0 16px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(
+          180deg,
+          rgba(20, 44, 62, 0.9),
+          rgba(12, 28, 41, 0.9)
+        );
+      }
+      #hdr .logo {
+        width: 30px;
+        height: 30px;
+        flex: 0 0 auto;
+        filter: drop-shadow(0 0 6px rgba(56, 201, 190, 0.5));
+      }
+      #hdr h1 {
+        font-size: 19px;
+        font-weight: 900;
+        letter-spacing: 0.06em;
+      }
+      #hdr h1 small {
+        font-family: Rajdhani;
+        font-weight: 600;
+        font-size: 11px;
+        color: var(--faint);
+        letter-spacing: 0.28em;
+        margin-left: 8px;
+      }
+      #hdr .stat {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        font-size: 11px;
+        color: var(--dim);
+        margin-left: 6px;
+      }
+      .chip {
+        border: 1px solid var(--line2);
+        border-radius: 20px;
+        padding: 3px 10px;
+        background: rgba(20, 46, 64, 0.5);
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .chip b {
+        font-family: Rajdhani;
+        color: var(--teal);
+        font-size: 13px;
+      }
+      #hdr .sp {
+        flex: 1;
+      }
+      .hbtn {
+        border: 1px solid var(--line2);
+        border-radius: 8px;
+        padding: 6px 14px;
+        font-size: 12.5px;
+        color: var(--ink);
+        background: linear-gradient(180deg, #16324a, #102638);
+        transition: 0.18s;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .hbtn:hover {
+        border-color: var(--teal);
+        color: var(--teal);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 14px rgba(56, 201, 190, 0.15);
+      }
+      .hbtn.hot {
+        background: linear-gradient(180deg, #3b2a12, #2b1f0d);
+        border-color: #8a6a33;
+        color: var(--amber);
+      }
+      .hbtn.hot:hover {
+        box-shadow: 0 4px 14px rgba(255, 180, 84, 0.2);
+      }
+
+      /* ===== layout ===== */
+      #app {
+        display: flex;
+        height: calc(100% - 54px);
+      }
+      aside {
+        background: var(--panel2);
+        border-right: 1px solid var(--line);
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      #shelf {
+        width: 252px;
+      }
+      #data {
+        width: 326px;
+        border-right: none;
+        border-left: 1px solid var(--line);
+      }
+      .shead {
+        padding: 10px 14px 8px;
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+      }
+      .shead b {
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+      }
+      .shead span {
+        font-family: Rajdhani;
+        font-size: 10px;
+        letter-spacing: 0.24em;
+        color: var(--faint);
+      }
+      .stabs {
+        display: flex;
+        gap: 6px;
+        padding: 0 12px 8px;
+      }
+      .stabs button {
+        flex: 1;
+        padding: 5px 0;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        font-size: 12px;
+        color: var(--dim);
+        background: #0d2130;
+        transition: 0.15s;
+      }
+      .stabs button.on {
+        color: var(--teal);
+        border-color: var(--teal);
+        background: rgba(56, 201, 190, 0.08);
+      }
+      #shelfList {
+        flex: 1;
+        overflow-y: auto;
+        padding: 2px 10px 16px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 7px;
+        align-content: start;
+      }
+      #shelfList.eq {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+      .rg {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 6px 8px;
+        background: linear-gradient(180deg, #0f2637, #0c1e2c);
+        cursor: grab;
+        transition: 0.15s;
+        position: relative;
+        overflow: hidden;
+      }
+      .rg:hover {
+        border-color: var(--blue);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+      }
+      .rg .nm {
+        font-size: 12px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .rg .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        flex: 0 0 auto;
+        box-shadow: 0 0 5px currentColor;
+      }
+      .rg .fm {
+        font-family: Rajdhani;
+        font-size: 10.5px;
+        color: var(--faint);
+        margin-top: 2px;
+        letter-spacing: 0.04em;
+      }
+      .rg .tagx {
+        position: absolute;
+        right: 5px;
+        top: 5px;
+        font-size: 9px;
+        color: var(--faint);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 0 3px;
+      }
+      .eqi {
+        text-align: center;
+        padding: 8px 4px;
+      }
+      .eqi svg {
+        height: 38px;
+        width: auto;
+        max-width: 52px;
+      }
+      .eqi .nm {
+        font-size: 11px;
+        margin-top: 3px;
+        color: var(--dim);
+      }
+      .eqi:hover .nm {
+        color: var(--teal);
+      }
+
+      /* ===== bench ===== */
+      #center {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+      #toolbar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 12px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(10, 24, 36, 0.6);
+      }
+      #toolbar .lbl {
+        font-size: 11px;
+        color: var(--faint);
+        letter-spacing: 0.12em;
+      }
+      .tpl {
+        border: 1px solid var(--line2);
+        border-radius: 7px;
+        padding: 4px 11px;
+        font-size: 12px;
+        color: var(--dim);
+        background: #0e2434;
+        transition: 0.15s;
+      }
+      .tpl:hover {
+        color: var(--amber);
+        border-color: var(--amber);
+        transform: translateY(-1px);
+      }
+      #hint {
+        margin-left: auto;
+        font-size: 11.5px;
+        color: var(--faint);
+        transition: 0.3s;
+      }
+      #hint b {
+        color: var(--teal);
+        font-weight: 600;
+      }
+      #bench {
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+        user-select: none;
+        touch-action: none;
+        background:
+          repeating-linear-gradient(
+            0deg,
+            rgba(120, 180, 215, 0.045) 0 1px,
+            transparent 1px 34px
+          ),
+          repeating-linear-gradient(
+            90deg,
+            rgba(120, 180, 215, 0.045) 0 1px,
+            transparent 1px 34px
+          ),
+          radial-gradient(
+            1000px 480px at 50% 118%,
+            rgba(255, 180, 84, 0.05),
+            transparent 60%
+          ),
+          linear-gradient(
+            180deg,
+            #0c1e2e 0%,
+            #0e2334 55%,
+            #123048 86%,
+            #0b1a26 86.4%,
+            #0e2233 100%
+          );
+      }
+      #bench.shake {
+        animation: shk 0.55s;
+      }
+      @keyframes shk {
+        0%,
+        100% {
+          transform: translate(0, 0);
+        }
+        15% {
+          transform: translate(-7px, 3px);
+        }
+        30% {
+          transform: translate(6px, -4px);
+        }
+        45% {
+          transform: translate(-5px, -3px);
+        }
+        60% {
+          transform: translate(5px, 3px);
+        }
+        75% {
+          transform: translate(-3px, 2px);
+        }
+      }
+      #bench::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.5);
+        z-index: 60;
+      }
+      #connSvg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 5;
+        pointer-events: none;
+      }
+      #connSvg path.conn {
+        pointer-events: stroke;
+        cursor: pointer;
+      }
+      .item {
+        position: absolute;
+        cursor: grab;
+        filter: drop-shadow(0 10px 8px rgba(0, 0, 0, 0.45));
+      }
+      .item:active {
+        cursor: grabbing;
+      }
+      .item.sel svg .selr {
+        opacity: 1;
+      }
+      .item .tag {
+        position: absolute;
+        left: 50%;
+        top: -24px;
+        transform: translateX(-50%);
+        white-space: nowrap;
+        font-size: 10.5px;
+        background: rgba(8, 20, 30, 0.85);
+        border: 1px solid var(--line2);
+        border-radius: 6px;
+        padding: 2px 7px;
+        color: var(--amber);
+        opacity: 0;
+        transition: 0.25s;
+        pointer-events: none;
+        z-index: 5;
+      }
+      .item.rx .tag {
+        opacity: 1;
+      }
+      .item.pouring {
+        animation: pourA 0.8s ease;
+      }
+      @keyframes pourA {
+        30% {
+          transform: rotate(-24deg) translateY(-6px);
+        }
+        70% {
+          transform: rotate(-24deg);
+        }
+        100% {
+          transform: rotate(0);
+        }
+      }
+      .item.stirring svg .rodg {
+        animation: stirR 0.5s ease-in-out infinite alternate;
+      }
+      @keyframes stirR {
+        from {
+          transform: translateX(-4px) rotate(-4deg);
+        }
+        to {
+          transform: translateX(4px) rotate(4deg);
+        }
+      }
+      .flame {
+        transform-origin: 50% 100%;
+        animation: flick 0.24s ease-in-out infinite alternate;
+      }
+      @keyframes flick {
+        from {
+          transform: scaleY(1) scaleX(1);
+        }
+        to {
+          transform: scaleY(1.12) scaleX(0.94);
+        }
+      }
+      .bub {
+        animation: rise var(--d, 1.1s) linear forwards;
+      }
+      @keyframes rise {
+        to {
+          transform: translateY(var(--h, -80px));
+          opacity: 0;
+        }
+      }
+      .steam {
+        animation: steamUp 1.8s ease-out forwards;
+      }
+      @keyframes steamUp {
+        to {
+          transform: translateY(-46px) scale(1.8);
+          opacity: 0;
+        }
+      }
+      .foamp {
+        animation: foamUp 1.3s ease-out forwards;
+      }
+      @keyframes foamUp {
+        to {
+          transform: translateY(var(--h, -30px)) scale(1.4);
+          opacity: 0;
+        }
+      }
+      #trash {
+        position: absolute;
+        right: 14px;
+        bottom: 12px;
+        width: 110px;
+        height: 46px;
+        border: 1.5px dashed #3c6076;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        color: var(--faint);
+        font-size: 11px;
+        z-index: 8;
+        transition: 0.2s;
+        background: rgba(10, 24, 36, 0.4);
+      }
+      #trash.over {
+        border-color: var(--rose);
+        color: var(--rose);
+        background: rgba(255, 93, 143, 0.08);
+        transform: scale(1.05);
+      }
+      .rigchip {
+        position: absolute;
+        z-index: 9;
+        font-size: 11px;
+        border-radius: 6px;
+        padding: 4px 9px;
+        border: 1px solid var(--line2);
+        background: #122c3f;
+        color: var(--ink);
+        transition: 0.15s;
+      }
+      .rigchip:hover {
+        border-color: var(--amber);
+        color: var(--amber);
+      }
+      .rigzone {
+        position: absolute;
+        cursor: pointer;
+        border-radius: 10px;
+        z-index: 4;
+      }
+      .rigzone:hover {
+        box-shadow: 0 0 0 1.5px rgba(93, 184, 255, 0.55) inset;
+      }
+
+      /* ===== data panel ===== */
+      .pcard {
+        border-bottom: 1px solid var(--line);
+        padding: 10px 14px;
+      }
+      .pcard h3 {
+        font-size: 12px;
+        letter-spacing: 0.14em;
+        color: var(--dim);
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .pcard h3 i {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--teal);
+        box-shadow: 0 0 6px var(--teal);
+      }
+      #selNone {
+        color: var(--faint);
+        font-size: 12px;
+        padding: 6px 0;
+      }
+      .bignum {
+        font-family: Rajdhani;
+        font-size: 26px;
+        font-weight: 700;
+        line-height: 1;
+      }
+      .units {
+        font-size: 11px;
+        color: var(--faint);
+        margin-left: 3px;
+      }
+      .meterow {
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+        flex-wrap: wrap;
+      }
+      .meter {
+        flex: 1;
+        min-width: 80px;
+      }
+      .meter .lb {
+        font-size: 10.5px;
+        color: var(--faint);
+        letter-spacing: 0.1em;
+        margin-bottom: 3px;
+      }
+      .bar {
+        height: 5px;
+        border-radius: 3px;
+        background: #12293a;
+        overflow: hidden;
+        margin-top: 4px;
+      }
+      .bar i {
+        display: block;
+        height: 100%;
+        border-radius: 3px;
+        background: linear-gradient(
+          90deg,
+          var(--blue),
+          var(--amber),
+          var(--rose)
+        );
+        transition: width 0.3s;
+      }
+      .phb {
+        font-family: Rajdhani;
+        font-weight: 700;
+        font-size: 15px;
+        padding: 1px 9px;
+        border-radius: 6px;
+        color: #08131c;
+      }
+      table.inv {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11.5px;
+        margin-top: 8px;
+      }
+      table.inv th {
+        font-weight: 500;
+        color: var(--faint);
+        text-align: left;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        border-bottom: 1px solid var(--line);
+        padding: 2px 4px;
+      }
+      table.inv td {
+        padding: 2.5px 4px;
+        border-bottom: 1px dashed rgba(28, 58, 79, 0.6);
+        font-family: Rajdhani;
+        font-size: 12.5px;
+      }
+      table.inv td:first-child {
+        font-family: inherit;
+        font-size: 11.5px;
+      }
+      .sw {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+        margin-right: 5px;
+        vertical-align: 0;
+      }
+      .rxrow {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 6px 9px;
+        margin-bottom: 6px;
+        background: #0d2231;
+      }
+      .rxrow .eq {
+        font-size: 11.5px;
+        color: var(--ink);
+      }
+      .rxrow .mt {
+        display: flex;
+        justify-content: space-between;
+        font-size: 10px;
+        color: var(--faint);
+        margin-top: 4px;
+        font-family: Rajdhani;
+      }
+      .rxrow .bar {
+        margin-top: 5px;
+      }
+      .rxrow .bar i {
+        background: linear-gradient(90deg, var(--teal), var(--green));
+      }
+      #chartWrap {
+        position: relative;
+      }
+      #chart {
+        width: 100%;
+        height: 118px;
+        display: block;
+      }
+      .legend {
+        display: flex;
+        gap: 12px;
+        font-size: 10.5px;
+        color: var(--dim);
+        margin-top: 4px;
+      }
+      .legend i {
+        display: inline-block;
+        width: 10px;
+        height: 3px;
+        border-radius: 2px;
+        margin-right: 4px;
+        vertical-align: middle;
+      }
+      #log {
+        max-height: 150px;
+        overflow-y: auto;
+        font-size: 11px;
+        line-height: 1.7;
+      }
+      #log .lt {
+        color: var(--faint);
+        font-family: Rajdhani;
+        margin-right: 5px;
+        font-size: 10.5px;
+      }
+      #log .warn {
+        color: var(--amber);
+      }
+      #log .bad {
+        color: var(--rose);
+      }
+      #log .good {
+        color: var(--green);
+      }
+      #log .rx {
+        color: var(--blue);
+      }
+      #data .scroll {
+        flex: 1;
+        overflow-y: auto;
+        min-height: 0;
+      }
+
+      /* ghost & fx */
+      #ghost {
+        position: fixed;
+        z-index: 200;
+        pointer-events: none;
+        display: none;
+        transform: translate(-50%, -120%);
+      }
+      #ghost .g {
+        border: 1px solid var(--teal);
+        background: rgba(10, 30, 42, 0.92);
+        border-radius: 8px;
+        padding: 4px 10px;
+        font-size: 12px;
+        box-shadow:
+          0 6px 18px rgba(0, 0, 0, 0.5),
+          0 0 12px rgba(56, 201, 190, 0.25);
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      #fx {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 300;
+      }
+      .flash {
+        position: absolute;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          #fff 0%,
+          #ffd98a 35%,
+          rgba(255, 140, 50, 0.6) 60%,
+          transparent 72%
+        );
+        animation: flashA 0.5s ease-out forwards;
+      }
+      @keyframes flashA {
+        from {
+          opacity: 1;
+          transform: scale(0.3);
+        }
+        to {
+          opacity: 0;
+          transform: scale(1.6);
+        }
+      }
+      .ring {
+        position: absolute;
+        border: 3px solid rgba(255, 200, 120, 0.9);
+        border-radius: 50%;
+        animation: ringA 0.6s ease-out forwards;
+      }
+      @keyframes ringA {
+        from {
+          opacity: 0.9;
+          transform: scale(0.1);
+        }
+        to {
+          opacity: 0;
+          transform: scale(1.4);
+        }
+      }
+      .shard {
+        position: absolute;
+        width: 9px;
+        height: 14px;
+        background: linear-gradient(160deg, #d7f0ff, #7fb6d8);
+        clip-path: polygon(50% 0, 100% 60%, 70% 100%, 0 70%);
+        animation: shardA 0.8s ease-in forwards;
+      }
+      @keyframes shardA {
+        to {
+          transform: translate(var(--dx), var(--dy)) rotate(var(--rr));
+          opacity: 0;
+        }
+      }
+      .spark {
+        position: absolute;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: #ffd77a;
+        box-shadow: 0 0 8px #ffb454;
+        animation: shardA 0.7s ease-out forwards;
+      }
+
+      /* guide modal */
+      #guide {
+        position: fixed;
+        inset: 0;
+        z-index: 400;
+        background: rgba(4, 10, 16, 0.72);
+        backdrop-filter: blur(3px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+      }
+      #guide.on {
+        display: flex;
+      }
+      #guideBox {
+        width: min(880px, 94vw);
+        max-height: 88vh;
+        background: linear-gradient(180deg, #102536, #0b1c2a);
+        border: 1px solid var(--line2);
+        border-radius: 14px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+      }
+      #guideBox .gh {
+        padding: 16px 22px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      #guideBox .gh b {
+        font-size: 18px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+      }
+      #guideBox .gh span {
+        font-family: Rajdhani;
+        font-size: 10px;
+        letter-spacing: 0.3em;
+        color: var(--faint);
+      }
+      #guideBox .gb {
+        overflow-y: auto;
+        padding: 8px 22px 22px;
+      }
+      #gClose {
+        margin-left: auto;
+        font-size: 20px;
+        color: var(--dim);
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+      }
+      #gClose:hover {
+        color: var(--rose);
+        border-color: var(--rose);
+      }
+      details.sec {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        margin: 10px 0;
+        background: rgba(13, 32, 47, 0.6);
+        overflow: hidden;
+      }
+      details.sec summary {
+        padding: 11px 16px;
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 13.5px;
+        list-style: none;
+        display: flex;
+        gap: 9px;
+        align-items: center;
+      }
+      details.sec summary::-webkit-details-marker {
+        display: none;
+      }
+      details.sec summary .no {
+        font-family: Rajdhani;
+        color: var(--teal);
+        border: 1px solid var(--line2);
+        border-radius: 6px;
+        padding: 0 7px;
+        font-size: 12px;
+      }
+      details.sec[open] summary {
+        border-bottom: 1px solid var(--line);
+        color: var(--amber);
+      }
+      .sec .bd {
+        padding: 12px 18px;
+        font-size: 12.5px;
+        line-height: 1.9;
+        color: #c8dde9;
+      }
+      .sec .bd b {
+        color: var(--amber);
+      }
+      .sec .bd em {
+        color: var(--teal);
+        font-style: normal;
+      }
+      .eqc {
+        font-family: Rajdhani;
+        background: #0a1926;
+        border: 1px solid var(--line);
+        border-left: 3px solid var(--teal);
+        border-radius: 6px;
+        padding: 6px 12px;
+        margin: 7px 0;
+        font-size: 13.5px;
+        color: var(--green);
+        letter-spacing: 0.03em;
+      }
+      ol.steps {
+        padding-left: 20px;
+      }
+      ol.steps li {
+        margin: 5px 0;
+      }
+      .warnbox {
+        border: 1px solid #6e5322;
+        background: rgba(255, 180, 84, 0.07);
+        border-radius: 8px;
+        padding: 8px 12px;
+        margin: 8px 0;
+        color: #ffd9a0;
+      }
+      kbd {
+        border: 1px solid var(--line2);
+        border-bottom-width: 2px;
+        border-radius: 4px;
+        padding: 0 5px;
+        font-size: 11px;
+        background: #0d2130;
+        color: var(--blue);
+      }
+    </style>
+  </head>
+  <body>
+    <header id="hdr">
+      <svg class="logo" viewBox="0 0 40 40">
+        <path
+          d="M15 4h10M17 4v10l-9 16a5 5 0 0 0 4.4 7.4h15.2A5 5 0 0 0 32 30L23 14V4"
+          fill="none"
+          stroke="#38c9be"
+          stroke-width="2.4"
+          stroke-linecap="round"
+        />
+        <path
+          d="M12.5 26h15l3.4 6.2a2.6 2.6 0 0 1-2.3 3.8H11.4a2.6 2.6 0 0 1-2.3-3.8z"
+          fill="#38c9be"
+          opacity=".8"
+        />
+        <circle cx="18" cy="22" r="1.6" fill="#ffb454" />
+        <circle cx="24" cy="19" r="1.1" fill="#5db8ff" />
+      </svg>
+      <h1 class="disp">启元虚拟化学实验室<small>CHEMLAB SIMULATOR</small></h1>
+      <div class="stat">
+        <span class="chip">⏱ <b id="clock">00:00</b></span>
+        <span class="chip">⚗ 器材 <b id="icount">0</b></span>
+        <span class="chip">🧪 反应 <b id="rxcount">0</b></span>
+      </div>
+      <div class="sp"></div>
+      <button class="hbtn" id="btnGuide">📖 操作指南</button>
+      <button class="hbtn" id="btnReset">↺ 重置实验台</button>
+    </header>
+
+    <div id="app">
+      <!-- 左：药品/器材架 -->
+      <aside id="shelf">
+        <div class="shead">
+          <b class="disp">药品 · 器材架</b><span>SHELF</span>
+        </div>
+        <div class="stabs">
+          <button id="tabR" class="on">
+            液体试剂 / 固体药品 <b id="rcount" class="num"></b>
+          </button>
+          <button id="tabE">实验器材</button>
+        </div>
+        <div id="shelfList"></div>
+      </aside>
+
+      <!-- 中：实验台 -->
+      <section id="center">
+        <div id="toolbar">
+          <span class="lbl">场景模板</span>
+          <button class="tpl" data-tpl="empty">空白台面</button>
+          <button class="tpl" data-tpl="neutral">酸碱中和滴定</button>
+          <button class="tpl" data-tpl="h2o2">浓度·温度对速率的影响</button>
+          <button class="tpl" data-tpl="o2">高锰酸钾制氧气（全套）</button>
+          <span id="hint"></span>
+        </div>
+        <div id="bench">
+          <svg id="connSvg"></svg>
+          <div id="trash">🗑 拖到此处移除</div>
+        </div>
+      </section>
+
+      <!-- 右：数据面板 -->
+      <aside id="data">
+        <div class="shead">
+          <b class="disp">实时数据面板</b><span>MONITOR</span>
+        </div>
+        <div class="scroll">
+          <div class="pcard" id="selCard">
+            <div id="selNone">
+              点击实验台上的容器查看数据。<br />拖动容器可相互倾倒；点击左侧药品再点击容器即可添加。
+            </div>
+          </div>
+          <div class="pcard">
+            <h3><i></i>进行中的反应</h3>
+            <div id="rxList" style="color: var(--faint); font-size: 12px">
+              暂无反应
+            </div>
+          </div>
+          <div class="pcard">
+            <h3>
+              <i
+                style="
+                  background: var(--amber);
+                  box-shadow: 0 0 6px var(--amber);
+                "
+              ></i
+              >实时曲线（选中对象）
+            </h3>
+            <div id="chartWrap"><canvas id="chart"></canvas></div>
+            <div class="legend">
+              <span
+                ><i style="background: var(--amber)"></i
+                ><span id="lg1">温度 / ℃</span></span
+              >
+              <span
+                ><i style="background: var(--teal)"></i
+                ><span id="lg2">反应速率 mmol·s⁻¹</span></span
+              >
+            </div>
+          </div>
+          <div class="pcard">
+            <h3>
+              <i
+                style="background: var(--blue); box-shadow: 0 0 6px var(--blue)"
+              ></i
+              >实验记录
+            </h3>
+            <div id="log"></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <div id="ghost"><div class="g" id="ghostIn"></div></div>
+    <div id="fx"></div>
+
+    <!-- 操作指南 -->
+    <div id="guide">
+      <div id="guideBox">
+        <div class="gh">
+          <svg width="22" height="22" viewBox="0 0 40 40">
+            <path
+              d="M17 4v10l-9 16a5 5 0 0 0 4.4 7.4h15.2A5 5 0 0 0 32 30L23 14V4"
+              fill="none"
+              stroke="#ffb454"
+              stroke-width="3"
+            />
+          </svg>
+          <b class="disp">化学实验室操作指南</b><span>LAB MANUAL</span
+          ><button id="gClose">×</button>
+        </div>
+        <div class="gb">
+          <details class="sec" open>
+            <summary><span class="no">01</span>界面与基本操作</summary>
+            <div class="bd">
+              <ul style="padding-left: 18px">
+                <li>
+                  <b>添加药品</b
+                  >：在左侧药品架点击某药品（拿起后鼠标旁出现标签），再点击实验台上的任意容器即可加入。液体每次加入
+                  <em>5.0 mL</em>，固体每次加入 <em>1.0 g</em>（一药匙）。按
+                  <kbd>Esc</kbd> 放下。
+                </li>
+                <li>
+                  <b>移动器材</b
+                  >：所有器材（烧杯、试管、酒精灯、铁架台装置等）均可直接拖动。
+                </li>
+                <li>
+                  <b>倾倒</b
+                  >：把一个容器<em>拖动到另一个容器</em>上松开，即可将液体倒入对方（沉淀保留在原容器）。
+                </li>
+                <li>
+                  <b>胶头滴管</b
+                  >：点击滴管将其拿起，先点某容器<em>吸液</em>，再点另一容器<em>滴加</em>（每次约
+                  0.5 mL），适合滴定终点控制。
+                </li>
+                <li>
+                  <b>玻璃棒</b>：拿起后点击容器，搅拌 5
+                  秒——可<em>加快反应速率与溶解</em>。
+                </li>
+                <li>
+                  <b>加热</b
+                  >：点击酒精灯点燃/熄灭；把试管、烧杯拖到火焰上方即可加热（温度计可测温）。
+                </li>
+                <li>
+                  <b>导管连接</b
+                  >：拿起橡胶导管，先后点击两个容器，即可把气体从前者导入后者（如
+                  CO₂ 通入石灰水）；点击导管可拆除。
+                </li>
+                <li>
+                  <b>过滤</b
+                  >：把漏斗放到某容器正上方会自动对接；将含沉淀的混合液倒入漏斗即完成过滤。
+                </li>
+                <li>
+                  <b>点燃/检验气体</b
+                  >：用<em>火柴</em>点击容器/集气瓶点燃气体；用<em>带火星的木条</em>点击集气瓶检验氧气。
+                </li>
+                <li>
+                  不需要的器材拖入右下角 🗑 移除；<kbd>Delete</kbd> 删除选中项。
+                </li>
+              </ul>
+            </div>
+          </details>
+
+          <details class="sec">
+            <summary>
+              <span class="no">02</span>演示实验一 · 酸碱中和反应（NaOH + HCl）
+            </summary>
+            <div class="bd">
+              <div class="eqc">
+                HCl + NaOH = NaCl + H₂O　（放热反应，ΔH ≈ −57 kJ·mol⁻¹）
+              </div>
+              <ol class="steps">
+                <li>
+                  点击模板「酸碱中和滴定」，或：在烧杯中加入
+                  <b>NaOH 溶液</b>（约 3 次），再滴加 <b>酚酞试液</b> →
+                  溶液变<em>红色</em>。
+                </li>
+                <li>
+                  点击胶头滴管，先点「稀盐酸」所在……——更简单：拿起滴管后点击烧杯旁的盐酸临时杯（可先用试管装
+                  5 mL 稀盐酸），吸满盐酸。
+                </li>
+                <li>
+                  用滴管逐滴向烧杯中滴加稀盐酸，同时用玻璃棒搅拌，观察右侧<em>温度曲线上升</em>、<em
+                    >pH 下降</em
+                  >。
+                </li>
+                <li>
+                  当溶液<em>红色恰好褪去</em>（pH≈8.2
+                  以下）即为滴定终点，此时酸碱恰好完全反应；继续滴加溶液呈酸性（石蕊可变红验证）。
+                </li>
+              </ol>
+              <b>观察数据</b>：右侧面板实时显示 NaOH、HCl
+              的物质的量与浓度、温度和反应速率；换成 H₂SO₄ + NaOH、稀硫酸 +
+              石灰水同样成立。
+            </div>
+          </details>
+
+          <details class="sec">
+            <summary>
+              <span class="no">03</span>演示实验二 ·
+              高锰酸钾制取氧气（初中全套装置）
+            </summary>
+            <div class="bd">
+              <div class="eqc">
+                2KMnO₄ <span style="color: var(--amber)">＝△＝</span> K₂MnO₄ +
+                MnO₂ + O₂↑
+              </div>
+              <ol class="steps">
+                <li>
+                  点击模板「高锰酸钾制氧气」：出现<em
+                    >铁架台 + 试管夹 + 略向下倾斜的试管 + 导管 + 水槽 +
+                    集气瓶（排水法）</em
+                  >全套装置。
+                </li>
+                <li>
+                  在药品架点击
+                  <b>高锰酸钾</b>，再点击装置的<em>试管部位</em>，加入约
+                  <b>3 g</b>（3
+                  次）。试管口已自动放置<em>一团棉花</em>，防止粉末进入导管。
+                </li>
+                <li>
+                  把<b>酒精灯</b>拖到试管下方虚线标记处，<em>点击点燃</em>。先移动火焰位置相当于"预热"，随后集中加热。
+                </li>
+                <li>
+                  温度超过约 200 ℃
+                  后反应开始：水槽中导管口出现气泡，集气瓶内水被排出——当瓶口有大气泡冒出即<em>已集满</em>。
+                </li>
+                <li>
+                  点击集气瓶将其<em>在水下盖好玻璃片取出</em>（正放于桌面，因 O₂
+                  密度略大于空气）。
+                </li>
+                <li>
+                  用<em>带火星的木条</em>点击集气瓶口 →
+                  <b>木条复燃</b>，证明是氧气。
+                </li>
+                <li>
+                  结束实验：必须先点击 <b>「移出导管」</b>，再点击
+                  <b>「熄灭酒精灯」</b>！
+                </li>
+              </ol>
+              <div class="warnbox">
+                ⚠
+                若先熄灭酒精灯，试管内气压下降，水槽中的水会<em>倒吸</em>进入灼热试管，导致试管炸裂（本模拟器会真实演示该事故）。
+              </div>
+            </div>
+          </details>
+
+          <details class="sec">
+            <summary><span class="no">04</span>拓展实验速查</summary>
+            <div class="bd">
+              <div class="eqc">
+                2H₂O₂ <span style="color: var(--amber)">=MnO₂=</span> 2H₂O +
+                O₂↑　——加入 MnO₂ 催化剂对比速率；加热或改用 30%
+                双氧水观察速率剧增（可能喷溅！）
+              </div>
+              <div class="eqc">
+                CaCO₃ + 2HCl = CaCl₂ + H₂O + CO₂↑　——用导管把 CO₂
+                通入澄清石灰水：Ca(OH)₂ + CO₂ = CaCO₃↓ +
+                H₂O（变浑浊），继续通入又变澄清
+              </div>
+              <div class="eqc">
+                Zn / Mg + 稀H₂SO₄ 或稀HCl →
+                H₂↑　——用火柴点燃氢气会"爆鸣"；对比稀盐酸与浓盐酸的速率差异
+              </div>
+              <div class="eqc">
+                Fe + CuSO₄ = FeSO₄ + Cu　——铁钉表面析出红色铜，蓝色溶液变浅绿
+              </div>
+              <div class="eqc">
+                CuSO₄ + 2NaOH = Cu(OH)₂↓ + Na₂SO₄　｜　AgNO₃ + NaCl = AgCl↓ +
+                NaNO₃　｜　BaCl₂ + H₂SO₄ = BaSO₄↓ + 2HCl
+              </div>
+              <div class="eqc">
+                NaOH 固体溶于水<b>放热</b>、NH₄NO₃
+                固体溶于水<b>吸热</b>——直接观察温度曲线
+              </div>
+              <div class="eqc">
+                NaOH + NH₄Cl =△= NaCl + NH₃↑ + H₂O（需加热，产生刺激性气体）
+              </div>
+            </div>
+          </details>
+
+          <details class="sec">
+            <summary><span class="no">05</span>数据面板与图表</summary>
+            <div class="bd">
+              选中任一容器后，右上区域显示：<em>液体体积、温度、pH</em>
+              大数字；<em>成分表</em>（各物质的化学式、物质的量 mol、浓度
+              mol/L，固体显示质量）；<em>进行中的反应</em>（化学方程式、反应条件、实时速率）。<br />
+              曲线图同时绘制 <b>温度</b> 与
+              <b>反应速率</b> 随时间的变化；选中制氧装置时绘制
+              <b>试管温度</b> 与 <b>已收集氧气体积</b>。<br />
+              <b>探究温度/浓度的影响</b>：取两支试管各加 5 mL 3% H₂O₂ 与少量
+              MnO₂，一支加热——对比两条速率曲线；或用等量锌粒分别与 1 mol/L、12
+              mol/L 盐酸反应对比。
+            </div>
+          </details>
+
+          <details class="sec">
+            <summary><span class="no">06</span>安全须知（模拟警示）</summary>
+            <div class="bd">
+              <ul style="padding-left: 18px">
+                <li>量筒不可作反应容器（模拟器会阻止其中反应）。</li>
+                <li>
+                  镁与浓盐酸、高浓度双氧水遇催化剂等<em>剧烈反应会爆炸/喷溅</em>，请佩戴"护目镜"认真观察。
+                </li>
+                <li>
+                  点燃可燃性气体（H₂）前务必验纯，本模拟器点燃即演示爆鸣。
+                </li>
+                <li>加热固体制气结束时"先撤导管后撤灯"，防止倒吸炸裂。</li>
+              </ul>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      "use strict";
+      /* ================= 基础数据 ================= */
+      const M = {
+        HCl: 36.5,
+        NaOH: 40,
+        KMnO4: 158,
+        KClO3: 122.5,
+        MnO2: 87,
+        CaCO3: 100,
+        Zn: 65,
+        Mg: 24,
+        Fe: 56,
+        Cu: 64,
+        Na2CO3: 106,
+        NaHCO3: 84,
+        NH4Cl: 53.5,
+        NH4NO3: 80,
+        NaCl: 58.5,
+        KCl: 74.5,
+        K2MnO4: 197,
+        AgNO3: 170,
+        BaCl2: 208,
+        CuSO4: 160,
+        AgCl: 143.5,
+        BaSO4: 233,
+        CuOH2: 97.5,
+        CaHCO32: 162,
+        Na2SO4: 142,
+        CaCl2: 111,
+        ZnSO4: 161,
+        MgCl2: 95,
+        MgSO4: 120,
+        FeSO4: 152,
+        FeCl2: 127,
+        ZnCl2: 136,
+        CaSO4: 136,
+        H2O2: 34,
+        CuO: 80,
+      };
+      const SPECIES = {
+        HCl: { n: "盐酸", aq: 1, h: 1 },
+        H2SO4: { n: "硫酸", aq: 1, h: 2 },
+        NaOH: { n: "氢氧化钠", aq: 1, oh: 1 },
+        CaOH2: { n: "氢氧化钙", aq: 1, oh: 2 },
+        CuSO4: { n: "硫酸铜", aq: 1, c: [46, 127, 242, 0.9] },
+        AgNO3: { n: "硝酸银", aq: 1 },
+        BaCl2: { n: "氯化钡", aq: 1 },
+        NaCl: { n: "氯化钠", aq: 1 },
+        Na2SO4: { n: "硫酸钠", aq: 1 },
+        CaCl2: { n: "氯化钙", aq: 1 },
+        ZnSO4: { n: "硫酸锌", aq: 1 },
+        ZnCl2: { n: "氯化锌", aq: 1 },
+        MgCl2: { n: "氯化镁", aq: 1 },
+        MgSO4: { n: "硫酸镁", aq: 1 },
+        FeSO4: { n: "硫酸亚铁", aq: 1, c: [110, 190, 130, 0.5] },
+        FeCl2: { n: "氯化亚铁", aq: 1, c: [120, 190, 140, 0.45] },
+        KMnO4: { n: "高锰酸钾", sol: 1, c: [150, 25, 210, 2.6] },
+        K2MnO4: { n: "锰酸钾", sol: 1, c: [25, 160, 90, 1.2] },
+        KClO3: { n: "氯酸钾", sol: 1 },
+        KCl: { n: "氯化钾", sol: 1 },
+        Na2CO3: { n: "碳酸钠", sol: 1 },
+        NaHCO3: { n: "碳酸氢钠", sol: 1 },
+        NH4Cl: { n: "氯化铵", sol: 1 },
+        NH4NO3: { n: "硝酸铵", sol: 1 },
+        H2O2: { n: "过氧化氢", aq: 1 },
+        HNO3: { n: "硝酸", aq: 1, h: 1 },
+        NaNO3: { n: "硝酸钠", aq: 1 },
+        CaHCO32: { n: "碳酸氢钙", aq: 1 },
+        MnO2: { n: "二氧化锰", ins: 1, sc: "#262a2e" },
+        CaCO3: { n: "碳酸钙", ins: 1, sc: "#eae6dc" },
+        Zn: { n: "锌粒", ins: 1, sc: "#9aa4ad" },
+        Mg: { n: "镁条", ins: 1, sc: "#ccd2d8" },
+        Fe: { n: "铁钉/铁粉", ins: 1, sc: "#5b6068" },
+        Cu: { n: "铜", ins: 1, sc: "#c96f3a" },
+        CuO: { n: "氧化铜", ins: 1, sc: "#14161a" },
+        AgCl: { n: "氯化银", pr: 1, sc: "#f2f4f6" },
+        BaSO4: { n: "硫酸钡", pr: 1, sc: "#f2f4f6" },
+        CuOH2: { n: "氢氧化铜", pr: 1, sc: "#3a76d9" },
+        O2: { n: "氧气", g: 1 },
+        H2: { n: "氢气", g: 1 },
+        CO2: { n: "二氧化碳", g: 1 },
+        NH3: { n: "氨气", g: 1 },
+        phph: { n: "酚酞", aq: 1 },
+        litmus: { n: "石蕊", aq: 1 },
+        H2O: { n: "水", aq: 1 },
+      };
+      const REAGENTS = [
+        {
+          id: "HCl",
+          nm: "稀盐酸",
+          fm: "HCl · 1 mol/L",
+          dot: "#dff2fb",
+          kind: "液",
+          vol: 5,
+          mol: 0.005,
+        },
+        {
+          id: "HClc",
+          nm: "浓盐酸",
+          fm: "HCl · 12 mol/L",
+          dot: "#eaf6d8",
+          kind: "液",
+          vol: 5,
+          mol: 0.06,
+          sp: "HCl",
+        },
+        {
+          id: "H2SO4",
+          nm: "稀硫酸",
+          fm: "H₂SO₄ · 1 mol/L",
+          dot: "#e6f0ff",
+          kind: "液",
+          vol: 5,
+          mol: 0.005,
+        },
+        {
+          id: "NaOH",
+          nm: "氢氧化钠溶液",
+          fm: "NaOH · 1 mol/L",
+          dot: "#f2f7ff",
+          kind: "液",
+          vol: 5,
+          mol: 0.005,
+        },
+        {
+          id: "CaOH2",
+          nm: "澄清石灰水",
+          fm: "Ca(OH)₂ · 饱和",
+          dot: "#eef7f4",
+          kind: "液",
+          vol: 5,
+          mol: 0.0001,
+        },
+        {
+          id: "CuSO4",
+          nm: "硫酸铜溶液",
+          fm: "CuSO₄ · 0.5 mol/L",
+          dot: "#2e7ff2",
+          kind: "液",
+          vol: 5,
+          mol: 0.0025,
+        },
+        {
+          id: "BaCl2",
+          nm: "氯化钡溶液",
+          fm: "BaCl₂ · 0.5 mol/L",
+          dot: "#eef3f8",
+          kind: "液",
+          vol: 5,
+          mol: 0.0025,
+        },
+        {
+          id: "AgNO3",
+          nm: "硝酸银溶液",
+          fm: "AgNO₃ · 0.5 mol/L",
+          dot: "#e8ecf2",
+          kind: "液",
+          vol: 5,
+          mol: 0.0025,
+        },
+        {
+          id: "NaCl",
+          nm: "氯化钠溶液",
+          fm: "NaCl · 1 mol/L",
+          dot: "#f4f6f8",
+          kind: "液",
+          vol: 5,
+          mol: 0.005,
+        },
+        {
+          id: "H2O2a",
+          nm: "过氧化氢(3%)",
+          fm: "H₂O₂ · ≈0.9 mol/L",
+          dot: "#dff4fa",
+          kind: "液",
+          vol: 5,
+          mol: 0.0045,
+          sp: "H2O2",
+        },
+        {
+          id: "H2O2b",
+          nm: "过氧化氢(30%)",
+          fm: "H₂O₂ · ≈8.8 mol/L",
+          dot: "#cdeef7",
+          kind: "液",
+          vol: 5,
+          mol: 0.044,
+          sp: "H2O2",
+        },
+        {
+          id: "phph",
+          nm: "酚酞试液",
+          fm: "指示剂",
+          dot: "#f6e7f0",
+          kind: "液",
+          vol: 0.3,
+          mol: 0.00006,
+          sp: "phph",
+        },
+        {
+          id: "litmus",
+          nm: "紫色石蕊试液",
+          fm: "指示剂",
+          dot: "#8a5bd6",
+          kind: "液",
+          vol: 0.3,
+          mol: 0.00006,
+          sp: "litmus",
+        },
+        {
+          id: "H2O",
+          nm: "蒸馏水",
+          fm: "H₂O",
+          dot: "#bfe6f5",
+          kind: "液",
+          vol: 5,
+          mol: 0,
+          sp: "H2O",
+        },
+        {
+          id: "KMnO4s",
+          nm: "高锰酸钾",
+          fm: "KMnO₄ · 固",
+          dot: "#8a15c8",
+          kind: "固",
+          sp: "KMnO4",
+        },
+        {
+          id: "KClO3s",
+          nm: "氯酸钾",
+          fm: "KClO₃ · 固",
+          dot: "#f2f2f2",
+          kind: "固",
+          sp: "KClO3",
+        },
+        {
+          id: "MnO2s",
+          nm: "二氧化锰",
+          fm: "MnO₂ · 催化剂",
+          dot: "#262a2e",
+          kind: "固",
+          sp: "MnO2",
+        },
+        {
+          id: "CaCO3s",
+          nm: "大理石",
+          fm: "CaCO₃ · 固",
+          dot: "#eae6dc",
+          kind: "固",
+          sp: "CaCO3",
+        },
+        {
+          id: "Zns",
+          nm: "锌粒",
+          fm: "Zn · 固",
+          dot: "#9aa4ad",
+          kind: "固",
+          sp: "Zn",
+        },
+        {
+          id: "Mgs",
+          nm: "镁条",
+          fm: "Mg · 固",
+          dot: "#ccd2d8",
+          kind: "固",
+          sp: "Mg",
+        },
+        {
+          id: "Fes",
+          nm: "铁钉",
+          fm: "Fe · 固",
+          dot: "#5b6068",
+          kind: "固",
+          sp: "Fe",
+        },
+        {
+          id: "Cus",
+          nm: "铜粉",
+          fm: "Cu · 固",
+          dot: "#c96f3a",
+          kind: "固",
+          sp: "Cu",
+        },
+        {
+          id: "Na2CO3s",
+          nm: "碳酸钠",
+          fm: "Na₂CO₃ · 固",
+          dot: "#f4f4f4",
+          kind: "固",
+          sp: "Na2CO3",
+        },
+        {
+          id: "NaHCO3s",
+          nm: "碳酸氢钠",
+          fm: "NaHCO₃ · 固",
+          dot: "#f4f4f4",
+          kind: "固",
+          sp: "NaHCO3",
+        },
+        {
+          id: "NaOHs",
+          nm: "氢氧化钠固体",
+          fm: "NaOH · 溶解放热",
+          dot: "#eef4fb",
+          kind: "固",
+          sp: "NaOH",
+        },
+        {
+          id: "NH4NO3s",
+          nm: "硝酸铵",
+          fm: "NH₄NO₃ · 溶解吸热",
+          dot: "#f0f4f8",
+          kind: "固",
+          sp: "NH4NO3",
+        },
+        {
+          id: "NH4Cls",
+          nm: "氯化铵",
+          fm: "NH₄Cl · 固",
+          dot: "#f2f2ee",
+          kind: "固",
+          sp: "NH4Cl",
+        },
+      ];
+      const RMAP = {};
+      REAGENTS.forEach((r) => (RMAP[r.id] = r));
+      /* 反应定义  k:速率常数 dH:kJ/mol反应进度 */
+      const RXN = [
+        {
+          id: "n1",
+          eq: "HCl + NaOH = NaCl + H₂O",
+          nm: "酸碱中和",
+          ra: [
+            ["HCl", 1],
+            ["NaOH", 1],
+          ],
+          pr: [["NaCl", 1]],
+          k: 9,
+          dH: -57.3,
+        },
+        {
+          id: "n2",
+          eq: "H₂SO₄ + 2NaOH = Na₂SO₄ + 2H₂O",
+          nm: "酸碱中和",
+          ra: [
+            ["H2SO4", 1],
+            ["NaOH", 2],
+          ],
+          pr: [["Na2SO4", 1]],
+          k: 9,
+          dH: -114,
+        },
+        {
+          id: "n3",
+          eq: "2HCl + Ca(OH)₂ = CaCl₂ + 2H₂O",
+          nm: "酸碱中和",
+          ra: [
+            ["HCl", 2],
+            ["CaOH2", 1],
+          ],
+          pr: [["CaCl2", 1]],
+          k: 7,
+          dH: -57,
+        },
+        {
+          id: "p1",
+          eq: "CuSO₄ + 2NaOH = Cu(OH)₂↓ + Na₂SO₄",
+          nm: "复分解·沉淀",
+          ra: [
+            ["CuSO4", 1],
+            ["NaOH", 2],
+          ],
+          pr: [
+            ["CuOH2", 1, "pr"],
+            ["Na2SO4", 1],
+          ],
+          k: 6,
+          dH: -8,
+        },
+        {
+          id: "p2",
+          eq: "AgNO₃ + NaCl = AgCl↓ + NaNO₃",
+          nm: "复分解·沉淀",
+          ra: [
+            ["AgNO3", 1],
+            ["NaCl", 1],
+          ],
+          pr: [
+            ["AgCl", 1, "pr"],
+            ["NaNO3", 1],
+          ],
+          k: 8,
+          dH: -4,
+        },
+        {
+          id: "p3",
+          eq: "AgNO₃ + HCl = AgCl↓ + HNO₃",
+          nm: "复分解·沉淀",
+          ra: [
+            ["AgNO3", 1],
+            ["HCl", 1],
+          ],
+          pr: [
+            ["AgCl", 1, "pr"],
+            ["HNO3", 1],
+          ],
+          k: 8,
+          dH: -4,
+        },
+        {
+          id: "p4",
+          eq: "BaCl₂ + H₂SO₄ = BaSO₄↓ + 2HCl",
+          nm: "复分解·沉淀",
+          ra: [
+            ["BaCl2", 1],
+            ["H2SO4", 1],
+          ],
+          pr: [
+            ["BaSO4", 1, "pr"],
+            ["HCl", 2],
+          ],
+          k: 6,
+          dH: -5,
+        },
+        {
+          id: "p5",
+          eq: "BaCl₂ + Na₂SO₄ = BaSO₄↓ + 2NaCl",
+          nm: "复分解·沉淀",
+          ra: [
+            ["BaCl2", 1],
+            ["Na2SO4", 1],
+          ],
+          pr: [
+            ["BaSO4", 1, "pr"],
+            ["NaCl", 2],
+          ],
+          k: 6,
+          dH: -5,
+        },
+        {
+          id: "g1",
+          eq: "CaCO₃ + 2HCl = CaCl₂ + H₂O + CO₂↑",
+          nm: "制二氧化碳",
+          ra: [["HCl", 2]],
+          sol: ["CaCO3"],
+          pr: [["CaCl2", 1]],
+          gas: ["CO2", 1],
+          k: 0.02,
+          dH: -6,
+          fx: "bub",
+        },
+        {
+          id: "g2",
+          eq: "Na₂CO₃ + 2HCl = 2NaCl + H₂O + CO₂↑",
+          nm: "碳酸盐与酸",
+          ra: [
+            ["HCl", 2],
+            ["Na2CO3", 1],
+          ],
+          pr: [["NaCl", 2]],
+          gas: ["CO2", 1],
+          k: 3.5,
+          dH: -6,
+          fx: "bub",
+        },
+        {
+          id: "g3",
+          eq: "NaHCO₃ + HCl = NaCl + H₂O + CO₂↑",
+          nm: "碳酸盐与酸",
+          ra: [
+            ["HCl", 1],
+            ["NaHCO3", 1],
+          ],
+          pr: [["NaCl", 1]],
+          gas: ["CO2", 1],
+          k: 4.5,
+          dH: -5,
+          fx: "bub",
+        },
+        {
+          id: "h1",
+          eq: "Zn + H₂SO₄ = ZnSO₄ + H₂↑",
+          nm: "金属与酸",
+          ra: [["H2SO4", 1]],
+          sol: ["Zn"],
+          pr: [["ZnSO4", 1]],
+          gas: ["H2", 1],
+          k: 0.02,
+          dH: -15,
+          fx: "bub",
+        },
+        {
+          id: "h2",
+          eq: "Zn + 2HCl = ZnCl₂ + H₂↑",
+          nm: "金属与酸",
+          ra: [["HCl", 2]],
+          sol: ["Zn"],
+          pr: [["ZnCl2", 1]],
+          gas: ["H2", 1],
+          k: 0.02,
+          dH: -15,
+          fx: "bub",
+        },
+        {
+          id: "h3",
+          eq: "Mg + 2HCl = MgCl₂ + H₂↑",
+          nm: "金属与酸(剧烈)",
+          ra: [["HCl", 2]],
+          sol: ["Mg"],
+          pr: [["MgCl2", 1]],
+          gas: ["H2", 1],
+          k: 0.3,
+          dH: -46,
+          fx: "bub",
+          violent: 1,
+        },
+        {
+          id: "h4",
+          eq: "Mg + H₂SO₄ = MgSO₄ + H₂↑",
+          nm: "金属与酸(剧烈)",
+          ra: [["H2SO4", 1]],
+          sol: ["Mg"],
+          pr: [["MgSO4", 1]],
+          gas: ["H2", 1],
+          k: 0.3,
+          dH: -46,
+          fx: "bub",
+          violent: 1,
+        },
+        {
+          id: "h5",
+          eq: "Fe + 2HCl = FeCl₂ + H₂↑",
+          nm: "金属与酸(缓慢)",
+          ra: [["HCl", 2]],
+          sol: ["Fe"],
+          pr: [["FeCl2", 1]],
+          gas: ["H2", 1],
+          k: 0.006,
+          dH: -9,
+          fx: "bub",
+        },
+        {
+          id: "s1",
+          eq: "Fe + CuSO₄ = FeSO₄ + Cu",
+          nm: "湿法置换",
+          ra: [["CuSO4", 1]],
+          sol: ["Fe"],
+          pr: [
+            ["FeSO4", 1],
+            ["Cu", 1, "sol"],
+          ],
+          k: 0.02,
+          dH: -15,
+        },
+        {
+          id: "o1",
+          eq: "2H₂O₂ =(MnO₂)= 2H₂O + O₂↑",
+          nm: "双氧水分解",
+          ra: [["H2O2", 1]],
+          cat: "MnO2",
+          pr: [],
+          gas: ["O2", 0.5],
+          k: 0.5,
+          dH: -98,
+          fx: "bub",
+          catEq: "2H₂O₂ = 2H₂O + O₂↑（缓慢）",
+        },
+        {
+          id: "o1b",
+          eq: "2H₂O₂ =△= 2H₂O + O₂↑",
+          nm: "双氧水热分解",
+          ra: [["H2O2", 1]],
+          pr: [],
+          gas: ["O2", 0.5],
+          k: 0.004,
+          dH: -98,
+          fx: "bub",
+          minTemp: 55,
+        },
+        {
+          id: "t1",
+          eq: "2KMnO₄ =△= K₂MnO₄ + MnO₂ + O₂↑",
+          nm: "高锰酸钾分解",
+          solidRx: "KMnO4",
+          pr: [
+            ["K2MnO4", 1, "solx"],
+            ["MnO2", 1, "solx"],
+          ],
+          gas: ["O2", 0.5],
+          k: 0.02,
+          dH: -20,
+          minTemp: 200,
+        },
+        {
+          id: "t2",
+          eq: "2KClO₃ =(MnO₂,△)= 2KCl + 3O₂↑",
+          nm: "氯酸钾分解",
+          solidRx: "KClO3",
+          cat: "MnO2",
+          pr: [["KCl", 1, "solx"]],
+          gas: ["O2", 1.5],
+          k: 0.025,
+          dH: -45,
+          minTemp: 160,
+        },
+        {
+          id: "a1",
+          eq: "NaOH + NH₄Cl =△= NaCl + NH₃↑ + H₂O",
+          nm: "铵盐与碱",
+          ra: [
+            ["NaOH", 1],
+            ["NH4Cl", 1],
+          ],
+          pr: [["NaCl", 1]],
+          gas: ["NH3", 1],
+          k: 0.05,
+          dH: 8,
+          minTemp: 60,
+          fx: "smoke",
+        },
+        {
+          id: "c1",
+          eq: "CO₂ + Ca(OH)₂ = CaCO₃↓ + H₂O",
+          nm: "检验二氧化碳",
+          gasR: ["CO2", 1],
+          ra: [["CaOH2", 1]],
+          pr: [["CaCO3", 1, "pr"]],
+          k: 3,
+          dH: -10,
+        },
+        {
+          id: "c2",
+          eq: "CaCO₃ + CO₂ + H₂O = Ca(HCO₃)₂",
+          nm: "沉淀溶解",
+          gasR: ["CO2", 1],
+          precR: "CaCO3",
+          pr: [["CaHCO32", 1]],
+          k: 0.6,
+          dH: 4,
+        },
+        {
+          id: "u1",
+          eq: "2Cu + O₂ =△= 2CuO",
+          nm: "铜的氧化",
+          sol: ["Cu"],
+          pr: [["CuO", 1, "sol"]],
+          k: 0.01,
+          dH: -15,
+          minTemp: 250,
+        },
+      ];
+      const TYPE_NAME = {
+        beaker: "烧杯",
+        tube: "试管",
+        flask: "锥形瓶",
+        cyl: "量筒",
+        jar: "集气瓶",
+      };
+      const VCAP = { beaker: 100, tube: 8, flask: 100, cyl: 50, jar: 250 };
+      /* ================= 全局状态 ================= */
+      let uidc = 1,
+        items = [],
+        conns = [],
+        sel = null,
+        hold = null,
+        simT = 0,
+        rxTotal = 0,
+        soundOn = true,
+        AC = null;
+      const bench = document.getElementById("bench"),
+        fxL = document.getElementById("fx"),
+        connSvg = document.getElementById("connSvg");
+      const $ = (id) => document.getElementById(id);
+      function log(msg, cls) {
+        const d = document.createElement("div");
+        if (cls) d.className = cls;
+        d.innerHTML = `<span class="lt">[${fmtT(simT)}]</span>${msg}`;
+        const L = $("log");
+        L.prepend(d);
+        while (L.children.length > 60) L.lastChild.remove();
+      }
+      function fmtT(s) {
+        return (
+          String(Math.floor(s / 60)).padStart(2, "0") +
+          ":" +
+          String(Math.floor(s % 60)).padStart(2, "0")
+        );
+      }
+      function hint(h) {
+        $("hint").innerHTML = h;
+      }
+      /* ================= SVG 绘制 ================= */
+      function glassBase(u, o) {
+        // o: outline path, marks
+        return `<defs><clipPath id="lc${u}"><path d="${o.inner}"/></clipPath>
+ <linearGradient id="gl${u}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset=".25" stop-color="#fff" stop-opacity=".03"/><stop offset=".8" stop-color="#9fd0ee" stop-opacity=".05"/><stop offset="1" stop-color="#cfeaf8" stop-opacity=".22"/></linearGradient></defs>
+ <path d="${o.inner}" fill="rgba(150,205,235,.07)"/>
+ <g clip-path="url(#lc${u})" class="liquidg"></g>
+ <g class="solidsg"></g>
+ <path d="${o.inner}" fill="url(#gl${u})" stroke="#bfe3f7" stroke-opacity=".85" stroke-width="2" stroke-linejoin="round"/>
+ ${o.marks || ""}<ellipse class="selr" cx="${o.cx}" cy="${o.cy}" rx="${o.srx}" ry="${o.sry}" fill="none" stroke="#38c9be" stroke-width="1.6" stroke-dasharray="4 4" opacity="0"/>`;
+      }
+      const GEO = {
+        beaker: {
+          w: 128,
+          h: 140,
+          ix: 16,
+          iw: 96,
+          top: 24,
+          bot: 126,
+          inner:
+            "M16,24 L16,116 Q16,126 26,126 L102,126 Q112,126 112,116 L112,24",
+          marks:
+            '<path d="M22,18 L34,14 M112,24 L120,20" stroke="#bfe3f7" stroke-opacity=".85" stroke-width="2" fill="none"/>' +
+            marksGen(16, 112, 24, 126, 4),
+          cx: 64,
+          cy: 132,
+          srx: 62,
+          sry: 10,
+        },
+        tube: {
+          w: 54,
+          h: 152,
+          ix: 12,
+          iw: 30,
+          top: 14,
+          bot: 140,
+          inner: "M12,14 L12,124 Q12,140 27,140 Q42,140 42,124 L42,14",
+          marks:
+            '<path d="M10,14 L6,10 M44,14 L48,10" stroke="#bfe3f7" stroke-opacity=".85" stroke-width="2"/>',
+          cx: 27,
+          cy: 146,
+          srx: 26,
+          sry: 8,
+        },
+        flask: {
+          w: 140,
+          h: 140,
+          ix: 22,
+          iw: 96,
+          top: 16,
+          bot: 126,
+          inner:
+            "M59,16 L59,52 L22,112 Q18,126 34,126 L106,126 Q122,126 118,112 L81,52 L81,16",
+          marks:
+            '<path d="M56,16 L52,12 M84,16 L88,12" stroke="#bfe3f7" stroke-opacity=".85" stroke-width="2"/>' +
+            marksGen(40, 100, 60, 120, 3),
+          cx: 70,
+          cy: 132,
+          srx: 62,
+          sry: 10,
+        },
+        cyl: {
+          w: 64,
+          h: 170,
+          ix: 20,
+          iw: 24,
+          top: 16,
+          bot: 150,
+          inner: "M20,16 L20,150 L44,150 L44,16",
+          marks:
+            marksGen(20, 44, 16, 150, 10) +
+            '<path d="M12,150 L52,150 L52,158 L12,158 Z" fill="none" stroke="#bfe3f7" stroke-opacity=".7" stroke-width="2"/>',
+          cx: 32,
+          cy: 160,
+          srx: 30,
+          sry: 8,
+        },
+        jar: {
+          w: 92,
+          h: 112,
+          ix: 16,
+          iw: 60,
+          top: 20,
+          bot: 100,
+          inner: "M16,20 L16,88 Q16,100 28,100 L64,100 Q76,100 76,88 L76,20",
+          marks:
+            '<path d="M12,20 L16,20 M80,20 L76,20 M14,24 Q46,30 78,24" stroke="#bfe3f7" stroke-opacity=".6" stroke-width="2" fill="none"/>',
+          cx: 46,
+          cy: 104,
+          srx: 44,
+          sry: 9,
+        },
+      };
+      function marksGen(x1, x2, y1, y2, n) {
+        let s = "";
+        for (let i = 1; i <= n; i++) {
+          const y = y2 - ((y2 - y1) * i) / (n + 1);
+          s += `<path d="M${x1 + 3},${y} L${x1 + 12},${y}" stroke="#9fd0ee" stroke-opacity=".4" stroke-width="1"/>`;
+        }
+        return s;
+      }
+      function vesselSVG(v) {
+        const g = GEO[v.type];
+        return `<svg width="${g.w}" height="${g.h}" viewBox="0 0 ${g.w} ${g.h}">${glassBase(v.uid, g)}</svg>`;
+      }
+      function lampSVG(it) {
+        return `<svg width="92" height="128" viewBox="0 0 92 128">
+ <g class="flame" style="display:${it.lit ? "" : "none"}">
+  <path d="M46,18 C36,34 34,46 40,56 C43,61 49,61 52,56 C58,46 56,34 46,18Z" fill="#ffb454" opacity=".9"/>
+  <path d="M46,30 C41,40 40,48 44,54 C45,57 47,57 48,54 C52,48 51,40 46,30Z" fill="#5db8ff"/>
+  <ellipse cx="46" cy="62" rx="16" ry="6" fill="#ffb454" opacity=".25"/></g>
+ <rect x="42" y="56" width="8" height="14" fill="#3b4652"/>
+ <path d="M24,70 L68,70 L74,118 Q74,124 66,124 L26,124 Q18,124 18,118 Z" fill="#2b6f8f" stroke="#7fc4de" stroke-width="1.6"/>
+ <path d="M26,86 L66,86 L70,118 Q70,121 66,121 L26,121 Q22,121 22,118 Z" fill="#e8a53c" opacity=".85"/>
+ <ellipse cx="46" cy="70" rx="22" ry="5" fill="#3f88a8" stroke="#7fc4de"/>
+ ${it.lit ? "" : '<g><rect x="38" y="46" width="16" height="14" rx="3" fill="#46545f"/><ellipse cx="46" cy="46" rx="9" ry="3.5" fill="#5a6b78"/></g>'}
+ </svg>`;
+      }
+      function toolSVG(type) {
+        if (type === "dropper")
+          return `<svg width="30" height="112" viewBox="0 0 30 112"><ellipse cx="15" cy="14" rx="10" ry="13" fill="#c85a5a"/><rect x="12" y="24" width="6" height="10" fill="#99454a"/><path d="M11,34 L19,34 L19,84 L16,102 L14,102 L11,84Z" fill="rgba(190,225,245,.35)" stroke="#bfe3f7"/><rect class="dpl" x="12.5" y="60" width="5" height="26" fill="transparent"/></svg>`;
+        if (type === "rod")
+          return `<svg width="20" height="140" viewBox="0 0 20 140"><g class="rodg"><rect x="8" y="4" width="5" height="130" rx="2.5" fill="rgba(200,235,250,.8)" stroke="#d9f1fc" stroke-width=".8"/></g></svg>`;
+        if (type === "thermo")
+          return `<svg width="26" height="150" viewBox="0 0 26 150"><rect x="10" y="6" width="6" height="120" rx="3" fill="#f4f9fc" stroke="#9fb8c8"/><circle cx="13" cy="134" r="9" fill="#e23b3b"/><rect class="merc" x="11.2" y="80" width="3.6" height="54" fill="#e23b3b"/>${[20, 45, 70, 95, 120].map((y) => `<path d="M16,${y} L21,${y}" stroke="#6c8494" stroke-width="1"/>`).join("")}</svg>`;
+        if (type === "clamp")
+          return `<svg width="86" height="40" viewBox="0 0 86 40"><rect x="4" y="14" width="52" height="6" rx="3" fill="#8a5a33"/><path d="M52,8 Q78,4 80,20 Q78,36 52,32" fill="none" stroke="#8a5a33" stroke-width="6"/><circle cx="8" cy="17" r="4" fill="#5d3b1e"/></svg>`;
+        if (type === "funnel")
+          return `<svg width="96" height="118" viewBox="0 0 96 118"><path d="M8,12 L88,12 L52,64 L52,108 L44,108 L44,64 Z" fill="rgba(180,220,240,.2)" stroke="#bfe3f7" stroke-width="2"/><path class="fpaper" d="M20,16 L76,16 L50,54 L46,54Z" fill="#f4efe4" stroke="#d8d0bd" opacity=".95"/><g class="resid" style="display:none"><path d="M34,38 L62,38 L50,54 L46,54Z" fill="#888"/></g></svg>`;
+        if (type === "match")
+          return `<svg width="34" height="92" viewBox="0 0 34 92"><g class="mfl" style="display:none"><path d="M17,4 C11,14 10,22 14,28 C15.5,31 18.5,31 20,28 C24,22 23,14 17,4Z" fill="#ffb454"/><path d="M17,12 C14,18 14,23 16,26 C16.7,27.4 17.3,27.4 18,26 C20,23 20,18 17,12Z" fill="#5db8ff"/></g><rect x="15" y="26" width="4" height="58" rx="2" fill="#c89058"/><circle cx="17" cy="28" r="4.5" fill="#a83232"/></svg>`;
+        if (type === "splint")
+          return `<svg width="118" height="22" viewBox="0 0 118 22"><g class="sfl" style="display:none"><path d="M104,3 C99,9 98,13 101,16 C102,17.6 104,17.6 105,16 C108,13 108,8 104,3Z" fill="#ffb454"/></g><rect x="6" y="9" width="100" height="4.5" rx="2" fill="#c89058"/><circle class="emb" cx="104" cy="11" r="3.4" fill="#e2542b"><animate attributeName="opacity" values="1;.4;1" dur="1.1s" repeatCount="indefinite"/></circle></svg>`;
+        if (type === "tubeconn")
+          return `<svg width="90" height="46" viewBox="0 0 90 46"><path d="M6,12 Q45,4 84,12" fill="none" stroke="#8fd8e8" stroke-width="6" stroke-linecap="round"/><path d="M6,12 Q45,4 84,12" fill="none" stroke="#1d4c5e" stroke-width="2" stroke-dasharray="3 5"/><rect x="2" y="8" width="10" height="20" rx="3" fill="#3b4652"/><rect x="78" y="8" width="10" height="20" rx="3" fill="#3b4652"/></svg>`;
+        return "";
+      }
+      /* ================= 制氧装置（铁架台全套） ================= */
+      function rigSVG(r) {
+        const fill = r.bottleTaken ? 0 : r.fill;
+        const gasH = Math.min(1, fill) * 86;
+        return `<svg width="500" height="336" viewBox="0 0 500 336">
+ <rect x="30" y="300" width="210" height="13" rx="4" fill="#22303c" stroke="#4a6274"/>
+ <rect x="216" y="64" width="9" height="240" fill="#3a4a58" stroke="#5a7183"/>
+ <rect x="204" y="96" width="22" height="12" rx="3" fill="#4a5c6b"/>
+ <path d="M204,102 L150,96" stroke="#6b4a2a" stroke-width="7" stroke-linecap="round"/>
+ <!-- 试管(口略向下倾斜) -->
+ <g transform="rotate(13 130 112)">
+  <path d="M62,99 L198,99 M62,125 L198,125 M62,112 Q56,112 62,99 M62,112 Q56,112 62,125" stroke="#bfe3f7" stroke-opacity=".85" stroke-width="2" fill="rgba(150,205,235,.08)"/>
+  <rect x="62" y="99" width="136" height="26" rx="4" fill="rgba(150,205,235,.06)" stroke="#bfe3f7" stroke-opacity=".6"/>
+  <rect class="kbed" x="66" y="112" width="${r.kmol > 0 ? 44 : 0}" height="11" rx="3" fill="${r.residue ? "#2a4636" : "#7a1fb8"}"/>
+  <circle cx="188" cy="112" r="7" fill="#f2efe6" opacity=".95"/>
+  <path d="M196,96 L212,96 L212,128 L196,128Z" fill="#8a4a3a" stroke="#b06a52"/>
+ </g>
+ <path class="dtube" d="${r.tubeOut ? "M216,132 C270,160 300,168 318,190" : "M216,132 C270,158 312,168 322,206 L322,258 Q322,268 334,268 L388,268"}" fill="none" stroke="#8fd8e8" stroke-width="6" stroke-linecap="round"/>
+ <!-- 火焰 -->
+ <g class="rflame flame" style="display:${r.lampOn && r.lampNear ? "" : "none"}">
+  <path d="M110,176 C100,192 98,204 104,214 C107,219 113,219 116,214 C122,204 120,192 110,176Z" fill="#ffb454" opacity=".92"/>
+  <path d="M110,188 C105,198 104,206 108,212 C109,214 111,214 112,212 C116,206 115,198 110,188Z" fill="#5db8ff"/></g>
+ ${r.lampPlaced ? "" : `<ellipse cx="110" cy="262" rx="36" ry="11" fill="none" stroke="#ffb454" stroke-width="1.5" stroke-dasharray="5 4" opacity=".8"/><text x="110" y="288" text-anchor="middle" fill="#ffb454" font-size="11">把酒精灯放这里</text>`}
+ <!-- 水槽 -->
+ <path d="M300,250 L300,296 Q300,306 312,306 L458,306 Q470,306 470,296 L470,250" fill="none" stroke="#9fc6dc" stroke-width="2.5"/>
+ <rect x="302" y="258" width="166" height="46" fill="#3fb6d9" opacity=".35"/>
+ <!-- 集气瓶(倒置) -->
+ ${
+   r.bottleTaken
+     ? `<path d="M372,170 L372,258 M416,170 L416,258 M372,170 Q394,162 416,170" stroke="#9fc6dc" stroke-opacity=".4" stroke-width="2" stroke-dasharray="4 4" fill="none"/>`
+     : `<path d="M372,170 Q372,160 394,160 Q416,160 416,170 L416,262 L372,262Z" fill="rgba(160,215,240,.15)" stroke="#bfe3f7" stroke-width="2"/>
+  <rect x="374" y="${166 + gasH}" width="40" height="${96 - gasH}" fill="#3fb6d9" opacity=".45"/>
+  ${fill >= 1 ? '<text x="394" y="150" text-anchor="middle" fill="#7bd88f" font-size="11">已集满 · 点击取出</text>' : ""}`
+ }
+ ${r.cracked ? '<text x="130" y="70" fill="#ff5d8f" font-size="13" font-weight="bold">⚠ 试管已炸裂</text>' : ""}
+ <text x="250" y="30" text-anchor="middle" fill="#5d7f94" font-size="11" letter-spacing="2">高锰酸钾制氧气 · 排水集气法</text>
+ <g class="rbubs"></g></svg>`;
+      }
+      /* ================= 创建条目 ================= */
+      function newItem(type, x, y, opts = {}) {
+        const it = { uid: "u" + uidc++, type, x, y, ...opts };
+        items.push(it);
+        buildItem(it);
+        updateCount();
+        return it;
+      }
+      function buildItem(it) {
+        const d = document.createElement("div");
+        d.className = "item";
+        d.style.left = it.x + "px";
+        d.style.top = it.y + "px";
+        it.el = d;
+        d.innerHTML = '<div class="tag"></div>';
+        if (VTYPE(it)) {
+          it.sol = {};
+          it.solids = {};
+          it.precip = {};
+          it.vol = 0;
+          it.temp = 25;
+          it.gas = {};
+          it.stirUntil = 0;
+          it.activeRx = [];
+          it.warned = false;
+          d.insertAdjacentHTML("beforeend", vesselSVG(it));
+          d.style.width = GEO[it.type].w + "px";
+          d.style.height = GEO[it.type].h + "px";
+          it.liqEl = d.querySelector(".liquidg");
+          it.solEl = d.querySelector(".solidsg");
+          it.tagEl = d.querySelector(".tag");
+        } else if (it.type === "lamp") {
+          it.lit = false;
+          d.innerHTML += lampSVG(it);
+          d.style.width = "92px";
+          d.style.height = "128px";
+        } else if (it.type === "rig") {
+          Object.assign(it, {
+            kmol: 0,
+            temp: 25,
+            o2: 0,
+            fill: 0,
+            lampOn: false,
+            lampNear: false,
+            lampPlaced: false,
+            lampOff: false,
+            tubeOut: false,
+            bottleTaken: false,
+            cracked: false,
+            residue: false,
+            rescue: 0,
+          });
+          d.insertAdjacentHTML("beforeend", rigSVG(it));
+          d.style.width = "500px";
+          d.style.height = "336px";
+          const z1 = document.createElement("div");
+          z1.className = "rigzone";
+          z1.style.cssText = "left:48px;top:64px;width:190px;height:96px";
+          z1.title = "试管：点击加入高锰酸钾";
+          d.appendChild(z1);
+          it.zoneTube = z1;
+          const z2 = document.createElement("div");
+          z2.className = "rigzone";
+          z2.style.cssText = "left:356px;top:148px;width:72px;height:124px";
+          z2.title = "集气瓶";
+          d.appendChild(z2);
+          it.zoneBottle = z2;
+        } else {
+          d.innerHTML += toolSVG(it.type);
+          const sz = {
+            dropper: [30, 112],
+            rod: [20, 140],
+            thermo: [26, 150],
+            clamp: [86, 40],
+            funnel: [96, 118],
+            match: [34, 92],
+            splint: [118, 22],
+            tubeconn: [90, 46],
+          }[it.type];
+          d.style.width = sz[0] + "px";
+          d.style.height = sz[1] + "px";
+        }
+        attachDrag(it);
+        bench.appendChild(d);
+        return it;
+      }
+      function VTYPE(it) {
+        return GEO[it.type] !== undefined;
+      }
+      function updateCount() {
+        $("icount").textContent = items.length;
+      }
+      /* ================= 交互：拖拽/点击 ================= */
+      function attachDrag(it) {
+        it.el.addEventListener("pointerdown", (e) => {
+          if (hold) return;
+          e.preventDefault();
+          it.el.setPointerCapture(e.pointerId);
+          const br = bench.getBoundingClientRect();
+          const sx = e.clientX,
+            sy = e.clientY,
+            ox = it.x,
+            oy = it.y;
+          let moved = false;
+          const mv = (ev) => {
+            const dx = ev.clientX - sx,
+              dy = ev.clientY - sy;
+            if (Math.abs(dx) + Math.abs(dy) > 4) moved = true;
+            it.x = Math.max(-20, Math.min(br.width - 30, ox + dx));
+            it.y = Math.max(0, Math.min(br.height - 30, oy + dy));
+            it.el.style.left = it.x + "px";
+            it.el.style.top = it.y + "px";
+            it.el.style.zIndex = 10 + Math.round(it.y);
+            const tr = $("trash").getBoundingClientRect();
+            $("trash").classList.toggle(
+              "over",
+              ev.clientX > tr.left && ev.clientY > tr.top,
+            );
+            if (it.type === "funnel") funnelSnap(it);
+          };
+          const up = (ev) => {
+            it.el.removeEventListener("pointermove", mv);
+            it.el.removeEventListener("pointerup", up);
+            $("trash").classList.remove("over");
+            const tr = $("trash").getBoundingClientRect();
+            if (ev.clientX > tr.left && ev.clientY > tr.top) {
+              removeItem(it);
+              return;
+            }
+            if (!moved) itemClick(it);
+          };
+          it.el.addEventListener("pointermove", mv);
+          it.el.addEventListener("pointerup", up);
+        });
+      }
+      bench.addEventListener("pointerdown", (e) => {
+        if (e.target === bench || e.target === connSvg) {
+          if (hold) cancelHold();
+          select(null);
+        }
+      });
+      function removeItem(it) {
+        it.el.remove();
+        items = items.filter((i) => i !== it);
+        conns = conns.filter((c) => c.a !== it && c.b !== it);
+        if (sel === it) select(null);
+        drawConns();
+        updateCount();
+        log(`移除了 ${itemName(it)}`);
+      }
+      function itemName(it) {
+        return VTYPE(it)
+          ? TYPE_NAME[it.type]
+          : it.type === "lamp"
+            ? "酒精灯"
+            : it.type === "rig"
+              ? "制氧装置"
+              : {
+                  dropper: "胶头滴管",
+                  rod: "玻璃棒",
+                  thermo: "温度计",
+                  clamp: "试管夹",
+                  funnel: "漏斗",
+                  match: "火柴",
+                  splint: "带火星的木条",
+                  tubeconn: "橡胶导管",
+                }[it.type] || it.type;
+      }
+      /* ================= 拿起/放下（hold）系统 ================= */
+      const ghost = $("ghost"),
+        ghostIn = $("ghostIn");
+      function setHold(h, label, dotColor) {
+        hold = h;
+        ghost.style.display = "block";
+        ghostIn.innerHTML =
+          (dotColor
+            ? `<span class="dot" style="background:${dotColor};width:9px;height:9px;border-radius:50%;display:inline-block;box-shadow:0 0 6px ${dotColor}"></span>`
+            : "") + label;
+        hint(holdHint(h));
+      }
+      function cancelHold() {
+        hold = null;
+        ghost.style.display = "none";
+        hint(defaultHint);
+      }
+      const defaultHint =
+        "点击 <b>📖 操作指南</b> 开始：拖拽 · 倾倒 · 滴加 · 搅拌 · 加热";
+      function holdHint(h) {
+        if (!h) return defaultHint;
+        if (h.kind === "reagent")
+          return `正在取用 <b>${RMAP[h.id].nm}</b> — 点击容器加入，Esc 取消`;
+        if (h.kind === "tool") {
+          const t = h.item.type;
+          return (
+            {
+              dropper: "<b>胶头滴管</b>：点容器吸液 / 再点另一容器滴加",
+              rod: "<b>玻璃棒</b>：点击容器进行搅拌",
+              thermo: "<b>温度计</b>：点击容器测量温度",
+              match: "<b>火柴</b>：点击酒精灯点燃，或点燃氢气",
+              splint: "<b>带火星木条</b>：点击集气瓶检验氧气",
+              tubeconn: "<b>导管</b>：先点气体发生容器，再点接收容器",
+              clamp: "<b>试管夹</b>：点击一支试管夹持",
+            }[t] || ""
+          );
+        }
+        return "";
+      }
+      document.addEventListener("mousemove", (e) => {
+        ghost.style.left = e.clientX + "px";
+        ghost.style.top = e.clientY + "px";
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") cancelHold();
+        if ((e.key === "Delete" || e.key === "Backspace") && sel)
+          removeItem(sel);
+      });
+      /* ================= 点击路由 ================= */
+      function itemClick(it) {
+        if (hold && hold.kind === "reagent") {
+          if (VTYPE(it)) addReagent(it, hold.id);
+          else if (it.type === "rig") addRigKMnO4(it);
+          return;
+        }
+        if (hold && hold.kind === "tool") {
+          toolAction(hold.item, it);
+          return;
+        }
+        if (VTYPE(it)) {
+          select(it);
+          return;
+        }
+        if (it.type === "lamp") {
+          it.lit = !it.lit;
+          it.el.innerHTML = lampSVG(it);
+          attachDrag(it);
+          log(it.lit ? "点燃酒精灯" : "熄灭酒精灯", it.lit ? "good" : "");
+          return;
+        }
+        if (it.type === "match") {
+          if (it.lit) {
+            cancelHold();
+            log("火柴熄灭");
+            return;
+          }
+          it.lit = true;
+          it.litUntil = simT + 8;
+          it.el.querySelector(".mfl").style.display = "";
+          setHold({ kind: "tool", item: it }, "🔥 燃着的火柴");
+          return;
+        }
+        if (it.type === "splint") {
+          setHold({ kind: "tool", item: it }, "带火星的木条");
+          return;
+        }
+        if (
+          ["dropper", "rod", "thermo", "clamp", "tubeconn"].includes(it.type)
+        ) {
+          setHold({ kind: "tool", item: it }, itemName(it));
+          return;
+        }
+        if (it.type === "funnel") {
+          select(it);
+          return;
+        }
+      }
+      function toolAction(tool, target) {
+        const t = tool.type;
+        if (t === "match") {
+          if (target.type === "lamp") {
+            target.lit = true;
+            target.el.innerHTML = lampSVG(target);
+            log("用火柴点燃酒精灯", "good");
+            burnMatch(tool);
+            return;
+          }
+          if (VTYPE(target) && target.gas.H2 > 2e-4) {
+            igniteH2(target);
+            burnMatch(tool);
+            return;
+          }
+          if (target.type === "jar" && target.gasType === "H2") {
+            igniteH2(target);
+            burnMatch(tool);
+            return;
+          }
+          hint("火柴可点燃酒精灯或氢气");
+          return;
+        }
+        if (t === "splint") {
+          if (target.type === "jar" && target.gasType === "O2") {
+            o2Splint(target, tool);
+            return;
+          }
+          if (VTYPE(target) && target.gas.O2 > 0.001) {
+            hint("氧气正在逸出，木条未复燃——试着收集到集气瓶中");
+            return;
+          }
+          hint("带火星的木条用于检验氧气（点击集气瓶）");
+          return;
+        }
+        if (t === "clamp" && VTYPE(target) && target.type === "tube") {
+          target.clamped = true;
+          target.el.insertAdjacentHTML(
+            "beforeend",
+            '<div style="position:absolute;left:-18px;top:34px;transform:scale(.8)">' +
+              toolSVG("clamp") +
+              "</div>",
+          );
+          log("用试管夹夹持试管（夹在距管口 1/3 处）", "good");
+          cancelHold();
+          return;
+        }
+        if (!VTYPE(target) && target.type !== "rig") {
+          hint("请点击一个容器");
+          return;
+        }
+        if (target.type === "rig") {
+          hint("制氧装置请直接点击其试管/集气瓶区域");
+          return;
+        }
+        if (t === "dropper") {
+          if (!tool.fill || tool.vol <= 0.01) {
+            // 吸液
+            if (target.vol < 0.5) {
+              hint("该容器液体不足");
+              return;
+            }
+            const f = Math.min(1, 1 / target.vol);
+            tool.fill = {};
+            for (const k in target.sol) tool.fill[k] = target.sol[k] * f;
+            tool.vol = 1;
+            target.vol -= 1 * 0; // 体积处理
+            target.vol -= target.vol >= 1 ? 1 : target.vol; // 吸取1mL
+            for (const k in tool.fill) target.sol[k] -= tool.fill[k];
+            updVessel(target);
+            tool.el
+              .querySelector(".dpl")
+              .setAttribute("fill", vesselColor(target).css);
+            log(`胶头滴管吸入 1.0 mL ${TYPE_NAME[target.type]}内液体`);
+            updateDropTip(tool);
+          } else {
+            // 滴加
+            const f = Math.min(1, 0.5 / tool.vol);
+            let added = {};
+            for (const k in tool.fill) {
+              const m = tool.fill[k] * f;
+              added[k] = m;
+              target.sol[k] = (target.sol[k] || 0) + m;
+              tool.fill[k] -= m;
+            }
+            tool.vol -= 0.5;
+            target.vol = Math.min(VCAP[target.type], target.vol + 0.5);
+            dropFX(target);
+            updVessel(target);
+            updateDropTip(tool);
+            if (tool.vol <= 0.02) {
+              tool.fill = null;
+              tool.vol = 0;
+              tool.el.querySelector(".dpl").setAttribute("fill", "transparent");
+            }
+          }
+          return;
+        }
+        if (t === "rod") {
+          target.stirUntil = simT + 5;
+          target.el.classList.add("stirring");
+          if (!target.rodEl) {
+            target.rodEl = document.createElement("div");
+            target.rodEl.style.cssText =
+              "position:absolute;right:6px;top:-30px;transform:rotate(18deg)";
+            target.rodEl.innerHTML = toolSVG("rod");
+            target.rodEl.firstChild.setAttribute("width", "14");
+            target.el.appendChild(target.rodEl);
+          }
+          log(`搅拌 ${TYPE_NAME[target.type]}（反应速率提升）`);
+          setTimeout(
+            () => target.el && target.el.classList.remove("stirring"),
+            5000,
+          );
+          return;
+        }
+        if (t === "thermo") {
+          const lb = target.el.querySelector(".tag");
+          lb.textContent = `🌡 ${target.temp.toFixed(1)} ℃`;
+          target.el.classList.add("rx");
+          setTimeout(() => {
+            if (target.tempShow !== simT) 0;
+            target.el.classList.remove("rx");
+          }, 1800);
+          log(
+            `测得 ${TYPE_NAME[target.type]} 温度：${target.temp.toFixed(1)} ℃`,
+          );
+          return;
+        }
+        if (t === "tubeconn") {
+          if (!holdFrom) {
+            holdFrom = target;
+            hint("已选导出容器，<b>再点击接收容器</b>");
+            return;
+          }
+          if (holdFrom !== target) {
+            conns.push({ a: holdFrom, b: target });
+            drawConns();
+            log(
+              `已连接导管：${itemName(holdFrom)} → ${itemName(target)}`,
+              "good",
+            );
+          }
+          holdFrom = null;
+          cancelHold();
+          return;
+        }
+      }
+      let holdFrom = null;
+      function burnMatch(m) {
+        m.lit = false;
+        setTimeout(() => {
+          if (m.el) m.el.querySelector(".mfl").style.display = "none";
+        }, 200);
+      }
+      function updateDropTip(t) {
+        hint("滴管已吸液 — 点击目标容器滴加（每次 0.5 mL）");
+      }
+      /* ================= 药品加入 ================= */
+      function addReagent(v, rid) {
+        if (v.type === "cyl") {
+          if (!v.warned) {
+            log("⚠ 量筒不能用作反应或配液容器，已拒绝加入", "warn");
+            v.warned = true;
+          }
+          return;
+        }
+        const r = RMAP[rid],
+          cap = VCAP[v.type];
+        if (r.kind === "液") {
+          if (v.vol + r.vol > cap + 0.01) {
+            log(`⚠ ${TYPE_NAME[v.type]}已满，液体溢出！`, "warn");
+            return;
+          }
+          v.vol += r.vol;
+          const sp = r.sp || r.id;
+          if (sp === "H2O") {
+          } else if (sp === "phph" || sp === "litmus")
+            v.sol[sp] = (v.sol[sp] || 0) + r.mol;
+          else v.sol[sp] = (v.sol[sp] || 0) + r.mol;
+          splashFX(v, r.dot);
+          log(`向${TYPE_NAME[v.type]}加入 ${r.vol.toFixed(1)} mL ${r.nm}`);
+        } else {
+          const mol = 1.0 / M[r.sp];
+          if (SPECIES[r.sp].sol) {
+            if (v.vol < 0.5) {
+              v.solids[r.sp] = (v.solids[r.sp] || 0) + mol;
+              log(`向${TYPE_NAME[v.type]}加入 1.0 g ${r.nm}（固体）`);
+            } else {
+              v.sol[r.sp] = (v.sol[r.sp] || 0) + mol;
+              dissolveHeat(v, r.sp);
+              splashFX(v, r.dot);
+              log(`向${TYPE_NAME[v.type]}加入 1.0 g ${r.nm}，溶解`, "good");
+            }
+          } else {
+            v.solids[r.sp] = (v.solids[r.sp] || 0) + mol;
+            splashFX(v, r.dot);
+            log(`向${TYPE_NAME[v.type]}加入 1.0 g ${r.nm}`);
+          }
+        }
+        updVessel(v);
+      }
+      function dissolveHeat(v, sp) {
+        if (sp === "NaOH") {
+          v.temp += 22;
+          log("NaOH 溶解放热，温度升高", "warn");
+        }
+        if (sp === "NH4NO3") {
+          v.temp -= 16;
+          log("NH₄NO₃ 溶解吸热，温度降低", "good");
+        }
+      }
+      function addRigKMnO4(r) {
+        if (r.cracked) return;
+        r.kmol += 1.0 / M.KMnO4;
+        refreshRig(r);
+        log(
+          `向装置试管中加入 1.0 g 高锰酸钾（当前 ${(r.kmol * M.KMnO4).toFixed(1)} g）`,
+          "good",
+        );
+        if (r.kmol * M.KMnO4 >= 2.5)
+          hint("药品已足量 → 把酒精灯拖到虚线处并点击点燃");
+      }
+      /* ================= 倾倒 ================= */
+      function findOverlapVessel(src) {
+        const g = GEO[src.type],
+          cx = src.x + g.w / 2,
+          cy = src.y + g.h / 2;
+        let best = null,
+          bd = 1e9;
+        for (const it of items) {
+          if (it === src) continue;
+          if (VTYPE(it)) {
+            const gg = GEO[it.type],
+              d = Math.hypot(cx - (it.x + gg.w / 2), cy - (it.y + gg.h / 2));
+            if (d < 75 && d < bd) {
+              bd = d;
+              best = it;
+            }
+          } else if (it.type === "funnel" && it.target) {
+            const d = Math.hypot(cx - (it.x + 48), cy - (it.y + 60));
+            if (d < 80 && d < bd) {
+              bd = d;
+              best = it;
+            }
+          }
+        }
+        return best;
+      }
+      function pour(src, dst) {
+        if (src.vol < 0.05) {
+          hint("容器中没有液体");
+          return;
+        }
+        if (dst.type === "cyl" && Object.keys(dst.sol).length === 0) {
+        } // 量筒只用于量取
+        const isF = dst.type === "funnel";
+        const tgt = isF ? dst.target : dst;
+        if (isF && !tgt) {
+          hint("漏斗下方没有承接容器");
+          return;
+        }
+        if (!isF && dst.vol >= VCAP[dst.type]) {
+          log("⚠ 接收容器已满", "warn");
+          return;
+        }
+        let f = 1;
+        if (!isF) f = Math.min(1, (VCAP[dst.type] - dst.vol) / src.vol);
+        const moved = src.vol * f;
+        for (const k in src.sol) {
+          const m = src.sol[k] * f;
+          dst.sol[k] = (dst.sol[k] || 0) + m;
+          src.sol[k] -= m;
+        }
+        if (isF) {
+          // 过滤：沉淀留在滤纸
+          let res = "";
+          for (const k in src.precip) {
+            res += SPECIES[k].n + " ";
+          }
+          if (res)
+            log(
+              `过滤完成：滤渣（${res}）留在滤纸上，滤液流入${TYPE_NAME[tgt.type]}`,
+              "good",
+            );
+          dst.el.querySelector(".resid").style.display = res ? "" : "none";
+        } else {
+          for (const k in src.precip) {
+          } // 沉淀不随倾倒转移
+        }
+        src.vol -= moved;
+        dst.vol = Math.min(VCAP[dst.type], dst.vol + moved);
+        dst.temp = (dst.temp + src.temp) / 2;
+        src.el.classList.add("pouring");
+        setTimeout(() => src.el.classList.remove("pouring"), 820);
+        dropFX(dst);
+        updVessel(src);
+        updVessel(dst);
+        log(
+          `将 ${moved.toFixed(1)} mL 液体由${TYPE_NAME[src.type]}倒入${isF ? "漏斗→" + TYPE_NAME[tgt.type] : TYPE_NAME[dst.type]}`,
+        );
+        if (dst.type === "cyl")
+          log(`量筒读数：${dst.vol.toFixed(1)} mL`, "good");
+      }
+      function funnelSnap(f) {
+        let best = null,
+          bd = 1e9;
+        for (const it of items) {
+          if (!VTYPE(it)) continue;
+          const g = GEO[it.type];
+          const d = Math.hypot(
+            f.x + 48 - (it.x + g.w / 2),
+            f.y + 118 - (it.y + 20),
+          );
+          if (d < 70 && d < bd) {
+            bd = d;
+            best = it;
+          }
+        }
+        f.target = best;
+      }
+      /* ================= 容器渲染 ================= */
+      function vesselColor(v) {
+        let r = 160,
+          g = 210,
+          b = 235,
+          a = 0.06,
+          tot = Math.max(0.0001, a);
+        const L = Math.max(0.001, v.vol / 1000),
+          pH = calcPH(v);
+        for (const k in v.sol) {
+          const m = v.sol[k];
+          if (m <= 1e-7) continue;
+          const c = m / L,
+            sp = SPECIES[k];
+          let col = null;
+          if (k === "phph") {
+            if (pH > 8.2) col = [255, 60, 140, Math.min(0.85, c * 800)];
+          } else if (k === "litmus") {
+            col =
+              pH < 4.5
+                ? [226, 60, 60, 0.5]
+                : pH > 8.3
+                  ? [70, 110, 230, 0.5]
+                  : [150, 90, 215, 0.45];
+            if (m < 1e-5) col = null;
+            else col = [col[0], col[1], col[2], Math.min(0.7, m * 300 + 0.25)];
+          } else if (sp.c)
+            col = [sp.c[0], sp.c[1], sp.c[2], Math.min(0.94, c * sp.c[3])];
+          if (col) {
+            const w = col[3];
+            r = (r * a + col[0] * w) / (a + w);
+            g = (g * a + col[1] * w) / (a + w);
+            b = (b * a + col[2] * w) / (a + w);
+            a = Math.min(0.96, a + w);
+          }
+        }
+        return { css: `rgba(${r | 0},${g | 0},${b | 0},${a.toFixed(2)})`, a };
+      }
+      function calcPH(v) {
+        const L = Math.max(0.001, v.vol / 1000);
+        let H = 0,
+          OH = 0;
+        for (const k in v.sol) {
+          const sp = SPECIES[k];
+          if (sp.h) H += v.sol[k] * sp.h;
+          if (sp.oh) OH += v.sol[k] * sp.oh;
+        }
+        const net = H - OH;
+        if (Math.abs(net) < 1e-7) return 7;
+        if (net > 0) return Math.max(0, -Math.log10(net / L));
+        return Math.min(14, 14 + Math.log10(-net / L));
+      }
+      function updVessel(v) {
+        const g = GEO[v.type],
+          h = Math.max(0, Math.min(1, v.vol / VCAP[v.type])) * (g.bot - g.top);
+        let lg = v.liqEl;
+        lg.innerHTML = "";
+        if (h > 0.5) {
+          const col = vesselColor(v);
+          let turb = 0,
+            sc = null;
+          for (const k in v.precip) {
+            if (v.precip[k] > 1e-6) {
+              turb = Math.min(0.7, turb + v.precip[k] * 40);
+              sc = SPECIES[k].sc;
+            }
+          }
+          lg.innerHTML = `<rect x="${g.ix - 2}" y="${g.bot - h}" width="${g.iw + 4}" height="${h + 4}" fill="${col.css}"/>
+   ${turb ? `<rect x="${g.ix - 2}" y="${g.bot - h}" width="${g.iw + 4}" height="${h + 4}" fill="${sc || "#e8e8e8"}" opacity="${turb}"/>` : ""}
+   <ellipse cx="${g.ix + g.iw / 2}" cy="${g.bot - h}" rx="${g.iw / 2}" ry="3" fill="#fff" opacity=".18"/>`;
+          if (v.precipTotal === undefined) 0;
+        }
+        // solids sediment
+        let sg = v.solEl;
+        sg.innerHTML = "";
+        let sy = g.bot - 4,
+          sx = g.ix + 6,
+          any = false;
+        for (const k in v.solids) {
+          if (v.solids[k] <= 1e-6) continue;
+          any = true;
+          sg.innerHTML += `<ellipse cx="${sx + 8}" cy="${sy}" rx="9" ry="3.4" fill="${SPECIES[k].sc}" opacity=".95"/>`;
+          sx += 14;
+          if (sx > g.ix + g.iw - 16) {
+            sx = g.ix + 6;
+            sy -= 5;
+          }
+        }
+        v.el.style.filter =
+          v.temp > 60
+            ? `drop-shadow(0 10px 8px rgba(0,0,0,.45)) drop-shadow(0 0 14px rgba(255,140,60,${Math.min(0.7, (v.temp - 60) / 200)}))`
+            : "drop-shadow(0 10px 8px rgba(0,0,0,.45))";
+        if (v.activeRx && v.activeRx.length && v.tagEl) {
+          v.tagEl.textContent = v.activeRx[0].R.eq.split(" =")[0] + " →";
+          v.el.classList.add("rx");
+        } else if (v.tagEl && !v.tagEl.textContent.startsWith("🌡")) {
+          v.el.classList.remove("rx");
+        }
+      }
+      /* ================= 粒子特效 ================= */
+      function bubFX(v, n, fast) {
+        if (!v.liqEl) return;
+        const g = GEO[v.type];
+        for (let i = 0; i < n; i++) {
+          const c = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "circle",
+          );
+          const x = g.ix + 4 + Math.random() * (g.iw - 8),
+            y = g.bot - 3;
+          c.setAttribute("cx", x);
+          c.setAttribute("cy", y);
+          c.setAttribute("r", (fast ? 1.5 : 1) + Math.random() * 1.8);
+          c.setAttribute("fill", "#fff");
+          c.setAttribute("opacity", ".8");
+          c.classList.add("bub");
+          c.style.setProperty(
+            "--d",
+            (fast ? 0.5 : 0.9) + Math.random() * 0.6 + "s",
+          );
+          c.style.setProperty(
+            "--h",
+            -Math.max(
+              20,
+              Math.min(1, v.vol / VCAP[v.type]) * (g.bot - g.top) - 4,
+            ) + "px",
+          );
+          v.liqEl.appendChild(c);
+          c.addEventListener("animationend", () => c.remove());
+        }
+      }
+      function steamFX(v) {
+        const g = GEO[v.type];
+        const c = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "circle",
+        );
+        c.setAttribute(
+          "cx",
+          g.ix + g.iw / 2 + (Math.random() - 0.5) * g.iw * 0.6,
+        );
+        c.setAttribute("cy", g.top + 6);
+        c.setAttribute("r", 4 + Math.random() * 3);
+        c.setAttribute("fill", "#dfeef7");
+        c.setAttribute("opacity", ".4");
+        c.classList.add("steam");
+        v.el.querySelector("svg").appendChild(c);
+        c.addEventListener("animationend", () => c.remove());
+      }
+      function foamFX(v) {
+        const g = GEO[v.type];
+        for (let i = 0; i < 3; i++) {
+          const c = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "circle",
+          );
+          c.setAttribute("cx", g.ix + 4 + Math.random() * (g.iw - 8));
+          c.setAttribute(
+            "cy",
+            g.bot -
+              Math.max(6, Math.min(1, v.vol / VCAP[v.type]) * (g.bot - g.top)),
+          );
+          c.setAttribute("r", 2.5 + Math.random() * 3);
+          c.setAttribute("fill", "#eafaff");
+          c.setAttribute("opacity", ".9");
+          c.classList.add("foamp");
+          c.style.setProperty("--h", -(14 + Math.random() * 26) + "px");
+          v.liqEl.appendChild(c);
+          c.addEventListener("animationend", () => c.remove());
+        }
+      }
+      function splashFX(v, col) {
+        if (!v.liqEl) return;
+        const g = GEO[v.type];
+        for (let i = 0; i < 4; i++) {
+          const c = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "circle",
+          );
+          c.setAttribute("cx", g.ix + g.iw / 2);
+          c.setAttribute(
+            "cy",
+            g.bot - (g.bot - g.top) * Math.min(1, v.vol / VCAP[v.type]) - 2,
+          );
+          c.setAttribute("r", 2);
+          c.setAttribute("fill", col || "#bfe3f7");
+          c.classList.add("foamp");
+          c.style.setProperty("--h", -(6 + Math.random() * 14) + "px");
+          v.liqEl.appendChild(c);
+          c.addEventListener("animationend", () => c.remove());
+        }
+      }
+      function dropFX(v) {
+        const g = GEO[v.type];
+        for (let i = 0; i < 3; i++) {
+          const c = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "circle",
+          );
+          c.setAttribute("cx", g.ix + g.iw / 2 + (Math.random() - 0.5) * 10);
+          c.setAttribute("cy", g.top - 14 - i * 5);
+          c.setAttribute("r", 1.8);
+          c.setAttribute("fill", "#cdeefb");
+          c.classList.add("bub");
+          c.style.setProperty("--d", ".4s");
+          c.style.setProperty(
+            "--h",
+            (g.bot - g.top) * Math.min(1, v.vol / VCAP[v.type]) * 0.8 +
+              10 +
+              "px",
+          );
+          v.el.querySelector("svg").appendChild(c);
+          c.addEventListener("animationend", () => c.remove());
+        }
+      }
+      /* 爆炸/火花 */
+      function boom(x, y, scale = 1) {
+        const br = bench.getBoundingClientRect();
+        const X = br.left + x,
+          Y = br.top + y;
+        const f = document.createElement("div");
+        f.className = "flash";
+        f.style.cssText = `left:${X - 70 * scale}px;top:${Y - 70 * scale}px;width:${140 * scale}px;height:${140 * scale}px`;
+        fxL.appendChild(f);
+        setTimeout(() => f.remove(), 600);
+        const r = document.createElement("div");
+        r.className = "ring";
+        r.style.cssText = `left:${X - 60 * scale}px;top:${Y - 60 * scale}px;width:${120 * scale}px;height:${120 * scale}px`;
+        fxL.appendChild(r);
+        setTimeout(() => r.remove(), 700);
+        for (let i = 0; i < 14; i++) {
+          const s = document.createElement("div");
+          s.className = "shard";
+          const a = Math.random() * Math.PI * 2,
+            d = (50 + Math.random() * 90) * scale;
+          s.style.cssText = `left:${X}px;top:${Y}px;--dx:${Math.cos(a) * d}px;--dy:${Math.sin(a) * d - 40}px;--rr:${Math.random() * 720 - 360}deg`;
+          fxL.appendChild(s);
+          setTimeout(() => s.remove(), 900);
+        }
+        bench.classList.add("shake");
+        setTimeout(() => bench.classList.remove("shake"), 600);
+        sfx("boom");
+      }
+      function sparks(x, y, cls = "spark") {
+        const br = bench.getBoundingClientRect();
+        const X = br.left + x,
+          Y = br.top + y;
+        for (let i = 0; i < 16; i++) {
+          const s = document.createElement("div");
+          s.className = cls;
+          const a = Math.random() * Math.PI * 2,
+            d = 20 + Math.random() * 50;
+          s.style.cssText = `left:${X}px;top:${Y}px;--dx:${Math.cos(a) * d}px;--dy:${Math.sin(a) * d - 30}px`;
+          fxL.appendChild(s);
+          setTimeout(() => s.remove(), 800);
+        }
+        sfx("pop");
+      }
+      function igniteH2(v) {
+        const g = GEO[v.type] || { w: 80, h: 80 };
+        boom(v.x + g.w / 2, v.y, v.type === "jar" ? 1.2 : 0.8);
+        v.gas = {};
+        v.vol *= 0.6;
+        v.x += (Math.random() - 0.5) * 30;
+        v.el.style.left = v.x + "px";
+        updVessel(v);
+        log("💥 氢气遇明火发生爆鸣！点燃可燃性气体前必须验纯", "bad");
+      }
+      function o2Splint(jar, tool) {
+        sparks(jar.x + 46, jar.y + 20);
+        tool.el.querySelector(".sfl").style.display = "";
+        log("✨ 带火星的木条复燃！证明瓶内是氧气", "good");
+        hint("木条复燃 — 氧气检验成功 ✅");
+      }
+      /* ================= 声音 ================= */
+      function sfx(kind) {
+        if (!soundOn) return;
+        try {
+          AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+          const t = AC.currentTime;
+          if (kind === "boom") {
+            const dur = 0.4,
+              buf = AC.createBuffer(1, AC.sampleRate * dur, AC.sampleRate),
+              d = buf.getChannelData(0);
+            for (let i = 0; i < d.length; i++)
+              d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2.2);
+            const s = AC.createBufferSource();
+            s.buffer = buf;
+            const f = AC.createBiquadFilter();
+            f.type = "lowpass";
+            f.frequency.value = 420;
+            const g = AC.createGain();
+            g.gain.setValueAtTime(0.9, t);
+            g.gain.exponentialRampToValueAtTime(0.01, t + dur);
+            s.connect(f);
+            f.connect(g);
+            g.connect(AC.destination);
+            s.start();
+          } else {
+            const o = AC.createOscillator(),
+              g = AC.createGain();
+            o.frequency.setValueAtTime(kind === "pop" ? 660 : 880, t);
+            o.frequency.exponentialRampToValueAtTime(160, t + 0.15);
+            g.gain.setValueAtTime(0.25, t);
+            g.gain.exponentialRampToValueAtTime(0.01, t + 0.18);
+            o.connect(g);
+            g.connect(AC.destination);
+            o.start();
+            o.stop(t + 0.2);
+          }
+        } catch (e) {}
+      }
+      /* ================= 反应引擎 ================= */
+      const DT = 0.1;
+      function heatOf(it) {
+        for (const l of items) {
+          if (l.type === "lamp" && l.lit) {
+            const g = VTYPE(it) ? GEO[it.type] : { w: 60, h: 60 };
+            const dx = it.x + g.w / 2 - (l.x + 46),
+              dy = l.y + 30 - (it.y + g.h);
+            if (Math.abs(dx) < 42 && dy > 0 && dy < 130) return true;
+          }
+        }
+        return false;
+      }
+      function simTick() {
+        simT += DT;
+        for (const it of items) {
+          if (VTYPE(it)) vesselTick(it);
+          else if (it.type === "rig") rigTick(it);
+          else if (it.type === "match" && it.lit && simT > it.litUntil) {
+            it.lit = false;
+            if (it.el.querySelector(".mfl"))
+              it.el.querySelector(".mfl").style.display = "none";
+          }
+        }
+        // 连接导管的气体传输
+        for (const c of conns) {
+          const a = c.a,
+            g = a.gasOut;
+          if (g) {
+            for (const k in g) {
+              if (g[k] > 1e-7) {
+                c.b.gasIn = c.b.gasIn || {};
+                c.b.gasIn[k] = (c.b.gasIn[k] || 0) + g[k];
+              }
+            }
+            a.gasOut = {};
+          }
+        }
+        $("clock").textContent = fmtT(simT);
+      }
+      function vesselTick(v) {
+        // 温度
+        const heating = heatOf(v);
+        let rxs = [],
+          heatQ = 0,
+          rateSum = 0,
+          gasGen = {};
+        if (v.type === "cyl") {
+          v.temp += heating ? 2 : 0;
+          v.temp += (25 - v.temp) * 0.02;
+          updVessel(v);
+          return;
+        }
+        const L = Math.max(0.001, v.vol / 1000),
+          stir = simT < v.stirUntil ? 1.5 : 1;
+        // 气体先与容器内物质反应（CO2+石灰水等）
+        const gin = { ...v.gas, ...(v.gasIn || {}) };
+        v.gasIn = null;
+        for (const R of RXN) {
+          if (!R.gasR) continue;
+          if (R.minTemp && v.temp < R.minTemp) continue;
+          const [gs, gc] = R.gasR;
+          if (!(gin[gs] > 1e-7)) continue;
+          if (R.ra && !R.ra.every(([s]) => (v.sol[s] || 0) > 1e-8)) continue;
+          if (
+            R.precR &&
+            !(v.precip[R.precR] > 1e-8) &&
+            !(v.solids[R.precR] > 1e-8)
+          )
+            continue;
+          if (
+            R.precR &&
+            (v.precip[R.precR] || 0) + (v.solids[R.precR] || 0) < 1e-8
+          )
+            continue;
+          let rate = R.k * (gin[gs] / gc) * stir;
+          let ext = Math.min(rate * DT, gin[gs] / gc);
+          for (const [s, c] of R.ra || [])
+            ext = Math.min(ext, (v.sol[s] || 0) / c);
+          if (R.precR)
+            ext = Math.min(
+              ext,
+              (v.precip[R.precR] || 0) + (v.solids[R.precR] || 0),
+            );
+          if (ext <= 1e-9) continue;
+          gin[gs] -= ext * gc;
+          for (const [s, c] of R.ra || []) v.sol[s] -= ext * c;
+          if (R.precR) {
+            let need = ext;
+            if (v.precip[R.precR] >= need) {
+              v.precip[R.precR] -= need;
+            } else {
+              need -= v.precip[R.precR] || 0;
+              v.precip[R.precR] = 0;
+              v.solids[R.precR] = (v.solids[R.precR] || 0) - need;
+            }
+          }
+          for (const [s, c, st] of R.pr) {
+            if (st === "pr") v.precip[s] = (v.precip[s] || 0) + ext * c;
+            else if (st === "sol") v.solids[s] = (v.solids[s] || 0) + ext * c;
+            else v.sol[s] = (v.sol[s] || 0) + ext * c;
+          }
+          heatQ += -R.dH * ext;
+          rateSum += ext / DT;
+          rxs.push({ R, rate: ext / DT });
+          rxTotal++;
+        }
+        v.gas = gin;
+        // 常规反应
+        for (const R of RXN) {
+          if (R.gasR) continue;
+          if (R.minTemp && v.temp < R.minTemp) continue;
+          if (R.cat && !(v.solids[R.cat] > 1e-6)) continue;
+          if (R.solidRx && !(v.solids[R.solidRx] > 1e-6)) continue;
+          if (!R.ra && !R.solidRx) continue;
+          let rate = R.k * stir;
+          if (R.ra)
+            for (const [s, c] of R.ra) {
+              const cc = (v.sol[s] || 0) / L;
+              if (cc < 1e-4) {
+                rate = 0;
+                break;
+              }
+              rate *= Math.pow(cc, c);
+            }
+          if (R.sol) {
+            if (!R.sol.some((s) => v.solids[s] > 1e-6)) {
+              rate = 0;
+            } else
+              rate *= Math.pow(
+                Math.max(...R.sol.map((s) => v.solids[s] || 0)),
+                0.35,
+              );
+          }
+          if (R.solidRx) rate *= Math.pow(v.solids[R.solidRx] * 100, 0.5);
+          if (rate <= 0) continue;
+          if (R.minTemp) rate *= Math.min(3, 1 + (v.temp - R.minTemp) / 80);
+          else rate *= Math.min(30, Math.pow(2, (v.temp - 25) / 10));
+          if (R.cat && R.id === "o1") rate *= 200;
+          let ext = rate * DT;
+          if (R.ra)
+            for (const [s, c] of R.ra) ext = Math.min(ext, (v.sol[s] || 0) / c);
+          if (R.sol)
+            for (const s of R.sol) ext = Math.min(ext, (v.solids[s] || 0) / 1);
+          if (R.solidRx)
+            ext = Math.min(ext, v.solids[R.solidRx] / (R.id === "t1" ? 2 : 2));
+          if (ext <= 1e-9) continue;
+          if (R.ra) for (const [s, c] of R.ra) v.sol[s] -= ext * c;
+          if (
+            R.sol &&
+            !R.pr.some((p) => p[2] === "sol" && R.sol.includes(p[0]))
+          )
+            for (const s of R.sol) v.solids[s] -= ext;
+          if (R.solidRx) v.solids[R.solidRx] -= ext * 2;
+          for (const [s, c, st] of R.pr) {
+            if (st === "pr") v.precip[s] = (v.precip[s] || 0) + ext * c;
+            else if (st === "sol") v.solids[s] = (v.solids[s] || 0) + ext * c;
+            else if (st === "solx") {
+              if (v.vol > 0.5) v.sol[s] = (v.sol[s] || 0) + ext * c;
+              else v.solids[s] = (v.solids[s] || 0) + ext * c;
+            } else v.sol[s] = (v.sol[s] || 0) + ext * c;
+          }
+          if (R.gas)
+            gasGen[R.gas[0]] = (gasGen[R.gas[0]] || 0) + ext * R.gas[1];
+          heatQ += -R.dH * ext;
+          rateSum += ext / DT;
+          rxs.push({ R, rate: ext / DT });
+          rxTotal++;
+          if (R.fx === "bub") bubFX(v, 2, R.k > 1);
+          if (R.fx === "smoke") steamFX(v);
+          // 剧烈反应检测
+          if (R.violent && ext / DT > 0.006 && !v.erupted) {
+            v.erupted = true;
+            boom(v.x + GEO[v.type].w / 2, v.y + 10, 0.7);
+            v.vol *= 0.4;
+            log("💥 反应过于剧烈，酸液喷溅！请改用稀酸或减少镁条用量", "bad");
+            setTimeout(() => (v.erupted = false), 4000);
+          }
+          if (
+            R.id === "o1" &&
+            v.sol &&
+            v.sol.H2O2 / L > 3 &&
+            ext / DT > 0.003 &&
+            !v.erupted
+          ) {
+            v.erupted = true;
+            for (let i = 0; i < 10; i++) foamFX(v);
+            sfx("pop");
+            log("⚠ 高浓度双氧水剧烈分解，泡沫涌出！", "warn");
+            setTimeout(() => (v.erupted = false), 3000);
+          }
+        }
+        // 气体去向
+        for (const k in gasGen) {
+          v.gas[k] = (v.gas[k] || 0) + gasGen[k];
+        }
+        const hasConn = conns.some((c) => c.a === v);
+        for (const k in v.gas) {
+          if (v.gas[k] > 1e-6 && !hasConn) {
+            if (!v.gasLogged || v.gasLogged[k] === undefined) {
+              v.gasLogged = v.gasLogged || {};
+              if (!v.gasLogged[k]) {
+                log(
+                  `生成气体 ${SPECIES[k].n}（${SPECIES[k].g ? "↑" : ""}）从容器逸出 / 可连接导管收集`,
+                  "rx",
+                );
+                v.gasLogged[k] = 1;
+              }
+            }
+            bubFX(v, 2, true);
+            v.gas[k] = Math.max(0, v.gas[k] - 0.0008);
+          }
+        }
+        // 温度动力学
+        const mass = Math.max(15, v.vol + 20);
+        v.temp += (heatQ * 1000) / (mass * 4.18);
+        if (heating) v.temp += v.vol > 0.5 ? 3.2 : 4.5;
+        if (v.vol > 0.5 && v.temp > 100) {
+          v.temp = 100.2;
+          steamFX(v);
+          if (Math.random() < 0.3) steamFX(v);
+        }
+        v.temp += (25 - v.temp) * (heating ? 0.002 : 0.015);
+        v.activeRx = rxs;
+        v.rateSum = rateSum;
+        if (heating && Math.random() < 0.25) bubFX(v, 1, v.temp > 80);
+        updVessel(v);
+      }
+      /* ================= 制氧装置逻辑 ================= */
+      function rigTick(r) {
+        const lamp = items.find(
+          (l) =>
+            l.type === "lamp" &&
+            l.lit &&
+            Math.hypot(l.x + 46 - (r.x + 110), l.y + 60 - (r.y + 262)) < 85,
+        );
+        const near = lamp ? true : false;
+        r.lampNear = near;
+        r.lampPlaced = !!items.find(
+          (l) =>
+            l.type === "lamp" &&
+            Math.hypot(l.x + 46 - (r.x + 110), l.y + 60 - (r.y + 262)) < 110,
+        );
+        r.lampOn = near && !r.lampOff;
+        if (r.cracked) {
+          if (Math.random() < 0.1) steamFXAt(r, 150, 110);
+          return;
+        }
+        if (r.lampOn) r.temp = Math.min(420, r.temp + 6);
+        else r.temp += (25 - r.temp) * 0.02;
+        if (r.temp >= 200 && r.kmol > 0.0001 && !r.started) {
+          r.started = true;
+          log(
+            "🔥 高锰酸钾开始分解，导管口出现气泡（刚开始的气体是空气，稍后再收集）",
+            "rx",
+          );
+        }
+        if (r.started && r.kmol > 0.0001 && r.temp >= 200) {
+          const rate =
+            0.02 *
+            Math.pow(r.kmol * 100, 0.5) *
+            Math.min(2, 1 + (r.temp - 200) / 120);
+          const ext = Math.min(rate * DT, r.kmol / 2);
+          r.kmol -= ext * 2;
+          r.o2 += ext;
+          r.residue = true;
+          rxTotal++;
+          if (!r.tubeOut && !r.bottleTaken) {
+            if (r.o2 > 0.0006) r.fill = Math.min(1, r.o2 / 0.00475);
+            rigBubbles(r);
+            if (r.fill >= 1 && !r.fullDone) {
+              r.fullDone = true;
+              log(
+                "🫧 集气瓶口冒出大气泡——氧气已集满！点击集气瓶在水下盖玻璃片取出",
+                "good",
+              );
+              hint("点击集气瓶取出 → 用带火星木条检验");
+            }
+          }
+          if (r.kmol <= 0.0001)
+            log("高锰酸钾已完全分解，残余物为锰酸钾和二氧化锰", "rx");
+        }
+        refreshRig(r);
+        // 倒吸检测
+        if (
+          r.lampOff &&
+          !r.tubeOut &&
+          !r.cracked &&
+          r.temp > 70 &&
+          !r.sucking
+        ) {
+          r.sucking = true;
+          setTimeout(() => {
+            if (!r.tubeOut && !r.cracked) {
+              r.cracked = true;
+              boom(r.x + 130, r.y + 110, 1.1);
+              log(
+                "💥 先熄灯后撤管 → 水倒吸入灼热试管，试管炸裂！正确顺序：先移出导管，再熄灭酒精灯",
+                "bad",
+              );
+              refreshRig(r);
+            }
+          }, 1600);
+        }
+      }
+      function steamFXAt(r, x, y) {
+        const c = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "circle",
+        );
+        c.setAttribute("cx", x);
+        c.setAttribute("cy", y);
+        c.setAttribute("r", 4);
+        c.setAttribute("fill", "#dfeef7");
+        c.setAttribute("opacity", ".4");
+        c.classList.add("steam");
+        r.el.querySelector("svg").appendChild(c);
+        c.addEventListener("animationend", () => c.remove());
+      }
+      function rigBubbles(r) {
+        const g = r.el.querySelector(".rbubs");
+        if (!g) return;
+        for (let i = 0; i < 2; i++) {
+          const c = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "circle",
+          );
+          c.setAttribute("cx", 388 + (Math.random() - 0.5) * 24);
+          c.setAttribute("cy", 268);
+          c.setAttribute("r", 1.5 + Math.random() * 2);
+          c.setAttribute("fill", "#fff");
+          c.setAttribute("opacity", ".85");
+          c.classList.add("bub");
+          c.style.setProperty("--d", 0.7 + Math.random() * 0.5 + "s");
+          c.style.setProperty("--h", -(96 * Math.min(1, r.fill) + 4) + "px");
+          g.appendChild(c);
+          c.addEventListener("animationend", () => c.remove());
+        }
+      }
+      function refreshRig(r) {
+        const svg = r.el.querySelector("svg");
+        if (svg) {
+          const w = r.el.style.width;
+          r.el.innerHTML = rigSVG(r);
+          r.el.style.width = w;
+          r.el.appendChild(r.zoneTube);
+          r.el.appendChild(r.zoneBottle);
+        }
+        rigZones(r);
+        rigChips(r);
+      }
+      function rigZones(r) {
+        r.zoneTube.onclick = (e) => {
+          e.stopPropagation();
+          if (hold && hold.kind === "reagent") {
+            addRigKMnO4(r);
+            return;
+          }
+          hint("点击药品架的 <b>高锰酸钾</b> 再点击试管加入");
+        };
+        r.zoneBottle.onclick = (e) => {
+          e.stopPropagation();
+          if (r.bottleTaken) {
+            hint("集气瓶已取出");
+            return;
+          }
+          if (r.fill < 1) {
+            hint(`正在收集氧气… ${(r.fill * 100).toFixed(0)}%`);
+            return;
+          }
+          r.bottleTaken = true;
+          const j = newItem("jar", r.x + 430, r.y + 180, { gasType: "O2" });
+          j.el.querySelector(".tag").textContent = "O₂ 已集满";
+          j.el.classList.add("rx");
+          log("在水下用玻璃片盖好，取出集气瓶正放于桌面", "good");
+          refreshRig(r);
+          hint("拿起 <b>带火星的木条</b> 点击集气瓶检验氧气");
+        };
+      }
+      function rigChips(r) {
+        r.el.querySelectorAll(".rigchip").forEach((x) => x.remove());
+        if (!r.started && r.kmol <= 0) return;
+        const mk = (txt, fn, l, t) => {
+          const b = document.createElement("button");
+          b.className = "rigchip";
+          b.textContent = txt;
+          b.style.left = l;
+          b.style.top = t;
+          b.onclick = (e) => {
+            e.stopPropagation();
+            fn();
+          };
+          r.el.appendChild(b);
+        };
+        if (!r.lampOff && r.started)
+          mk(
+            "🔥 熄灭酒精灯",
+            () => {
+              r.lampOff = true;
+              const lamp = items.find(
+                (l) =>
+                  l.type === "lamp" &&
+                  Math.hypot(l.x + 46 - (r.x + 110), l.y + 60 - (r.y + 262)) <
+                    110,
+              );
+              if (lamp) {
+                lamp.lit = false;
+                lamp.el.innerHTML = lampSVG(lamp);
+              }
+              log(
+                "熄灭酒精灯" +
+                  (!r.tubeOut && r.temp > 70 ? " —— 注意：导管还在水中！" : ""),
+                "warn",
+              );
+              refreshRig(r);
+            },
+            "330px",
+            "36px",
+          );
+        if (!r.tubeOut)
+          mk(
+            "↗ 移出导管",
+            () => {
+              r.tubeOut = true;
+              log("导管已移出水槽", "good");
+              refreshRig(r);
+            },
+            "236px",
+            "36px",
+          );
+      }
+      /* ================= 导管连线 ================= */
+      function drawConns() {
+        connSvg.innerHTML = "";
+        connSvg.setAttribute("width", bench.clientWidth);
+        connSvg.setAttribute("height", bench.clientHeight);
+        for (const c of conns) {
+          const ga = GEO[c.a.type] || { w: 60, h: 60 },
+            gb = GEO[c.b.type] || { w: 60, h: 60 };
+          const x1 = c.a.x + ga.w / 2,
+            y1 = c.a.y + 8,
+            x2 = c.b.x + gb.w / 2,
+            y2 = c.b.y + 8;
+          const p = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "path",
+          );
+          p.setAttribute(
+            "d",
+            `M${x1},${y1} C${x1},${y1 - 46} ${x2},${y2 - 46} ${x2},${y2}`,
+          );
+          p.setAttribute("class", "conn");
+          p.setAttribute("fill", "none");
+          p.setAttribute("stroke", "#8fd8e8");
+          p.setAttribute("stroke-width", "5");
+          p.setAttribute("stroke-linecap", "round");
+          p.setAttribute("opacity", ".85");
+          p.addEventListener("click", () => {
+            conns = conns.filter((x) => x !== c);
+            drawConns();
+            log("拆除一段导管");
+          });
+          connSvg.appendChild(p);
+          const p2 = p.cloneNode();
+          p2.setAttribute("stroke", "#173a4c");
+          p2.setAttribute("stroke-width", "1.6");
+          p2.setAttribute("stroke-dasharray", "4 6");
+          p2.style.pointerEvents = "none";
+          connSvg.appendChild(p2);
+        }
+      }
+      /* ================= 选择 & 数据面板 ================= */
+      function select(it) {
+        if (sel && sel.el) sel.el.classList.remove("sel");
+        sel = it;
+        if (it && it.el) it.el.classList.add("sel");
+        buf = { t: [], s1: [], s2: [] };
+        renderPanel();
+      }
+      function renderPanel() {
+        const sc = $("selCard"),
+          rl = $("rxList");
+        if (!sel) {
+          sc.innerHTML =
+            '<div id="selNone">点击实验台上的容器查看数据。<br>拖动容器可相互倾倒；点击左侧药品再点击容器即可添加。</div>';
+          rl.innerHTML = "暂无反应";
+          return;
+        }
+        if (sel.type === "rig") {
+          const r = sel;
+          sc.innerHTML = `<div class="meterow"><div class="meter"><div class="lb">装置 · 高锰酸钾制氧</div><div class="bignum num">${r.temp.toFixed(0)}<span class="units">℃ 试管</span></div></div>
+   <div class="meter"><div class="lb">已收集 O₂</div><div class="bignum num" style="color:var(--green)">${(r.o2 * 24500).toFixed(0)}<span class="units">mL</span></div><div class="bar"><i style="width:${Math.min(100, r.fill * 100)}%"></i></div></div>
+   <div class="meter"><div class="lb">KMnO₄ 剩余</div><div class="bignum num">${(r.kmol * M.KMnO4).toFixed(2)}<span class="units">g</span></div></div></div>
+   <div style="margin-top:8px;font-size:11px;color:var(--dim)">反应式：2KMnO₄ =△= K₂MnO₄ + MnO₂ + O₂↑ ｜ 需 &gt;200℃ ｜ ${r.cracked ? '<span style="color:var(--rose)">试管已炸裂</span>' : r.started ? "反应进行中" : "待加热"}</div>`;
+          rl.innerHTML =
+            r.started && !r.cracked
+              ? `<div class="rxrow"><div class="eq">2KMnO₄ =△= K₂MnO₄ + MnO₂ + O₂↑</div>
+   <div class="mt"><span>条件：加热(酒精灯)</span><span>${r.temp >= 200 ? "速率正常" : "预热中…"}</span></div><div class="bar"><i style="width:${Math.min(100, (r.temp - 25) / 4)}%"></i></div></div>`
+              : '<span style="color:var(--faint);font-size:12px">加入高锰酸钾并加热后开始</span>';
+          return;
+        }
+        if (!VTYPE(sel)) {
+          sc.innerHTML = `<div class="meterow"><div class="meter"><div class="lb">${itemName(sel)}</div><div style="font-size:12px;color:var(--dim)">器材 — 参见操作指南使用方式</div></div></div>`;
+          rl.innerHTML = "—";
+          return;
+        }
+        const v = sel,
+          L = Math.max(0.001, v.vol / 1000),
+          pH = calcPH(v);
+        const phCol = pH < 5 ? "#ff8f6b" : pH > 9 ? "#7bd8ff" : "#7bd88f";
+        let rows = "";
+        const entries = [];
+        for (const k in v.sol)
+          if (v.sol[k] > 1e-6) entries.push([k, v.sol[k], "aq"]);
+        for (const k in v.solids)
+          if (v.solids[k] > 1e-6) entries.push([k, v.solids[k], "s"]);
+        for (const k in v.precip)
+          if (v.precip[k] > 1e-6) entries.push([k, v.precip[k], "pr"]);
+        for (const k in v.gas)
+          if (v.gas[k] > 1e-6) entries.push([k, v.gas[k], "g"]);
+        if (entries.length === 0)
+          rows =
+            '<tr><td colspan="4" style="color:var(--faint)">空容器</td></tr>';
+        for (const [k, m, st] of entries) {
+          const sp = SPECIES[k];
+          const sw = sp.c
+            ? `rgb(${sp.c[0]},${sp.c[1]},${sp.c[2]})`
+            : sp.sc || "#cdeefb";
+          rows += `<tr><td><span class="sw" style="background:${sw}"></span>${sp.n}</td><td>${k === "H2O" ? "H₂O" : fmtF(k)}</td>
+  <td>${st === "s" || st === "pr" ? (m * M[k]).toFixed(2) + " g" : m.toExponential(2) + " mol"}</td>
+  <td>${st === "aq" ? (m / L).toFixed(3) : st === "g" ? (m * 24500).toFixed(0) + " mL" : "—"}</td></tr>`;
+        }
+        sc.innerHTML = `<div class="meterow">
+   <div class="meter"><div class="lb">${TYPE_NAME[v.type]} · 选中</div><div class="bignum num">${v.temp.toFixed(1)}<span class="units">℃</span></div><div class="bar"><i style="width:${Math.min(100, v.temp)}%"></i></div></div>
+   <div class="meter"><div class="lb">pH</div><div class="bignum num" style="color:${phCol}">${pH.toFixed(1)}</div></div>
+   <div class="meter"><div class="lb">液体体积</div><div class="bignum num">${v.vol.toFixed(1)}<span class="units">/ ${VCAP[v.type]} mL</span></div></div></div>
+   <table class="inv"><tr><th>物质</th><th>化学式</th><th>物质的量/质量</th><th>浓度/体积</th></tr>${rows}</table>`;
+        if (v.activeRx && v.activeRx.length) {
+          rl.innerHTML = v.activeRx
+            .map(
+              (a) => `<div class="rxrow"><div class="eq">${a.R.eq}</div>
+  <div class="mt"><span>${a.R.nm}${a.R.minTemp ? " · 需加热" : ""}${a.R.cat ? " · 催化剂" : ""}</span><span>${(a.rate * 1000).toFixed(2)} mmol/s</span></div>
+  <div class="bar"><i style="width:${Math.min(100, a.rate * 8000)}%"></i></div></div>`,
+            )
+            .join("");
+        } else
+          rl.innerHTML =
+            '<span style="color:var(--faint);font-size:12px">该容器中暂无反应发生</span>';
+      }
+      function fmtF(k) {
+        return k
+          .replace(/(\d+)/g, "$1")
+          .replace("H2SO4", "H₂SO₄")
+          .replace("CaOH2", "Ca(OH)₂")
+          .replace("CuOH2", "Cu(OH)₂")
+          .replace("Na2CO3", "Na₂CO₃")
+          .replace("NaHCO3", "NaHCO₃")
+          .replace("Na2SO4", "Na₂SO₄")
+          .replace("CaHCO32", "Ca(HCO₃)₂")
+          .replace("NH4Cl", "NH₄Cl")
+          .replace("NH4NO3", "NH₄NO₃")
+          .replace("K2MnO4", "K₂MnO₄")
+          .replace("KClO3", "KClO₃")
+          .replace("KMnO4", "KMnO₄")
+          .replace("MnO2", "MnO₂")
+          .replace("H2O2", "H₂O₂")
+          .replace("H2O", "H₂O")
+          .replace("BaCl2", "BaCl₂")
+          .replace("BaSO4", "BaSO₄")
+          .replace("CaCO3", "CaCO₃")
+          .replace("CaCl2", "CaCl₂")
+          .replace("ZnSO4", "ZnSO₄")
+          .replace("ZnCl2", "ZnCl₂")
+          .replace("MgCl2", "MgCl₂")
+          .replace("MgSO4", "MgSO₄")
+          .replace("FeSO4", "FeSO₄")
+          .replace("FeCl2", "FeCl₂")
+          .replace("AgNO3", "AgNO₃")
+          .replace("AgCl", "AgCl")
+          .replace("CuSO4", "CuSO₄")
+          .replace("CuO", "CuO");
+      }
+      /* ================= 图表 ================= */
+      const chart = $("chart");
+      let buf = { t: [], s1: [], s2: [] },
+        sampleN = 0;
+      function sample() {
+        sampleN++;
+        if (sampleN % 4) return;
+        let v1 = null,
+          v2 = null,
+          l1 = "温度 / ℃",
+          l2 = "反应速率 mmol·s⁻¹";
+        if (sel && sel.type === "rig") {
+          v1 = sel.temp;
+          v2 = sel.o2 * 24500;
+          l1 = "试管温度 / ℃";
+          l2 = "O₂ 体积 / mL";
+        } else if (sel && VTYPE(sel)) {
+          v1 = sel.temp;
+          v2 = (sel.rateSum || 0) * 1000;
+        }
+        if (v1 === null) {
+          return;
+        }
+        buf.t.push(simT);
+        buf.s1.push(v1);
+        buf.s2.push(v2);
+        if (buf.t.length > 110) {
+          buf.t.shift();
+          buf.s1.shift();
+          buf.s2.shift();
+        }
+        $("lg1").textContent = l1;
+        $("lg2").textContent = l2;
+        drawChart();
+      }
+      function drawChart() {
+        const dpr = window.devicePixelRatio || 1;
+        const W = chart.clientWidth,
+          H = 118;
+        if (chart.width !== W * dpr) {
+          chart.width = W * dpr;
+          chart.height = H * dpr;
+        }
+        const ctx = chart.getContext("2d");
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, W, H);
+        ctx.strokeStyle = "rgba(140,190,220,.14)";
+        ctx.lineWidth = 1;
+        for (let i = 1; i < 4; i++) {
+          ctx.beginPath();
+          ctx.moveTo(0, (H * i) / 4);
+          ctx.lineTo(W, (H * i) / 4);
+          ctx.stroke();
+        }
+        if (buf.t.length < 2) {
+          ctx.fillStyle = "rgba(141,177,198,.5)";
+          ctx.font = "11px sans-serif";
+          ctx.fillText("选中容器后开始记录…", 10, 20);
+          return;
+        }
+        const plot = (arr, color, fill) => {
+          const mx = Math.max(...arr, 1e-6) * 1.15,
+            mn = Math.min(...arr, 0);
+          ctx.beginPath();
+          arr.forEach((val, i) => {
+            const x = (i / (arr.length - 1)) * W,
+              y = H - 8 - ((val - mn) / (mx - mn || 1)) * (H - 20);
+            i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+          });
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1.8;
+          ctx.stroke();
+          if (fill) {
+            ctx.lineTo(W, H);
+            ctx.lineTo(0, H);
+            ctx.closePath();
+            ctx.fillStyle = fill;
+            ctx.fill();
+          }
+        };
+        plot(buf.s1, "#ffb454", "rgba(255,180,84,.07)");
+        plot(buf.s2, "#38c9be", "rgba(56,201,190,.07)");
+        ctx.font = "10px Rajdhani";
+        ctx.fillStyle = "#ffb454";
+        ctx.fillText(buf.s1[buf.s1.length - 1].toFixed(1), 4, 12);
+        ctx.fillStyle = "#38c9be";
+        ctx.fillText(buf.s2[buf.s2.length - 1].toFixed(2), W - 44, 12);
+      }
+      /* ================= 器材架 UI ================= */
+      function buildShelf() {
+        const L = $("shelfList");
+        L.innerHTML = "";
+        L.classList.remove("eq");
+        for (const r of REAGENTS) {
+          const d = document.createElement("div");
+          d.className = "rg";
+          d.innerHTML = `<div class="nm"><span class="dot" style="background:${r.dot};color:${r.dot}"></span>${r.nm}</div><div class="fm">${r.fm}</div><div class="tagx">${r.kind}</div>`;
+          d.onclick = () => setHold({ kind: "reagent", id: r.id }, r.nm, r.dot);
+          L.appendChild(d);
+        }
+        $("rcount").textContent = REAGENTS.length;
+      }
+      function buildEqShelf() {
+        const L = $("shelfList");
+        L.innerHTML = "";
+        L.classList.add("eq");
+        const eq = [
+          ["beaker", "烧杯"],
+          ["tube", "试管"],
+          ["flask", "锥形瓶"],
+          ["cyl", "量筒(量杯)"],
+          ["lamp", "酒精灯"],
+          ["dropper", "胶头滴管"],
+          ["rod", "玻璃棒"],
+          ["thermo", "温度计"],
+          ["clamp", "试管夹"],
+          ["funnel", "漏斗+滤纸"],
+          ["match", "火柴"],
+          ["splint", "带火星木条"],
+          ["tubeconn", "橡胶导管"],
+          ["rig", "铁架台·制氧全套"],
+        ];
+        for (const [t, nm] of eq) {
+          const d = document.createElement("div");
+          d.className = "rg eqi";
+          let icon = "";
+          if (GEO[t]) {
+            icon = `<svg width="44" height="44" viewBox="0 0 ${GEO[t].w} ${GEO[t].h}">${glassBase(
+              "sh" + t,
+              GEO[t],
+            )
+              .replace(/url\(#lc/, `url(#shx`)
+              .replace(/id="lc/, 'id="shx')
+              .replace(/id="gl/, 'id="shg')
+              .replace(/url\(#gl/, "url(#shg")}</svg>`;
+          } else if (t === "lamp")
+            icon =
+              '<svg width="44" height="44" viewBox="0 0 92 128"><path d="M24,70 L68,70 L74,118 Q74,124 66,124 L26,124 Q18,124 18,118 Z" fill="#2b6f8f" stroke="#7fc4de"/><path d="M46,30 C40,42 40,52 46,58 C52,52 52,42 46,30Z" fill="#ffb454"/></svg>';
+          else if (t === "rig")
+            icon =
+              '<svg width="44" height="44" viewBox="0 0 500 336"><rect x="30" y="300" width="210" height="13" fill="#4a6274"/><rect x="216" y="64" width="9" height="240" fill="#5a7183"/><rect x="62" y="99" width="136" height="26" rx="6" fill="none" stroke="#bfe3f7" stroke-width="4" transform="rotate(13 130 112)"/><rect x="300" y="250" width="170" height="56" fill="#3fb6d9" opacity=".4" stroke="#9fc6dc" stroke-width="3"/></svg>';
+          else icon = toolSVG(t);
+          d.innerHTML = icon + `<div class="nm">${nm}</div>`;
+          d.onclick = () => {
+            const br = bench.getBoundingClientRect();
+            const x = 120 + Math.random() * (br.width - 380),
+              y = 80 + Math.random() * (br.height - 280);
+            const it = newItem(t, x, y);
+            if (t === "lamp") 0;
+            log(`取用器材：${nm}`);
+            if (t === "rig")
+              hint("点击试管区加入高锰酸钾 → 酒精灯放到虚线处点燃");
+          };
+          L.appendChild(d);
+        }
+      }
+      $("tabR").onclick = () => {
+        $("tabR").classList.add("on");
+        $("tabE").classList.remove("on");
+        buildShelf();
+      };
+      $("tabE").onclick = () => {
+        $("tabE").classList.add("on");
+        $("tabR").classList.remove("on");
+        buildEqShelf();
+      };
+      /* ================= 模板场景 ================= */
+      function clearBench() {
+        items.forEach((i) => i.el.remove());
+        items = [];
+        conns = [];
+        sel = null;
+        drawConns();
+        updateCount();
+      }
+      function mkVessel(type, x, y, fill) {
+        const v = newItem(type, x, y);
+        if (fill) fill(v);
+        updVessel(v);
+        return v;
+      }
+      const TPL = {
+        empty() {
+          clearBench();
+          mkVessel("beaker", 180, 180);
+          mkVessel("tube", 340, 170);
+          newItem("lamp", 460, 220);
+          newItem("dropper", 120, 150);
+          newItem("rod", 270, 140);
+          log("已清空实验台，自由探索吧", "good");
+        },
+        neutral() {
+          clearBench();
+          const b = mkVessel("beaker", 190, 170, (v) => {
+            v.vol = 20;
+            v.sol.NaOH = 0.02;
+            v.sol.phph = 0.00006;
+          });
+          const t = mkVessel("tube", 80, 180, (v) => {
+            v.vol = 8;
+            v.sol.HCl = 0.008;
+          });
+          newItem("dropper", 150, 140);
+          newItem("rod", 330, 150);
+          newItem("thermo", 380, 150);
+          select(b);
+          log(
+            "模板：酸碱中和 — 烧杯内为含酚酞的 NaOH 溶液（红色），试管内为稀盐酸",
+            "good",
+          );
+          hint("用滴管从试管吸盐酸，逐滴滴入烧杯并搅拌，观察颜色与温度曲线");
+        },
+        h2o2() {
+          clearBench();
+          mkVessel("tube", 140, 160, (v) => {
+            v.vol = 5;
+            v.sol.H2O2 = 0.0045;
+            v.solids.MnO2 = 0.002;
+          });
+          mkVessel("tube", 230, 160, (v) => {
+            v.vol = 5;
+            v.sol.H2O2 = 0.044;
+            v.solids.MnO2 = 0.002;
+          });
+          newItem("lamp", 330, 210);
+          log(
+            "模板：浓度对速率的影响 — 左管3% / 右管30%双氧水，均已加 MnO₂",
+            "good",
+          );
+          hint(
+            "对比两支试管的气泡与速率曲线；把一支移到酒精灯上方再看温度影响",
+          );
+        },
+        o2() {
+          clearBench();
+          const r = newItem("rig", 90, 60);
+          newItem("lamp", 640, 420);
+          newItem("splint", 640, 300);
+          newItem("match", 720, 360);
+          rigZones(r);
+          log("模板：高锰酸钾制氧气全套装置已就位", "good");
+          hint(
+            "第一步：点击药品架 <b>高锰酸钾</b>，再点击装置的试管部位（加 3 次）",
+          );
+        },
+      };
+      document.querySelectorAll(".tpl").forEach(
+        (b) =>
+          (b.onclick = () => {
+            TPL[b.dataset.tpl]();
+            select(null);
+          }),
+      );
+      $("btnReset").onclick = () => {
+        TPL.empty();
+        select(null);
+      };
+      /* ================= 指南 & 启动 ================= */
+      $("btnGuide").onclick = () => $("guide").classList.add("on");
+      $("gClose").onclick = () => $("guide").classList.remove("on");
+      $("guide").addEventListener("click", (e) => {
+        if (e.target.id === "guide") $("guide").classList.remove("on");
+      });
+      window.addEventListener("resize", drawConns);
+      buildShelf();
+      TPL.empty();
+      hint(defaultHint);
+      log("欢迎来到启元虚拟化学实验室。先阅读右上角「📖 操作指南」", "good");
+      log("实验台已备好基础器材；左侧提供 27 种药品与 14 种器材");
+      setInterval(simTick, 100);
+      setInterval(sample, 100);
+      setInterval(() => {
+        if (sel) renderPanel();
+        $("rxcount").textContent = rxTotal > 9999 ? "9999+" : rxTotal;
+      }, 700);
+      /* 首次访问自动打开指南 */
+      setTimeout(() => $("guide").classList.add("on"), 400);
+    </script>
+  </body>
+</html>

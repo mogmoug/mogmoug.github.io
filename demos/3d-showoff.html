@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>POLY·LAB — 纯 JS 3D 演示</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#e8f1f5; --mut:#7d8ba3;
+    --teal:#4de8c2; --amber:#ffb454;
+    --line:rgba(150,190,210,.16);
+    --panel:rgba(10,16,30,.78);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden}
+  body{
+    font-family:'IBM Plex Mono',ui-monospace,'PingFang SC','Microsoft YaHei',monospace;
+    color:var(--ink); user-select:none; -webkit-user-select:none;
+    background:
+      radial-gradient(1100px 700px at 84% -10%, rgba(64,224,180,.10), transparent 60%),
+      radial-gradient(900px 620px at 6% 112%, rgba(255,150,70,.10), transparent 60%),
+      radial-gradient(1500px 950px at 50% 48%, #101a33 0%, #0a0f1f 55%, #060913 100%);
+  }
+  canvas{position:fixed;inset:0;z-index:1;cursor:grab;touch-action:none;display:block}
+  canvas:active{cursor:grabbing}
+
+  /* 氛围层:暗角 + 噪点 */
+  .vig{position:fixed;inset:0;z-index:3;pointer-events:none;
+    background:radial-gradient(125% 92% at 50% 45%, transparent 55%, rgba(3,6,12,.6) 100%)}
+  .grain{position:fixed;inset:0;z-index:4;pointer-events:none;opacity:.06;mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>")}
+
+  /* 取景框四角 */
+  .corner{position:fixed;width:20px;height:20px;z-index:5;pointer-events:none;opacity:.75}
+  .c-tl{top:12px;left:12px;border-top:2px solid var(--teal);border-left:2px solid var(--teal)}
+  .c-tr{top:12px;right:12px;border-top:2px solid var(--amber);border-right:2px solid var(--amber)}
+  .c-bl{bottom:12px;left:12px;border-bottom:2px solid var(--amber);border-left:2px solid var(--amber)}
+  .c-br{bottom:12px;right:12px;border-bottom:2px solid var(--teal);border-right:2px solid var(--teal)}
+
+  /* 标题区 */
+  header{position:fixed;top:28px;left:30px;z-index:6;animation:drop .8s cubic-bezier(.2,.9,.25,1) both}
+  .tag{display:flex;align-items:center;gap:8px;font:600 10px/1 'IBM Plex Mono';
+    letter-spacing:.22em;color:var(--mut);text-transform:uppercase}
+  .tag .dot{width:6px;height:6px;border-radius:50%;background:var(--teal);
+    box-shadow:0 0 9px var(--teal);animation:blink 1.6s infinite}
+  h1{font-family:'Unbounded','PingFang SC',sans-serif;font-weight:900;
+    font-size:clamp(26px,3.6vw,42px);letter-spacing:.02em;margin:10px 0 6px}
+  h1 .sep{color:var(--teal);font-weight:500}
+  h1 .lab{color:transparent;-webkit-text-stroke:1.6px var(--amber)}
+  .sub{font:400 12px/1.7 'IBM Plex Mono';color:var(--mut);letter-spacing:.04em}
+
+  /* 数据 HUD */
+  .hud{position:fixed;top:30px;right:30px;z-index:6;display:grid;
+    grid-template-columns:auto auto;gap:12px 26px;text-align:right;animation:drop .8s .1s both}
+  .stat .k{display:block;font:500 9px/1 'IBM Plex Mono';letter-spacing:.22em;color:var(--mut);margin-bottom:5px}
+  .stat .v{font:600 17px/1 'IBM Plex Mono';font-variant-numeric:tabular-nums}
+  #fps{color:var(--teal)} #zcount{color:var(--amber)}
+
+  /* 控制台 */
+  .panel{position:fixed;left:30px;bottom:28px;z-index:6;min-width:288px;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:14px 16px 16px;backdrop-filter:blur(10px);
+    box-shadow:0 14px 44px rgba(0,0,0,.5);animation:rise .8s .15s both}
+  .panel::before{content:'';position:absolute;top:0;left:14px;right:14px;height:2px;
+    background:linear-gradient(90deg,var(--teal),var(--amber));border-radius:2px;opacity:.8}
+  .panel-title{display:flex;justify-content:space-between;font:600 10px 'IBM Plex Mono';
+    letter-spacing:.26em;color:var(--mut);margin-bottom:13px}
+  .panel-title b{color:var(--teal);font-weight:600}
+  .group{margin-top:12px}
+  .group>label{display:block;font:600 9px 'IBM Plex Mono';letter-spacing:.22em;color:var(--mut);margin-bottom:8px}
+  .shapes{display:flex;flex-wrap:wrap;gap:6px}
+  .shape-btn{--h:165;font:500 11px 'IBM Plex Mono';padding:7px 10px;border-radius:7px;
+    border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--ink);
+    cursor:pointer;transition:all .18s}
+  .shape-btn:hover{border-color:hsl(var(--h),80%,60%);transform:translateY(-1px)}
+  .shape-btn.active{background:hsl(var(--h),85%,60%);border-color:transparent;color:#081018;
+    font-weight:700;box-shadow:0 0 16px hsla(var(--h),90%,60%,.45)}
+  .slider{display:flex;align-items:center;gap:10px}
+  input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:2px;outline:none;
+    background:linear-gradient(90deg,var(--teal),rgba(255,255,255,.14));border-radius:2px}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;
+    background:var(--teal);border:2px solid #0a1220;box-shadow:0 0 8px rgba(77,232,194,.7);
+    cursor:pointer;transition:transform .15s}
+  input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.3)}
+  input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;background:var(--teal);
+    border:2px solid #0a1220;cursor:pointer}
+  .slider output{font:600 11px 'IBM Plex Mono';color:var(--teal);min-width:3.4em;text-align:right}
+  .toggles{display:flex;flex-wrap:wrap;gap:6px}
+  .tgl{display:flex;align-items:center;gap:6px;font:500 10.5px 'IBM Plex Mono';letter-spacing:.06em;
+    padding:6px 11px 6px 9px;border-radius:99px;border:1px solid var(--line);
+    background:transparent;color:var(--mut);cursor:pointer;transition:all .18s}
+  .tgl::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.3;transition:all .18s}
+  .tgl.on{color:var(--teal);border-color:rgba(77,232,194,.45)}
+  .tgl.on::before{opacity:1;box-shadow:0 0 7px currentColor}
+  .tgl:hover{transform:translateY(-1px)}
+
+  /* 操作提示 */
+  .hints{position:fixed;right:30px;bottom:28px;z-index:6;display:flex;gap:8px;flex-wrap:wrap;
+    justify-content:flex-end;max-width:360px;animation:rise .8s .25s both}
+  .hints span{font:400 10.5px 'IBM Plex Mono';color:var(--mut);border:1px solid var(--line);
+    padding:6px 9px;border-radius:7px;background:rgba(10,16,30,.5);transition:border-color .2s}
+  .hints span:hover{border-color:rgba(255,180,84,.5)}
+  .hints b{color:var(--amber);font-weight:600;margin-right:4px}
+
+  @keyframes drop{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
+  @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important}}
+  @media (max-width:760px){
+    header{top:16px;left:16px} .hud{top:16px;right:16px;gap:8px 16px}
+    .stat .v{font-size:13px} .sub,.hints{display:none}
+    .panel{left:12px;right:12px;bottom:12px;min-width:0}
+  }
+</style>
+</head>
+<body>
+
+<canvas id="scene"></canvas>
+<div class="vig"></div><div class="grain"></div>
+<div class="corner c-tl"></div><div class="corner c-tr"></div>
+<div class="corner c-bl"></div><div class="corner c-br"></div>
+
+<header>
+  <div class="tag"><span class="dot"></span>Live · Single File · Canvas 2D · 零依赖</div>
+  <h1>POLY<span class="sep">·</span><span class="lab">LAB</span></h1>
+  <p class="sub">手写透视投影 / 双光源着色 / 画家算法排序 —— 无第三方库</p>
+</header>
+
+<div class="hud">
+  <div class="stat"><span class="k">FPS</span><span class="v" id="fps">--</span></div>
+  <div class="stat"><span class="k">缩放 Zoom</span><span class="v" id="zcount">1.00×</span></div>
+  <div class="stat"><span class="k">顶点 Verts</span><span class="v" id="vcount">--</span></div>
+  <div class="stat"><span class="k">面 Faces</span><span class="v" id="fcount">--</span></div>
+</div>
+
+<section class="panel">
+  <div class="panel-title"><b>▍控制台</b><span>CONSOLE</span></div>
+  <div class="group">
+    <label>形体 / SHAPE</label>
+    <div class="shapes">
+      <button class="shape-btn" data-shape="cube"   style="--h:36">立方体</button>
+      <button class="shape-btn" data-shape="octa"   style="--h:8">八面体</button>
+      <button class="shape-btn active" data-shape="icosa" style="--h:165">二十面体</button>
+      <button class="shape-btn" data-shape="torus"  style="--h:210">环面</button>
+      <button class="shape-btn" data-shape="sphere" style="--h:315">球体</button>
+    </div>
+  </div>
+  <div class="group">
+    <label>自转速度 / SPIN</label>
+    <div class="slider">
+      <input type="range" id="speed" min="0" max="3" step="0.05" value="1">
+      <output id="speedOut">1.0×</output>
+    </div>
+  </div>
+  <div class="group">
+    <label>显示 / DISPLAY</label>
+    <div class="toggles">
+      <button class="tgl on" data-key="wire">线框</button>
+      <button class="tgl on" data-key="verts">顶点</button>
+      <button class="tgl on" data-key="auto">自转</button>
+      <button class="tgl on" data-key="stars">星空</button>
+      <button class="tgl on" data-key="grid">地网</button>
+    </div>
+  </div>
+</section>
+
+<div class="hints">
+  <span><b>拖拽</b>旋转</span><span><b>滚轮</b>缩放</span>
+  <span><b>双击</b>脉冲</span><span><b>1–5</b>切换形体</span><span><b>空格</b>暂停自转</span>
+</div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const canvas = $('scene'), ctx = canvas.getContext('2d');
+const CAM = 4.6; // 相机距离
+let W = 0, H = 0, DPR = 1;
+
+function resize(){
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = innerWidth; H = innerHeight;
+  canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+addEventListener('resize', resize); resize();
+
+/* ---------- 向量工具 ---------- */
+const sub  = (a,b) => [a[0]-b[0], a[1]-b[1], a[2]-b[2]];
+const cross= (a,b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+const dot  = (a,b) => a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+const norm = a => { const l = Math.hypot(a[0],a[1],a[2]) || 1; return [a[0]/l, a[1]/l, a[2]/l]; };
+const dist = (a,b) => Math.hypot(a[0]-b[0], a[1]-b[1], a[2]-b[2]);
+const easeOutBack = t => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3*Math.pow(t-1,3) + c1*Math.pow(t-1,2); };
+
+/* ---------- 形体生成(自动校正法线朝向) ---------- */
+function orientFaces(v, faces){
+  for (const f of faces){
+    const a=v[f[0]], b=v[f[1]], c=v[f[2]];
+    const cen = [(a[0]+b[0]+c[0])/3, (a[1]+b[1]+c[1])/3, (a[2]+b[2]+c[2])/3];
+    if (dot(cross(sub(b,a), sub(c,a)), cen) < 0) f.reverse();
+  }
+  return faces;
+}
+function buildEdges(faces){
+  const set = new Set(), edges = [];
+  for (const f of faces) for (let i = 0; i < f.length; i++){
+    const a = f[i], b = f[(i+1) % f.length];
+    const k = Math.min(a,b) + '_' + Math.max(a,b);
+    if (!set.has(k)){ set.add(k); edges.push([a,b]); }
+  }
+  return edges;
+}
+function makeCube(){
+  const v=[[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]];
+  const f=[[0,1,2,3],[4,7,6,5],[0,4,5,1],[3,2,6,7],[0,3,7,4],[1,5,6,2]];
+  return { verts:v, faces:orientFaces(v,f), scale:.88 };
+}
+function makeOcta(){
+  const v=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+  const f=[[0,2,4],[2,1,4],[1,3,4],[3,0,4],[2,0,5],[1,2,5],[3,1,5],[0,3,5]];
+  return { verts:v, faces:orientFaces(v,f), scale:1.35 };
+}
+function makeIcosa(){ // 由最短边长反推 20 个三角面
+  const t = (1 + Math.sqrt(5)) / 2, raw = [];
+  for (const s1 of [-1,1]) for (const s2 of [-1,1]){
+    raw.push([s1, s2*t, 0]); raw.push([0, s1, s2*t]); raw.push([s2*t, 0, s1]);
+  }
+  const v = raw.map(norm);
+  let dmin = Infinity;
+  for (let i=0;i<v.length;i++) for (let j=i+1;j<v.length;j++) dmin = Math.min(dmin, dist(v[i],v[j]));
+  const f = [];
+  for (let i=0;i<v.length;i++) for (let j=i+1;j<v.length;j++) for (let k=j+1;k<v.length;k++)
+    if (dist(v[i],v[j]) < dmin*1.05 && dist(v[i],v[k]) < dmin*1.05 && dist(v[j],v[k]) < dmin*1.05)
+      f.push([i,j,k]);
+  return { verts:v, faces:orientFaces(v,f), scale:1.25 };
+}
+function makeTorus(){
+  const R=1, r=.44, NS=24, NT=14, v=[], f=[];
+  for (let i=0;i<NS;i++){ const u=i/NS*Math.PI*2;
+    for (let j=0;j<NT;j++){ const w=j/NT*Math.PI*2;
+      v.push([(R+r*Math.cos(w))*Math.cos(u), r*Math.sin(w), (R+r*Math.cos(w))*Math.sin(u)]);
+  }}
+  for (let i=0;i<NS;i++) for (let j=0;j<NT;j++){
+    const a=i*NT+j, b=((i+1)%NS)*NT+j, c=((i+1)%NS)*NT+(j+1)%NT, d=i*NT+(j+1)%NT;
+    f.push([a,b,c,d]);
+  }
+  return { verts:v, faces:orientFaces(v,f), scale:1.05 };
+}
+function makeSphere(){
+  const LAT=12, LON=18, v=[], f=[];
+  for (let i=0;i<=LAT;i++){ const th=i/LAT*Math.PI;
+    for (let j=0;j<LON;j++){ const ph=j/LON*Math.PI*2;
+      v.push([Math.sin(th)*Math.cos(ph), Math.cos(th), Math.sin(th)*Math.sin(ph)]);
+  }}
+  for (let i=0;i<LAT;i++) for (let j=0;j<LON;j++){
+    const a=i*LON+j, b=i*LON+(j+1)%LON, c=(i+1)*LON+(j+1)%LON, d=(i+1)*LON+j;
+    f.push([a,b,c,d]);
+  }
+  return { verts:v, faces:orientFaces(v,f), scale:1.25 };
+}
+const SHAPES = {
+  cube:{hue:36, make:makeCube}, octa:{hue:8, make:makeOcta}, icosa:{hue:165, make:makeIcosa},
+  torus:{hue:210, make:makeTorus}, sphere:{hue:315, make:makeSphere},
+};
+
+/* ---------- 状态 ---------- */
+const state = {
+  rx:-.45, ry:.7, spinX:0, spinY:0,
+  zoom:1, speed:1, morph:1, pulse:0, dragging:false,
+  auto:true, wire:true, verts:true, stars:true, grid:true,
+};
+let mesh = null;
+const waves = [];
+
+function setShape(key){
+  const def = SHAPES[key], built = def.make();
+  mesh = { ...built, edges:buildEdges(built.faces), hue:def.hue };
+  state.morph = 0;
+  $('vcount').textContent = built.verts.length;
+  $('fcount').textContent = built.faces.length;
+  waves.push({ r:14, a:.5 });
+}
+
+/* ---------- 星空与地网 ---------- */
+const stars = [];
+for (let i=0;i<230;i++){
+  const g = () => Math.random()*2-1;
+  const d = norm([g(),g(),g()]), r = 7 + Math.random()*8;
+  stars.push({ p:[d[0]*r,d[1]*r,d[2]*r], s:.6+Math.random()*1.4,
+    ph:Math.random()*6.28, tw:.5+Math.random()*2, warm:Math.random()<.25 });
+}
+function drawStars(t){
+  const ry = t*.02 + state.ry*.1, rx = .12 + state.rx*.12;
+  const cyr=Math.cos(ry), syr=Math.sin(ry), cxr=Math.cos(rx), sxr=Math.sin(rx);
+  const unit = Math.hypot(W,H)*.10, cx=W/2, cy=H/2;
+  for (const st of stars){
+    const [x,y,z] = st.p;
+    const x1=x*cyr+z*syr, z1=-x*syr+z*cyr;
+    const y1=y*cxr-z1*sxr, z2=y*sxr+z1*cxr;
+    if (z2 < -CAM+.8) continue;
+    const f = CAM/(CAM+z2);
+    const twk = .5 + .5*Math.sin(t*st.tw + st.ph);
+    const a = (.15 + .6*twk) * Math.min(1, f);
+    ctx.fillStyle = st.warm ? `hsla(35,95%,75%,${a})` : `hsla(200,70%,88%,${a})`;
+    ctx.beginPath();
+    ctx.arc(cx+x1*f*unit, cy-y1*f*unit, Math.min(2.6, Math.max(.4, st.s*f)), 0, 6.283);
+    ctx.fill();
+  }
+}
+function drawGrid(){
+  const y0=-1.8, ext=3.4, step=.425;
+  const ry=state.ry, grx=state.rx*.55;
+  const cyr=Math.cos(ry), syr=Math.sin(ry), cxr=Math.cos(grx), sxr=Math.sin(grx);
+  const unit=Math.min(W,H)*.27*state.zoom, cx=W/2, cy=H/2;
+  const P = (x,z) => {
+    const x1=x*cyr+z*syr, z1=-x*syr+z*cyr;
+    const y1=y0*cxr-z1*sxr, z2=y0*sxr+z1*cxr;
+    if (z2 < -CAM+.6) return null;
+    const f = CAM/(CAM+z2);
+    return [cx+x1*f*unit, cy-y1*f*unit, z2, f];
+  };
+  ctx.lineWidth = 1;
+  for (let i=-8;i<=8;i++){
+    const v = i*step, major = i%4===0;
+    for (const [a,b] of [[P(v,-ext),P(v,ext)],[P(-ext,v),P(ext,v)]]){
+      if (!a || !b) continue;
+      const al = (0.03 + 0.11*Math.max(0, Math.min(1, (2.2-(a[2]+b[2])/2)/4.4))) * (major?1.9:1);
+      ctx.strokeStyle = `hsla(170,80%,62%,${al})`;
+      ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke();
+    }
+  }
+  const c0 = P(0,0); // 物体下方的接地光晕
+  if (c0){
+    const r = unit*1.6*c0[3];
+    const g = ctx.createRadialGradient(c0[0],c0[1],0,c0[0],c0[1],r);
+    g.addColorStop(0,`hsla(${mesh.hue},90%,60%,.13)`);
+    g.addColorStop(1,`hsla(${mesh.hue},90%,60%,0)`);
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.ellipse(c0[0],c0[1],r,r*.35,0,0,6.283); ctx.fill();
+  }
+}
+
+/* ---------- 主渲染 ---------- */
+const L1 = norm([-.45,.8,-.6]);   // 暖色主光(左上前方)
+const L2 = norm([.65,-.25,.55]);  // 冷色补光(右下后方)
+
+function draw(t){
+  ctx.clearRect(0,0,W,H);
+  const cx=W/2, cy=H/2, unit=Math.min(W,H)*.27*state.zoom;
+  const bob = Math.sin(t*.9)*.06;
+  if (state.stars) drawStars(t);
+  if (state.grid)  drawGrid();
+
+  // 顶点旋转 + 透视投影
+  const s = mesh.scale * easeOutBack(state.morph) * (1 + state.pulse*.28);
+  const cyr=Math.cos(state.ry), syr=Math.sin(state.ry);
+  const cxr=Math.cos(state.rx), sxr=Math.sin(state.rx);
+  const P = mesh.verts.map(p => {
+    const x=p[0]*s, y=p[1]*s, z=p[2]*s;
+    const x1=x*cyr+z*syr, z1=-x*syr+z*cyr;
+    const y1=y*cxr-z1*sxr+bob, z2=y*sxr+z1*cxr;
+    const f = CAM/(CAM+z2);
+    return { sx:cx+x1*f*unit, sy:cy-y1*f*unit, x:x1, y:y1, z:z2, f };
+  });
+
+  // 画家算法:按平均深度由远及近绘制
+  const order = mesh.faces.map(f => {
+    let zs=0; for (const i of f) zs += P[i].z;
+    return { f, z:zs/f.length };
+  }).sort((a,b) => b.z - a.z);
+
+  const hue = mesh.hue;
+  for (const fd of order){
+    const a=P[fd.f[0]], b=P[fd.f[1]], c=P[fd.f[2]];
+    const n = norm(cross(sub([b.x,b.y,b.z],[a.x,a.y,a.z]), sub([c.x,c.y,c.z],[a.x,a.y,a.z])));
+    const d1 = Math.max(0, dot(n,L1)), d2 = Math.max(0, dot(n,L2));
+    const li = Math.min(92, 10 + d1*50 + d2*16 + Math.pow(d1,14)*38);
+    ctx.fillStyle = `hsl(${hue+(d1-.5)*16},${72+d1*10}%,${li}%)`;
+    ctx.beginPath(); ctx.moveTo(a.sx, a.sy);
+    for (let i=1;i<fd.f.length;i++) ctx.lineTo(P[fd.f[i]].sx, P[fd.f[i]].sy);
+    ctx.closePath(); ctx.fill();
+  }
+  if (state.wire){ // 线框(近亮远暗)
+    ctx.lineWidth = 1;
+    for (const [i,j] of mesh.edges){
+      const zn = (P[i].z + P[j].z)/2;
+      const al = .08 + .5*Math.max(0, Math.min(1, (1.3-zn)/2.6));
+      ctx.strokeStyle = `hsla(${hue},100%,80%,${al})`;
+      ctx.beginPath(); ctx.moveTo(P[i].sx,P[i].sy); ctx.lineTo(P[j].sx,P[j].sy); ctx.stroke();
+    }
+  }
+  if (state.verts){ // 顶点辉光
+    for (const p of P){
+      const al = .2 + .6*Math.max(0, Math.min(1, (1.4-p.z)/2.8));
+      ctx.fillStyle = `hsla(${hue},100%,86%,${al})`;
+      ctx.beginPath(); ctx.arc(p.sx, p.sy, Math.max(1.2, 2.1*p.f), 0, 6.283); ctx.fill();
+    }
+  }
+  for (let i=waves.length-1;i>=0;i--){ // 脉冲冲击波
+    const w = waves[i]; w.r += (18+w.r)*.09; w.a *= .93;
+    if (w.a < .02){ waves.splice(i,1); continue; }
+    ctx.strokeStyle = `hsla(${hue},100%,75%,${w.a})`; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(cx, cy, w.r, 0, 6.283); ctx.stroke();
+  }
+}
+
+/* ---------- 主循环 ---------- */
+let last = performance.now(), frames = 0, fpsT = last;
+function tick(now){
+  const dt = Math.min(50, now - last); last = now;
+  const k = dt / 16.667;
+  if (!state.dragging){
+    state.ry += state.spinY * k; state.rx += state.spinX * k;
+    state.spinX *= Math.pow(.94, k); state.spinY *= Math.pow(.94, k);
+    if (state.auto) state.ry += .0045 * state.speed * k;
+  }
+  state.rx = Math.max(-1.5, Math.min(1.5, state.rx));
+  state.morph = Math.min(1, state.morph + dt/450);
+  state.pulse *= Math.pow(.90, k);
+  draw(now/1000);
+  frames++;
+  if (now - fpsT > 500){
+    $('fps').textContent = Math.round(frames*1000/(now-fpsT));
+    frames = 0; fpsT = now;
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ---------- 交互:拖拽惯性 / 滚轮与双指缩放 / 双击脉冲 ---------- */
+const pointers = new Map();
+let px=0, py=0, moved=false, pinchD=0, lastTap=0;
+const clampZoom = z => Math.max(.45, Math.min(2.6, z));
+const syncZoom = () => $('zcount').textContent = state.zoom.toFixed(2) + '×';
+const pulse = () => { state.pulse = 1; waves.push({ r:10, a:.55 }); };
+const pdist = () => { const [a,b] = [...pointers.values()]; return Math.hypot(a[0]-b[0], a[1]-b[1]); };
+
+canvas.addEventListener('pointerdown', e => {
+  pointers.set(e.pointerId, [e.clientX, e.clientY]);
+  if (pointers.size === 2){ pinchD = pdist(); return; }
+  state.dragging = true; moved = false; px = e.clientX; py = e.clientY;
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', e => {
+  if (!pointers.has(e.pointerId)) return;
+  pointers.set(e.pointerId, [e.clientX, e.clientY]);
+  if (pointers.size === 2){
+    const d = pdist();
+    if (pinchD) { state.zoom = clampZoom(state.zoom * d / pinchD); syncZoom(); }
+    pinchD = d; return;
+  }
+  if (!state.dragging) return;
+  const dx = e.clientX - px, dy = e.clientY - py;
+  px = e.clientX; py = e.clientY;
+  if (Math.abs(dx) + Math.abs(dy) > 2) moved = true;
+  state.ry += dx*.005; state.rx += dy*.005;
+  state.spinY = dx*.005; state.spinX = dy*.005;
+});
+const release = e => {
+  if (pointers.has(e.pointerId) && e.pointerType === 'touch' && !moved){
+    const n = performance.now();
+    if (n - lastTap < 320) pulse();
+    lastTap = n;
+  }
+  pointers.delete(e.pointerId); pinchD = 0;
+  if (pointers.size === 0) state.dragging = false;
+};
+canvas.addEventListener('pointerup', release);
+canvas.addEventListener('pointercancel', release);
+canvas.addEventListener('dblclick', pulse);
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  state.zoom = clampZoom(state.zoom * (1 - e.deltaY*.001)); syncZoom();
+}, { passive:false });
+
+/* ---------- 控件绑定 ---------- */
+function selectShape(key){
+  setShape(key);
+  document.querySelectorAll('.shape-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.shape === key));
+}
+document.querySelectorAll('.shape-btn').forEach(b =>
+  b.addEventListener('click', () => selectShape(b.dataset.shape)));
+document.querySelectorAll('.tgl').forEach(b =>
+  b.addEventListener('click', () => {
+    state[b.dataset.key] = !state[b.dataset.key];
+    b.classList.toggle('on', state[b.dataset.key]);
+  }));
+$('speed').addEventListener('input', e => {
+  state.speed = +e.target.value;
+  $('speedOut').textContent = state.speed.toFixed(1) + '×';
+});
+addEventListener('keydown', e => {
+  const keys = Object.keys(SHAPES), i = ['1','2','3','4','5'].indexOf(e.key);
+  if (i > -1) selectShape(keys[i]);
+  if (e.key === ' '){
+    e.preventDefault();
+    state.auto = !state.auto;
+    document.querySelector('.tgl[data-key="auto"]').classList.toggle('on', state.auto);
+  }
+});
+
+selectShape('icosa');
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>

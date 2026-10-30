@@ -1,0 +1,1809 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自然语言编程 - 图灵完备解释器</title>
+    <style>
+        :root {
+            --bg: #0f0f1a;
+            --surface: #1a1a2e;
+            --surface2: #16213e;
+            --editor-bg: #111122;
+            --text: #cdd6f4;
+            --text-dim: #9399b2;
+            --accent: #89b4fa;
+            --accent2: #cba6f7;
+            --success: #a6e3a1;
+            --error: #f38ba8;
+            --warning: #fab387;
+            --border: #313244;
+            --radius: 12px;
+            --radius-sm: 8px;
+            --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+            --font-sans: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font-sans);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            padding: 12px 20px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .logo-icon {
+            font-size: 24px;
+        }
+        .title {
+            font-size: 1.2em;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .subtitle {
+            font-size: 0.75em;
+            color: var(--text-dim);
+            font-weight: 400;
+        }
+        .header-right {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        select {
+            background: var(--surface2);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 6px 10px;
+            font-size: 0.85em;
+            font-family: var(--font-sans);
+            cursor: pointer;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        select:hover {
+            border-color: var(--accent);
+        }
+        .btn {
+            padding: 7px 16px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 0.85em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: var(--font-sans);
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+        }
+        .btn-run {
+            background: linear-gradient(135deg, #89b4fa, #7287fd);
+            color: #111;
+            box-shadow: 0 2px 12px rgba(137, 180, 250, 0.3);
+        }
+        .btn-run:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(137, 180, 250, 0.45);
+        }
+        .btn-run:active {
+            transform: translateY(0);
+        }
+        .btn-clear {
+            background: var(--surface2);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-clear:hover {
+            border-color: var(--error);
+            color: var(--error);
+        }
+        .btn-help {
+            background: transparent;
+            color: var(--text-dim);
+            border: 1px solid var(--border);
+            font-size: 0.8em;
+        }
+        .btn-help:hover {
+            color: var(--text);
+            border-color: var(--accent);
+        }
+
+        /* Main container */
+        .main {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            gap: 0;
+        }
+
+        /* Editor panel */
+        .editor-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            border-right: 1px solid var(--border);
+            background: var(--editor-bg);
+        }
+        .panel-header {
+            padding: 8px 16px;
+            font-size: 0.75em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-dim);
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .dot-green {
+            background: var(--success);
+        }
+        .dot-yellow {
+            background: var(--warning);
+        }
+        .dot-red {
+            background: var(--error);
+        }
+        .editor-wrapper {
+            flex: 1;
+            position: relative;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .line-numbers {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 40px;
+            background: var(--surface);
+            color: var(--text-dim);
+            font-family: var(--font-mono);
+            font-size: 13px;
+            line-height: 1.6;
+            padding: 12px 8px 12px 0;
+            text-align: right;
+            user-select: none;
+            overflow: hidden;
+            border-right: 1px solid var(--border);
+            z-index: 2;
+            pointer-events: none;
+        }
+        .line-numbers span {
+            display: block;
+            height: 20.8px;
+            line-height: 20.8px;
+            padding-right: 6px;
+            font-size: 12px;
+            color: #555b70;
+        }
+        textarea {
+            flex: 1;
+            width: 100%;
+            background: transparent;
+            color: var(--text);
+            border: none;
+            outline: none;
+            resize: none;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            line-height: 1.6;
+            padding: 12px 12px 12px 52px;
+            tab-size: 2;
+            caret-color: var(--accent);
+            white-space: pre;
+            overflow: auto;
+            min-height: 0;
+            position: relative;
+            z-index: 1;
+        }
+        textarea::selection {
+            background: rgba(137, 180, 250, 0.25);
+        }
+        textarea::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        textarea::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        textarea::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+        textarea::-webkit-scrollbar-thumb:hover {
+            background: var(--text-dim);
+        }
+
+        /* Right panel - output */
+        .output-panel {
+            width: 38%;
+            min-width: 280px;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            background: var(--surface);
+        }
+        .output-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            line-height: 1.55;
+            min-height: 0;
+        }
+        .output-area::-webkit-scrollbar {
+            width: 5px;
+        }
+        .output-area::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .output-area::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+        .output-line {
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin-bottom: 2px;
+            word-break: break-all;
+            white-space: pre-wrap;
+            animation: fadeIn 0.15s ease-out;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(2px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .output-normal {
+            color: var(--text);
+        }
+        .output-error {
+            color: var(--error);
+            background: rgba(243, 139, 168, 0.08);
+            border-left: 3px solid var(--error);
+            padding-left: 12px;
+        }
+        .output-warning {
+            color: var(--warning);
+            background: rgba(250, 179, 135, 0.06);
+            border-left: 3px solid var(--warning);
+            padding-left: 12px;
+        }
+        .output-success {
+            color: var(--success);
+        }
+        .output-empty {
+            color: var(--text-dim);
+            font-style: italic;
+            text-align: center;
+            padding: 30px 10px;
+            font-family: var(--font-sans);
+        }
+        .output-stats {
+            padding: 8px 16px;
+            font-size: 0.75em;
+            color: var(--text-dim);
+            background: var(--surface2);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .stat-badge {
+            background: var(--surface);
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        /* Tooltip / help modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.65);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s;
+            backdrop-filter: blur(4px);
+        }
+        .modal {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            max-width: 560px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.25s ease-out;
+        }
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .modal h2 {
+            font-size: 1.3em;
+            margin-bottom: 12px;
+            color: var(--accent);
+        }
+        .modal h3 {
+            font-size: 1em;
+            margin: 14px 0 6px;
+            color: var(--accent2);
+        }
+        .modal p,
+        .modal li {
+            font-size: 0.88em;
+            color: var(--text);
+            line-height: 1.6;
+        }
+        .modal ul {
+            padding-left: 20px;
+            margin: 6px 0;
+        }
+        .modal code {
+            background: var(--surface2);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 0.85em;
+            color: var(--accent2);
+            white-space: nowrap;
+        }
+        .modal .close-btn {
+            margin-top: 16px;
+            width: 100%;
+            padding: 10px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            cursor: pointer;
+            font-family: var(--font-sans);
+            font-size: 0.9em;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .modal .close-btn:hover {
+            background: var(--accent);
+            color: #111;
+        }
+        .modal::-webkit-scrollbar {
+            width: 5px;
+        }
+        .modal::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main {
+                flex-direction: column;
+            }
+            .editor-panel {
+                flex: 2;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+            .output-panel {
+                width: 100%;
+                max-width: none;
+                flex: 1;
+                min-height: 150px;
+            }
+            .header {
+                padding: 8px 12px;
+            }
+            .title {
+                font-size: 1em;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="header-left">
+            <span class="logo-icon">🌿</span>
+            <div>
+                <div class="title">自然语言编程</div>
+                <div class="subtitle">图灵完备 · 中文语法 · 超级简单</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <select id="exampleSelect" title="选择示例程序">
+                <option value="">📂 加载示例…</option>
+            </select>
+            <button class="btn btn-help" id="helpBtn" title="查看语法帮助">❓ 语法</button>
+            <button class="btn btn-clear" id="clearBtn" title="清空代码">🗑️ 清空</button>
+            <button class="btn btn-run" id="runBtn" title="运行代码 (Ctrl+Enter)">▶ 运行</button>
+        </div>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+        <!-- Editor -->
+        <div class="editor-panel">
+            <div class="panel-header">
+                <span class="dot dot-red"></span>
+                <span class="dot dot-yellow"></span>
+                <span class="dot dot-green"></span>
+                <span style="margin-left:6px;">📝 代码编辑器</span>
+            </div>
+            <div class="editor-wrapper">
+                <div class="line-numbers" id="lineNumbers"></div>
+                <textarea id="codeEditor" spellcheck="false" wrap="off"
+                placeholder="在这里编写你的自然语言程序…
+
+示例：
+设 x 为 5
+设 y 为 3
+打印 x 加 y
+如果 x 大于 y 那么
+  打印 "x 更大"
+结束"></textarea>
+            </div>
+        </div>
+
+        <!-- Output -->
+        <div class="output-panel">
+            <div class="panel-header">
+                <span>📤 运行输出</span>
+            </div>
+            <div class="output-area" id="outputArea">
+                <div class="output-empty">✨ 点击「运行」查看结果<br><br>
+                    <span style="font-size:0.8em;color:var(--text-dim)">支持中文自然语言编程，图灵完备</span>
+                </div>
+            </div>
+            <div class="output-stats">
+                <span class="stat-item">⚡ 执行步数：<span class="stat-badge" id="stepCount">0</span></span>
+                <span class="stat-item">📋 输出行数：<span class="stat-badge" id="lineCount">0</span></span>
+                <span class="stat-item" id="statusBadge" style="color:var(--text-dim)">⏳ 就绪</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div class="modal-overlay" id="helpModal" style="display:none;">
+        <div class="modal">
+            <h2>🌿 自然语言编程语法</h2>
+            <p>这是一个<strong>图灵完备</strong>的中文编程语言。所有语句使用自然语言风格，关键字之间用<strong>空格</strong>分隔。</p>
+
+            <h3>📌 变量赋值</h3>
+            <ul>
+                <li><code>设 x 为 5</code></li>
+                <li><code>让 y 等于 10</code></li>
+            </ul>
+
+            <h3>📌 输出</h3>
+            <ul>
+                <li><code>打印 x</code></li>
+                <li><code>输出 "你好，世界"</code></li>
+            </ul>
+
+            <h3>📌 算术运算</h3>
+            <ul>
+                <li><code>加</code> <code>减</code> <code>乘</code> <code>除以</code></li>
+                <li>例：<code>x 加 y 乘 2</code>（乘除优先于加减）</li>
+                <li>可用括号：<code>(x 加 y) 乘 2</code></li>
+            </ul>
+
+            <h3>📌 条件判断</h3>
+            <ul>
+                <li><code>如果 条件 那么 ... 否则 ... 结束</code></li>
+                <li>支持 <code>否则如果</code></li>
+            </ul>
+
+            <h3>📌 循环</h3>
+            <ul>
+                <li><code>当 条件 循环 ... 结束</code></li>
+                <li><code>重复 次数 次 ... 结束</code></li>
+            </ul>
+
+            <h3>📌 函数定义（支持递归）</h3>
+            <ul>
+                <li><code>定义 函数名 接收 参数1 参数2 ... 结束</code></li>
+                <li>调用：<code>调用 函数名 使用 参数1 参数2</code></li>
+                <li>返回值：<code>返回 表达式</code></li>
+            </ul>
+
+            <h3>📌 列表</h3>
+            <ul>
+                <li>创建：<code>设 列表 为 [1, 2, 3]</code> 或 <code>空列表</code></li>
+                <li>访问：<code>列表 的 第 0 项</code></li>
+                <li>长度：<code>列表 的 长度</code></li>
+                <li>添加：<code>向 列表 添加 4</code></li>
+            </ul>
+
+            <h3>📌 比较运算</h3>
+            <ul>
+                <li><code>大于</code> <code>小于</code> <code>等于</code></li>
+                <li><code>大于等于</code> <code>小于等于</code> <code>不等于</code></li>
+            </ul>
+
+            <h3>📌 逻辑运算</h3>
+            <ul>
+                <li><code>并且</code> <code>或者</code> <code>非</code></li>
+            </ul>
+
+            <h3>📌 注释</h3>
+            <ul>
+                <li>以 <code>#</code> 或 <code>//</code> 开头</li>
+            </ul>
+
+            <button class="close-btn" id="closeHelpBtn">我知道了</button>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // ============================================
+            // 词法分析器 (Tokenizer)
+            // ============================================
+            const KEYWORDS = [
+                '结束如果', '结束循环', '结束定义', '结束重复',
+                '大于等于', '小于等于', '不等于', '否则如果',
+                '空列表', '除以', '结束', '定义', '接收', '返回',
+                '调用', '使用', '如果', '那么', '否则', '当',
+                '循环', '重复', '次', '设', '让', '为', '等于',
+                '打印', '输出', '加', '减', '乘', '大于', '小于',
+                '并且', '或者', '非', '的', '第', '项', '长度',
+                '向', '添加', '为', '到', '从', '组成', '列表'
+            ].sort((a, b) => b.length - a.length);
+
+            // Token types
+            const T = {
+                IDENT: 'IDENT',
+                NUMBER: 'NUMBER',
+                STRING: 'STRING',
+                KEYWORD: 'KEYWORD',
+                LPAREN: 'LPAREN',
+                RPAREN: 'RPAREN',
+                LBRACKET: 'LBRACKET',
+                RBRACKET: 'RBRACKET',
+                COMMA: 'COMMA',
+                EOF: 'EOF',
+                NEWLINE: 'NEWLINE'
+            };
+
+            function isDigit(c) { return c >= '0' && c <= '9'; }
+
+            function isIdentStart(c) {
+                return /[\u4e00-\u9fff\w_$]/.test(c) && !isDigit(c);
+            }
+
+            function isIdentChar(c) {
+                return /[\u4e00-\u9fff\w_$]/.test(c) || isDigit(c);
+            }
+
+            function tokenize(src) {
+                const tokens = [];
+                let i = 0;
+                const n = src.length;
+                let line = 1;
+                let col = 1;
+
+                function push(type, value, ln, cl) {
+                    tokens.push({ type, value, line: ln || line, col: cl || col });
+                }
+
+                while (i < n) {
+                    const ch = src[i];
+
+                    // Skip whitespace (but track newlines)
+                    if (ch === ' ' || ch === '\t' || ch === '\r') {
+                        i++;
+                        col++;
+                        continue;
+                    }
+                    if (ch === '\n') {
+                        push(T.NEWLINE, '\n');
+                        i++;
+                        line++;
+                        col = 1;
+                        continue;
+                    }
+
+                    // Comments
+                    if (ch === '#' || (ch === '/' && src[i + 1] === '/')) {
+                        while (i < n && src[i] !== '\n') { i++;
+                            col++; }
+                        continue;
+                    }
+
+                    // Strings
+                    if (ch === '"' || ch === "'") {
+                        const quote = ch;
+                        const startLine = line;
+                        const startCol = col;
+                        let str = '';
+                        i++;
+                        col++;
+                        let closed = false;
+                        while (i < n) {
+                            if (src[i] === '\\' && i + 1 < n) {
+                                const next = src[i + 1];
+                                const escapes = { 'n': '\n', 't': '\t', '\\': '\\', '"': '"', "'": "'", 'r': '\r' };
+                                if (escapes[next] !== undefined) {
+                                    str += escapes[next];
+                                    i += 2;
+                                    col += 2;
+                                } else {
+                                    str += next;
+                                    i += 2;
+                                    col += 2;
+                                }
+                                continue;
+                            }
+                            if (src[i] === quote) {
+                                i++;
+                                col++;
+                                closed = true;
+                                break;
+                            }
+                            if (src[i] === '\n') {
+                                line++;
+                                col = 1;
+                                i++;
+                                str += '\n';
+                                continue;
+                            }
+                            str += src[i];
+                            i++;
+                            col++;
+                        }
+                        if (!closed) {
+                            throw new Error(`字符串未闭合（行 ${startLine}，列 ${startCol}）`);
+                        }
+                        push(T.STRING, str, startLine, startCol);
+                        continue;
+                    }
+
+                    // Numbers
+                    if (isDigit(ch) || (ch === '.' && isDigit(src[i + 1]))) {
+                        const startCol = col;
+                        let num = '';
+                        while (i < n && (isDigit(src[i]) || src[i] === '.')) {
+                            num += src[i];
+                            i++;
+                            col++;
+                        }
+                        push(T.NUMBER, parseFloat(num), line, startCol);
+                        continue;
+                    }
+
+                    // Punctuation
+                    if (ch === '(') { push(T.LPAREN, '(');
+                        i++;
+                        col++; continue; }
+                    if (ch === ')') { push(T.RPAREN, ')');
+                        i++;
+                        col++; continue; }
+                    if (ch === '[') { push(T.LBRACKET, '[');
+                        i++;
+                        col++; continue; }
+                    if (ch === ']') { push(T.RBRACKET, ']');
+                        i++;
+                        col++; continue; }
+                    if (ch === ',') { push(T.COMMA, ',');
+                        i++;
+                        col++; continue; }
+
+                    // Identifiers / Keywords
+                    if (isIdentStart(ch)) {
+                        const startCol = col;
+                        let word = '';
+                        while (i < n && isIdentChar(src[i])) {
+                            word += src[i];
+                            i++;
+                            col++;
+                        }
+                        // Check if it's a keyword
+                        const kw = KEYWORDS.find(k => word === k);
+                        if (kw) {
+                            push(T.KEYWORD, kw, line, startCol);
+                        } else if (word.length > 0) {
+                            push(T.IDENT, word, line, startCol);
+                        }
+                        continue;
+                    }
+
+                    // Unknown character
+                    throw new Error(`无法识别的字符 "${ch}"（行 ${line}，列 ${col}）`);
+                }
+
+                push(T.EOF, null, line, col);
+                return tokens;
+            }
+
+            // ============================================
+            // AST 节点
+            // ============================================
+            class ASTNode {
+                constructor(type, props = {}) {
+                    this.type = type;
+                    Object.assign(this, props);
+                }
+            }
+
+            // ============================================
+            // 解析器 (Parser)
+            // ============================================
+            class Parser {
+                constructor(tokens) {
+                    this.tokens = tokens;
+                    this.pos = 0;
+                    this.blockStack = []; // Track block types for '结束' matching
+                }
+
+                peek(offset = 0) {
+                    return this.tokens[Math.min(this.pos + offset, this.tokens.length - 1)];
+                }
+                next() { return this.tokens[this.pos++]; }
+                isAtEnd() { return this.peek().type === T.EOF; }
+
+                expect(type, msg) {
+                    const tok = this.peek();
+                    if (tok.type !== type) {
+                        throw new Error(`${msg || '语法错误'}（行 ${tok.line}，列 ${tok.col}，期望 ${type}，实际是 "${tok.value || tok.type}"）`);
+                    }
+                    return this.next();
+                }
+
+                expectKeyword(keyword, msg) {
+                    const tok = this.peek();
+                    if (tok.type !== T.KEYWORD || tok.value !== keyword) {
+                        throw new Error(`${msg || '语法错误'}（行 ${tok.line}，列 ${tok.col}，期望 "${keyword}"，实际是 "${tok.value || tok.type}"）`);
+                    }
+                    return this.next();
+                }
+
+                isKeyword(kw) {
+                    const t = this.peek();
+                    return t.type === T.KEYWORD && t.value === kw;
+                }
+                isType(type) { return this.peek().type === type; }
+
+                skipNewlines() {
+                    while (this.peek().type === T.NEWLINE) this.next();
+                }
+
+                skipNewlinesAndSemicolons() {
+                    while (this.peek().type === T.NEWLINE) this.next();
+                }
+
+                // Parse entire program
+                parseProgram() {
+                    const statements = [];
+                    this.skipNewlines();
+                    while (!this.isAtEnd()) {
+                        const stmt = this.parseStatement();
+                        if (stmt) statements.push(stmt);
+                        this.skipNewlines();
+                    }
+                    return statements;
+                }
+
+                parseStatement() {
+                    const tok = this.peek();
+                    if (tok.type === T.NEWLINE) { this.next(); return null; }
+                    if (tok.type === T.EOF) return null;
+
+                    if (tok.type === T.KEYWORD) {
+                        switch (tok.value) {
+                            case '设':
+                            case '让':
+                                return this.parseAssignment();
+                            case '打印':
+                            case '输出':
+                                return this.parsePrint();
+                            case '如果':
+                                return this.parseIf();
+                            case '当':
+                                return this.parseWhile();
+                            case '重复':
+                                return this.parseRepeat();
+                            case '定义':
+                                return this.parseFunctionDef();
+                            case '返回':
+                                return this.parseReturn();
+                            case '调用':
+                                return this.parseCallStatement();
+                            case '向':
+                                return this.parseListAdd();
+                            case '结束':
+                            case '结束如果':
+                            case '结束循环':
+                            case '结束定义':
+                            case '结束重复':
+                                return null; // Handled by block parsers
+                            default:
+                                break;
+                        }
+                    }
+
+                    // Expression statement (e.g., a bare function call or variable reference)
+                    const expr = this.parseExpression();
+                    if (expr) {
+                        return new ASTNode('ExprStmt', { expr });
+                    }
+                    return null;
+                }
+
+                // ---- Assignment ----
+                parseAssignment() {
+                    const kw = this.next(); // 设 or 让
+                    const targetTok = this.peek();
+                    if (targetTok.type !== T.IDENT) {
+                        throw new Error(`变量名无效（行 ${targetTok.line}，列 ${targetTok.col}）`);
+                    }
+                    const varName = this.next().value;
+
+                    // Check for list element assignment: 设 列表 的 第 n 项 为 expr
+                    if (this.isKeyword('的')) {
+                        this.next(); // 的
+                        this.expectKeyword('第', '期望 "第"');
+                        const indexExpr = this.parseExpressionUntil('项');
+                        this.expectKeyword('项', '期望 "项"');
+                        this.expectKeyword('为', '期望 "为"');
+                        const valueExpr = this.parseExpression();
+                        return new ASTNode('ListSet', { listName: varName, index: indexExpr, value: valueExpr });
+                    }
+
+                    // Regular variable assignment
+                    if (this.isKeyword('为')) {
+                        this.next(); // 为
+                    } else if (this.isKeyword('等于')) {
+                        this.next(); // 等于
+                    } else {
+                        const t = this.peek();
+                        throw new Error(`期望 "为" 或 "等于"（行 ${t.line}，列 ${t.col}）`);
+                    }
+                    const valueExpr = this.parseExpression();
+                    return new ASTNode('Assign', { name: varName, value: valueExpr });
+                }
+
+                // ---- Print ----
+                parsePrint() {
+                    this.next(); // 打印 or 输出
+                    const expr = this.parseExpression();
+                    return new ASTNode('Print', { expr });
+                }
+
+                // ---- If ----
+                parseIf() {
+                    this.expectKeyword('如果', '期望 "如果"');
+                    const condition = this.parseExpressionUntil('那么');
+                    this.expectKeyword('那么', '期望 "那么"');
+                    const thenBlock = this.parseBlock();
+                    let elseBlock = [];
+
+                    if (this.isKeyword('否则')) {
+                        this.next(); // 否则
+                        if (this.isKeyword('如果')) {
+                            // 否则如果 -> nested if
+                            elseBlock = [this.parseIf()];
+                            // After else-if, the outer if has no '结束' (the inner if consumes it)
+                            return new ASTNode('If', { condition, thenBlock, elseBlock });
+                        } else {
+                            elseBlock = this.parseBlock();
+                            this.expectEndBlock('如果');
+                        }
+                    } else {
+                        this.expectEndBlock('如果');
+                    }
+                    return new ASTNode('If', { condition, thenBlock, elseBlock });
+                }
+
+                expectEndBlock(expectedType) {
+                    const tok = this.peek();
+                    if (tok.type === T.KEYWORD && (tok.value === '结束' || tok.value === '结束如果' ||
+                            tok.value === '结束循环' || tok.value === '结束定义' || tok.value === '结束重复')) {
+                        if (tok.value !== '结束' && tok.value !== '结束' + expectedType && tok.value !==
+                            '结束如果' && tok.value !== '结束循环' && tok.value !== '结束定义' && tok.value !==
+                            '结束重复') {
+                            // Accept any specific end keyword
+                        }
+                        this.next();
+                        return;
+                    }
+                    throw new Error(`期望 "结束" 或 "结束${expectedType}"（行 ${tok.line}，列 ${tok.col}，实际是 "${tok.value || tok.type}"）`);
+                }
+
+                parseBlock() {
+                    const statements = [];
+                    this.skipNewlines();
+                    while (!this.isAtEnd()) {
+                        const tok = this.peek();
+                        if (tok.type === T.KEYWORD && (tok.value === '结束' || tok.value === '结束如果' ||
+                                tok.value === '结束循环' || tok.value === '结束定义' || tok.value === '结束重复')) {
+                            break;
+                        }
+                        if (tok.type === T.KEYWORD && (tok.value === '否则' || tok.value === '否则如果')) {
+                            break;
+                        }
+                        const stmt = this.parseStatement();
+                        if (stmt) statements.push(stmt);
+                        this.skipNewlines();
+                    }
+                    return statements;
+                }
+
+                // ---- While ----
+                parseWhile() {
+                    this.expectKeyword('当', '期望 "当"');
+                    const condition = this.parseExpressionUntil('循环');
+                    this.expectKeyword('循环', '期望 "循环"');
+                    const body = this.parseBlock();
+                    this.expectEndBlock('循环');
+                    return new ASTNode('While', { condition, body });
+                }
+
+                // ---- Repeat ----
+                parseRepeat() {
+                    this.expectKeyword('重复', '期望 "重复"');
+                    const count = this.parseExpressionUntil('次');
+                    this.expectKeyword('次', '期望 "次"');
+                    const body = this.parseBlock();
+                    this.expectEndBlock('重复');
+                    return new ASTNode('Repeat', { count, body });
+                }
+
+                // ---- Function Definition ----
+                parseFunctionDef() {
+                    this.expectKeyword('定义', '期望 "定义"');
+                    const nameTok = this.peek();
+                    if (nameTok.type !== T.IDENT) {
+                        throw new Error(`函数名无效（行 ${nameTok.line}，列 ${nameTok.col}）`);
+                    }
+                    const name = this.next().value;
+                    let params = [];
+                    if (this.isKeyword('接收')) {
+                        this.next(); // 接收
+                        while (this.peek().type === T.IDENT) {
+                            params.push(this.next().value);
+                            if (this.isType(T.COMMA)) this.next();
+                        }
+                    }
+                    const body = this.parseBlock();
+                    this.expectEndBlock('定义');
+                    return new ASTNode('FunctionDef', { name, params, body });
+                }
+
+                // ---- Return ----
+                parseReturn() {
+                    this.next(); // 返回
+                    const expr = this.isType(T.NEWLINE) || this.isAtEnd() || this.isKeyword('结束') || this.isKeyword(
+                    '结束定义') ? null : this.parseExpression();
+                    return new ASTNode('Return', { expr });
+                }
+
+                // ---- Function Call Statement ----
+                parseCallStatement() {
+                    const call = this.parseFunctionCallExpr();
+                    return new ASTNode('ExprStmt', { expr: call });
+                }
+
+                parseFunctionCallExpr() {
+                    this.expectKeyword('调用', '期望 "调用"');
+                    const nameTok = this.peek();
+                    if (nameTok.type !== T.IDENT) {
+                        throw new Error(`函数名无效（行 ${nameTok.line}，列 ${nameTok.col}）`);
+                    }
+                    const name = this.next().value;
+                    let args = [];
+                    if (this.isKeyword('使用')) {
+                        this.next(); // 使用
+                        while (!this.isType(T.NEWLINE) && !this.isAtEnd() &&
+                        !this.isKeyword('结束') && !this.isKeyword('否则') &&
+                            !this.isKeyword('那么') && !this.isKeyword('循环') &&
+                            !this.isKeyword('次') && !this.isKeyword('项') &&
+                            !this.isType(T.RPAREN) && !this.isType(T.COMMA) && !this.isType(T.RBRACKET)) {
+                            const arg = this.parseExpressionUntilStop(new Set(['加', '减', '乘', '除以', '大于',
+                                '小于', '等于', '大于等于', '小于等于', '不等于', '并且', '或者', '非', '的', '第'
+                            ]));
+                            args.push(arg);
+                            if (this.isType(T.COMMA)) this.next();
+                            if (this.isType(T.NEWLINE)) break;
+                            if (this.isAtEnd()) break;
+                            if (this.isKeyword('结束') || this.isKeyword('否则') || this.isKeyword('那么') || this
+                                .isKeyword('循环') || this.isKeyword('次') || this.isKeyword('项')) break;
+                            // Check if we've consumed an entire expression and the next token is a stop
+                        }
+                    }
+                    return new ASTNode('FunctionCall', { name, args });
+                }
+
+                // ---- List Add ----
+                parseListAdd() {
+                    this.expectKeyword('向', '期望 "向"');
+                    const nameTok = this.peek();
+                    if (nameTok.type !== T.IDENT) {
+                        throw new Error(`列表名无效（行 ${nameTok.line}，列 ${nameTok.col}）`);
+                    }
+                    const listName = this.next().value;
+                    this.expectKeyword('添加', '期望 "添加"');
+                    const expr = this.parseExpression();
+                    return new ASTNode('ListAdd', { listName, expr });
+                }
+
+                // ============================================
+                // Expression Parsing
+                // ============================================
+                parseExpression() {
+                    return this.parseOr();
+                }
+
+                parseExpressionUntil(keyword) {
+                    // Parse expression but stop before the given keyword
+                    return this.parseOrWithStop(new Set([keyword]));
+                }
+
+                parseExpressionUntilStop(stopKeywords) {
+                    return this.parseOrWithStop(stopKeywords);
+                }
+
+                parseOr() {
+                    return this.parseOrWithStop(new Set());
+                }
+
+                parseOrWithStop(stopKeywords) {
+                    let left = this.parseAndWithStop(stopKeywords);
+                    while (this.isKeyword('或者') && !this.shouldStop(stopKeywords)) {
+                        this.next();
+                        const right = this.parseAndWithStop(stopKeywords);
+                        left = new ASTNode('BinaryOp', { op: '或者', left, right });
+                    }
+                    return left;
+                }
+
+                parseAndWithStop(stopKeywords) {
+                    let left = this.parseComparisonWithStop(stopKeywords);
+                    while (this.isKeyword('并且') && !this.shouldStop(stopKeywords)) {
+                        this.next();
+                        const right = this.parseComparisonWithStop(stopKeywords);
+                        left = new ASTNode('BinaryOp', { op: '并且', left, right });
+                    }
+                    return left;
+                }
+
+                parseComparisonWithStop(stopKeywords) {
+                    let left = this.parseAdditiveWithStop(stopKeywords);
+                    while (this.isKeyword('大于') || this.isKeyword('小于') || this.isKeyword('等于') ||
+                        this.isKeyword('大于等于') || this.isKeyword('小于等于') || this.isKeyword('不等于')) {
+                        if (this.shouldStop(stopKeywords)) break;
+                        const op = this.next().value;
+                        const right = this.parseAdditiveWithStop(stopKeywords);
+                        left = new ASTNode('BinaryOp', { op, left, right });
+                    }
+                    return left;
+                }
+
+                parseAdditiveWithStop(stopKeywords) {
+                    let left = this.parseMultiplicativeWithStop(stopKeywords);
+                    while ((this.isKeyword('加') || this.isKeyword('减')) && !this.shouldStop(stopKeywords)) {
+                        const op = this.next().value;
+                        const right = this.parseMultiplicativeWithStop(stopKeywords);
+                        left = new ASTNode('BinaryOp', { op, left, right });
+                    }
+                    return left;
+                }
+
+                parseMultiplicativeWithStop(stopKeywords) {
+                    let left = this.parseUnaryWithStop(stopKeywords);
+                    while ((this.isKeyword('乘') || this.isKeyword('除以')) && !this.shouldStop(stopKeywords)) {
+                        const op = this.next().value;
+                        const right = this.parseUnaryWithStop(stopKeywords);
+                        left = new ASTNode('BinaryOp', { op, left, right });
+                    }
+                    return left;
+                }
+
+                parseUnaryWithStop(stopKeywords) {
+                    if (this.isKeyword('非') && !this.shouldStop(stopKeywords)) {
+                        this.next();
+                        const operand = this.parseUnaryWithStop(stopKeywords);
+                        return new ASTNode('UnaryOp', { op: '非', operand });
+                    }
+                    return this.parsePrimaryWithStop(stopKeywords);
+                }
+
+                parsePrimaryWithStop(stopKeywords) {
+                    const tok = this.peek();
+
+                    if (tok.type === T.NUMBER) {
+                        this.next();
+                        return new ASTNode('Number', { value: tok.value });
+                    }
+                    if (tok.type === T.STRING) {
+                        this.next();
+                        return new ASTNode('String', { value: tok.value });
+                    }
+                    if (tok.type === T.LPAREN) {
+                        this.next();
+                        const expr = this.parseOr();
+                        this.expect(T.RPAREN, '期望 ")"');
+                        return expr;
+                    }
+                    if (tok.type === T.LBRACKET) {
+                        this.next();
+                        const items = [];
+                        if (!this.isType(T.RBRACKET)) {
+                            items.push(this.parseOr());
+                            while (this.isType(T.COMMA)) {
+                                this.next();
+                                items.push(this.parseOr());
+                            }
+                        }
+                        this.expect(T.RBRACKET, '期望 "]"');
+                        return new ASTNode('List', { items });
+                    }
+                    if (this.isKeyword('空列表')) {
+                        this.next();
+                        return new ASTNode('List', { items: [] });
+                    }
+                    if (this.isKeyword('调用')) {
+                        return this.parseFunctionCallExpr();
+                    }
+                    if (tok.type === T.IDENT) {
+                        this.next();
+                        const name = tok.value;
+                        // Check for list access: ident 的 第 expr 项  or  ident 的 长度
+                        if (this.isKeyword('的')) {
+                            this.next(); // 的
+                            if (this.isKeyword('第')) {
+                                this.next(); // 第
+                                const index = this.parseOrWithStop(new Set(['项']));
+                                this.expectKeyword('项', '期望 "项"');
+                                return new ASTNode('ListGet', { listName: name, index });
+                            } else if (this.isKeyword('长度')) {
+                                this.next(); // 长度
+                                return new ASTNode('ListLen', { listName: name });
+                            } else {
+                                const t = this.peek();
+                                throw new Error(`期望 "第" 或 "长度"（行 ${t.line}，列 ${t.col}）`);
+                            }
+                        }
+                        return new ASTNode('Variable', { name });
+                    }
+                    const t = this.peek();
+                    throw new Error(`无法解析表达式（行 ${t.line}，列 ${t.col}，token: "${t.value || t.type}"）`);
+                }
+
+                shouldStop(stopKeywords) {
+                    if (stopKeywords.size === 0) return false;
+                    const tok = this.peek();
+                    return tok.type === T.KEYWORD && stopKeywords.has(tok.value);
+                }
+            }
+
+            // ============================================
+            // 求值器 (Evaluator)
+            // ============================================
+            class Environment {
+                constructor(parent = null) {
+                    this.parent = parent;
+                    this.vars = new Map();
+                }
+                get(name) {
+                    if (this.vars.has(name)) return this.vars.get(name);
+                    if (this.parent) return this.parent.get(name);
+                    throw new Error(`变量 "${name}" 未定义`);
+                }
+                set(name, value) {
+                    this.vars.set(name, value);
+                    return value;
+                }
+                has(name) {
+                    return this.vars.has(name) || (this.parent && this.parent.has(name));
+                }
+            }
+
+            class ReturnSignal {
+                constructor(value) { this.value = value; }
+            }
+
+            class Evaluator {
+                constructor() {
+                    this.globalEnv = new Environment();
+                    this.functions = new Map();
+                    this.stepCount = 0;
+                    this.maxSteps = 200000;
+                    this.output = [];
+                    this.initBuiltins();
+                }
+
+                initBuiltins() {
+                    // Could add built-in functions here if needed
+                }
+
+                bumpStep() {
+                    this.stepCount++;
+                    if (this.stepCount > this.maxSteps) {
+                        throw new Error(`执行步数超过限制（${this.maxSteps}步），可能存在无限循环`);
+                    }
+                }
+
+                print(value) {
+                    if (value === null || value === undefined) {
+                        this.output.push('（空）');
+                    } else if (typeof value === 'string') {
+                        this.output.push(value);
+                    } else if (typeof value === 'number') {
+                        this.output.push(Number.isInteger(value) ? String(value) : String(value));
+                    } else if (Array.isArray(value)) {
+                        this.output.push('[' + value.map(v => this.formatValue(v)).join(', ') + ']');
+                    } else if (typeof value === 'boolean') {
+                        this.output.push(value ? '真' : '假');
+                    } else {
+                        this.output.push(String(value));
+                    }
+                }
+
+                formatValue(value) {
+                    if (typeof value === 'string') return '"' + value + '"';
+                    if (Array.isArray(value)) return '[' + value.map(v => this.formatValue(v)).join(', ') + ']';
+                    if (value === null || value === undefined) return '空';
+                    if (typeof value === 'boolean') return value ? '真' : '假';
+                    return String(value);
+                }
+
+                evalProgram(statements) {
+                    for (const stmt of statements) {
+                        this.evalStatement(stmt, this.globalEnv);
+                    }
+                }
+
+                evalStatement(stmt, env) {
+                    this.bumpStep();
+                    switch (stmt.type) {
+                        case 'Assign':
+                            return this.evalAssign(stmt, env);
+                        case 'Print':
+                            return this.evalPrint(stmt, env);
+                        case 'If':
+                            return this.evalIf(stmt, env);
+                        case 'While':
+                            return this.evalWhile(stmt, env);
+                        case 'Repeat':
+                            return this.evalRepeat(stmt, env);
+                        case 'FunctionDef':
+                            return this.evalFunctionDef(stmt);
+                        case 'Return':
+                            throw new ReturnSignal(stmt.expr ? this.evalExpr(stmt.expr, env) : null);
+                        case 'ExprStmt':
+                            return this.evalExpr(stmt.expr, env);
+                        case 'ListAdd':
+                            return this.evalListAdd(stmt, env);
+                        case 'ListSet':
+                            return this.evalListSet(stmt, env);
+                        default:
+                            throw new Error(`未知语句类型: ${stmt.type}`);
+                    }
+                }
+
+                evalAssign(stmt, env) {
+                    const value = this.evalExpr(stmt.value, env);
+                    env.set(stmt.name, value);
+                    return value;
+                }
+
+                evalPrint(stmt, env) {
+                    const value = this.evalExpr(stmt.expr, env);
+                    this.print(value);
+                    return value;
+                }
+
+                evalIf(stmt, env) {
+                    const cond = this.evalExpr(stmt.condition, env);
+                    if (this.truthy(cond)) {
+                        this.evalBlock(stmt.thenBlock, env);
+                    } else {
+                        this.evalBlock(stmt.elseBlock || [], env);
+                    }
+                    return null;
+                }
+
+                evalWhile(stmt, env) {
+                    while (this.truthy(this.evalExpr(stmt.condition, env))) {
+                        this.evalBlock(stmt.body, env);
+                    }
+                    return null;
+                }
+
+                evalRepeat(stmt, env) {
+                    const count = this.evalExpr(stmt.count, env);
+                    if (typeof count !== 'number' || count < 0) {
+                        throw new Error('重复次数必须是正数');
+                    }
+                    for (let i = 0; i < Math.floor(count); i++) {
+                        this.evalBlock(stmt.body, env);
+                    }
+                    return null;
+                }
+
+                evalFunctionDef(stmt) {
+                    this.functions.set(stmt.name, {
+                        params: stmt.params,
+                        body: stmt.body,
+                        defEnv: this.globalEnv // Closure over global
+                    });
+                    return null;
+                }
+
+                evalBlock(statements, env) {
+                    for (const stmt of statements) {
+                        this.evalStatement(stmt, env);
+                    }
+                }
+
+                evalListAdd(stmt, env) {
+                    const list = env.get(stmt.listName);
+                    if (!Array.isArray(list)) {
+                        throw new Error(`"${stmt.listName}" 不是列表`);
+                    }
+                    const val = this.evalExpr(stmt.expr, env);
+                    list.push(val);
+                    return val;
+                }
+
+                evalListSet(stmt, env) {
+                    const list = env.get(stmt.listName);
+                    if (!Array.isArray(list)) {
+                        throw new Error(`"${stmt.listName}" 不是列表`);
+                    }
+                    const idx = this.evalExpr(stmt.index, env);
+                    if (typeof idx !== 'number' || idx < 0 || idx >= list.length) {
+                        throw new Error(`列表索引越界: ${idx}`);
+                    }
+                    const val = this.evalExpr(stmt.value, env);
+                    list[Math.floor(idx)] = val;
+                    return val;
+                }
+
+                truthy(val) {
+                    if (val === null || val === undefined) return false;
+                    if (typeof val === 'boolean') return val;
+                    if (typeof val === 'number') return val !== 0;
+                    if (typeof val === 'string') return val.length > 0;
+                    if (Array.isArray(val)) return val.length > 0;
+                    return true;
+                }
+
+                evalExpr(expr, env) {
+                    this.bumpStep();
+                    switch (expr.type) {
+                        case 'Number':
+                            return expr.value;
+                        case 'String':
+                            return expr.value;
+                        case 'Variable':
+                            return env.get(expr.name);
+                        case 'List':
+                            return expr.items.map(item => this.evalExpr(item, env));
+                        case 'BinaryOp':
+                            return this.evalBinaryOp(expr, env);
+                        case 'UnaryOp':
+                            return this.evalUnaryOp(expr, env);
+                        case 'FunctionCall':
+                            return this.evalFunctionCall(expr, env);
+                        case 'ListGet':
+                            return this.evalListGet(expr, env);
+                        case 'ListLen':
+                            return this.evalListLen(expr, env);
+                        default:
+                            throw new Error(`未知表达式类型: ${expr.type}`);
+                    }
+                }
+
+                evalBinaryOp(expr, env) {
+                    const left = this.evalExpr(expr.left, env);
+                    const right = this.evalExpr(expr.right, env);
+                    const op = expr.op;
+
+                    switch (op) {
+                        case '加':
+                            if (typeof left === 'number' && typeof right === 'number') return left + right;
+                            if (typeof left === 'string' || typeof right === 'string') return String(left) + String(
+                            right);
+                            if (Array.isArray(left) && Array.isArray(right)) return [...left, ...right];
+                            if (Array.isArray(left)) return [...left, right];
+                            throw new Error(`"加" 运算类型不匹配: ${this.typeName(left)} 和 ${this.typeName(right)}`);
+
+                        case '减':
+                            if (typeof left === 'number' && typeof right === 'number') return left - right;
+                            throw new Error(`"减" 运算需要数字，得到 ${this.typeName(left)} 和 ${this.typeName(right)}`);
+
+                        case '乘':
+                            if (typeof left === 'number' && typeof right === 'number') return left * right;
+                            if (typeof left === 'string' && typeof right === 'number') return left.repeat(Math.floor(
+                                right));
+                            if (typeof right === 'string' && typeof left === 'number') return right.repeat(Math.floor(
+                                left));
+                            throw new Error(`"乘" 运算类型不匹配: ${this.typeName(left)} 和 ${this.typeName(right)}`);
+
+                        case '除以':
+                            if (typeof left === 'number' && typeof right === 'number') {
+                                if (right === 0) throw new Error('除以零错误');
+                                return left / right;
+                            }
+                            throw new Error(`"除以" 运算需要数字，得到 ${this.typeName(left)} 和 ${this.typeName(right)}`);
+
+                        case '大于':
+                            return this.compare(left, right) > 0;
+                        case '小于':
+                            return this.compare(left, right) < 0;
+                        case '等于':
+                            return this.compare(left, right) === 0;
+                        case '大于等于':
+                            return this.compare(left, right) >= 0;
+                        case '小于等于':
+                            return this.compare(left, right) <= 0;
+                        case '不等于':
+                            return this.compare(left, right) !== 0;
+                        case '并且':
+                            return this.truthy(left) && this.truthy(right);
+                        case '或者':
+                            return this.truthy(left) || this.truthy(right);
+                        default:
+                            throw new Error(`未知运算符: ${op}`);
+                    }
+                }
+
+                compare(a, b) {
+                    if (typeof a === 'number' && typeof b === 'number') {
+                        return a - b;
+                    }
+                    if (typeof a === 'string' && typeof b === 'string') {
+                        return a.localeCompare(b, 'zh');
+                    }
+                    if (typeof a === 'boolean' && typeof b === 'boolean') {
+                        return (a ? 1 : 0) - (b ? 1 : 0);
+                    }
+                    const sa = String(a);
+                    const sb = String(b);
+                    return sa.localeCompare(sb, 'zh');
+                }
+
+                evalUnaryOp(expr, env) {
+                    const operand = this.evalExpr(expr.operand, env);
+                    if (expr.op === '非') {
+                        return !this.truthy(operand);
+                    }
+                    throw new Error(`未知一元运算符: ${expr.op}`);
+                }
+
+                evalFunctionCall(expr, env) {
+                    const fn = this.functions.get(expr.name);
+                    if (!fn) {
+                        throw new Error(`函数 "${expr.name}" 未定义`);
+                    }
+                    const args = expr.args.map(a => this.evalExpr(a, env));
+                    if (args.length !== fn.params.length) {
+                        throw new Error(
+                            `函数 "${expr.name}" 期望 ${fn.params.length} 个参数，但收到了 ${args.length} 个`);
+                    }
+                    const fnEnv = new Environment(fn.defEnv);
+                    for (let i = 0; i < fn.params.length; i++) {
+                        fnEnv.set(fn.params[i], args[i]);
+                    }
+                    try {
+                        this.evalBlock(fn.body, fnEnv);
+                    } catch (signal) {
+                        if (signal instanceof ReturnSignal) {
+                            return signal.value;
+                        }
+                        throw signal;
+                    }
+                    return null;
+                }
+
+                evalListGet(expr, env) {
+                    const list = env.get(expr.listName);
+                    if (!Array.isArray(list)) {
+                        throw new Error(`"${expr.listName}" 不是列表`);
+                    }
+                    const idx = this.evalExpr(expr.index, env);
+                    if (typeof idx !== 'number' || idx < 0 || idx >= list.length) {
+                        throw new Error(`列表索引越界: ${idx}（长度: ${list.length}）`);
+                    }
+                    return list[Math.floor(idx)];
+                }
+
+                evalListLen(expr, env) {
+                    const list = env.get(expr.listName);
+                    if (!Array.isArray(list)) {
+                        throw new Error(`"${expr.listName}" 不是列表`);
+                    }
+                    return list.length;
+                }
+
+                typeName(val) {
+                    if (val === null || val === undefined) return '空';
+                    if (Array.isArray(val)) return '列表';
+                    return typeof val;
+                }
+            }
+
+            // ============================================
+            // UI Controller
+            // ============================================
+            const editor = document.getElementById('codeEditor');
+            const outputArea = document.getElementById('outputArea');
+            const stepCountEl = document.getElementById('stepCount');
+            const lineCountEl = document.getElementById('lineCount');
+            const statusBadge = document.getElementById('statusBadge');
+            const runBtn = document.getElementById('runBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            const helpBtn = document.getElementById('helpBtn');
+            const helpModal = document.getElementById('helpModal');
+            const closeHelpBtn = document.getElementById('closeHelpBtn');
+            const exampleSelect = document.getElementById('exampleSelect');
+            const lineNumbers = document.getElementById('lineNumbers');
+
+            // Examples
+            const examples = [
+                { name: '你好世界', code: `# 我的第一个程序\n打印 "你好，世界！"\n设 名字 为 "小明"\n打印 "欢迎，" 加 名字 加 "！"` },
+                { name: '变量与算术', code: `# 变量和算术运算\n设 x 为 10\n设 y 为 3\n打印 "x = " 加 x\n打印 "y = " 加 y\n打印 "x + y = " 加 (x 加 y)\n打印 "x × y = " 加 (x 乘 y)\n打印 "x ÷ y = " 加 (x 除以 y)\n打印 "x % y 的余数 = " 加 (x 减 (x 除以 y) 乘 y)` },
+                { name: '条件判断', code: `# 条件判断示例\n设 分数 为 85\n如果 分数 大于等于 90 那么\n  打印 "优秀！"\n否则如果 分数 大于等于 80 那么\n  打印 "良好"\n否则如果 分数 大于等于 60 那么\n  打印 "及格"\n否则\n  打印 "需要努力"\n结束` },
+                { name: '循环计数', code: `# 循环示例\n设 i 为 1\n设 总和 为 0\n当 i 小于等于 10 循环\n  设 总和 为 总和 加 i\n  打印 "第 " 加 i 加 " 次循环，总和 = " 加 总和\n  设 i 为 i 加 1\n结束\n打印 "最终总和: " 加 总和` },
+                { name: '阶乘(递归)', code: `# 递归计算阶乘\n定义 阶乘 接收 n\n  如果 n 小于等于 1 那么\n    返回 1\n  否则\n    返回 n 乘 调用 阶乘 使用 n 减 1\n  结束\n结束\n\n设 数字 为 10\n打印 数字 加 " 的阶乘 = " 加 调用 阶乘 使用 数字` },
+                { name: '斐波那契', code: `# 斐波那契数列（递归）\n定义 斐波那契 接收 n\n  如果 n 小于等于 1 那么\n    返回 n\n  否则\n    返回 调用 斐波那契 使用 n 减 1 加 调用 斐波那契 使用 n 减 2\n  结束\n结束\n\n# 输出前15个斐波那契数\n设 i 为 0\n当 i 小于 15 循环\n  打印 "F(" 加 i 加 ") = " 加 调用 斐波那契 使用 i\n  设 i 为 i 加 1\n结束` },
+                { name: '列表操作', code: `# 列表操作\n设 水果 为 ["苹果", "香蕉", "橙子"]\n打印 "初始列表: " 加 水果 的 长度 加 " 种水果"\n打印 "第0项: " 加 水果 的 第 0 项\n打印 "第2项: " 加 水果 的 第 2 项\n向 水果 添加 "葡萄"\n打印 "添加后长度: " 加 水果 的 长度\n设 水果 的 第 1 项 为 "西瓜"\n打印 "修改后第1项: " 加 水果 的 第 1 项\n打印 "完整列表: " 加 水果` },
+                { name: '阿克曼函数', code: `# 阿克曼函数（深度递归示例）\n# 这是图灵完备性的经典展示\n定义 阿克曼 接收 m n\n  如果 m 等于 0 那么\n    返回 n 加 1\n  结束\n  如果 n 等于 0 那么\n    返回 调用 阿克曼 使用 m 减 1 1\n  结束\n  返回 调用 阿克曼 使用 m 减 1 调用 阿克曼 使用 m n 减 1\n结束\n\n打印 "A(1, 1) = " 加 调用 阿克曼 使用 1 1\n打印 "A(2, 2) = " 加 调用 阿克曼 使用 2 2\n打印 "A(3, 3) = " 加 调用 阿克曼 使用 3 3` },
+                { name: '逻辑运算', code: `# 逻辑运算示例\n设 x 为 5\n设 y 为 10\n如果 x 大于 0 并且 y 大于 0 那么\n  打印 "x 和 y 都是正数"\n结束\n如果 x 大于 100 或者 y 大于 5 那么\n  打印 "至少有一个条件成立"\n结束\n如果 非 x 大于 100 那么\n  打印 "x 不大于 100"\n结束` },
+            ];
+
+            // Populate examples
+            examples.forEach((ex, i) => {
+                const opt = document.createElement('option');
+                opt.value = String(i);
+                opt.textContent = ex.name;
+                exampleSelect.appendChild(opt);
+            });
+
+            let defaultCode =
+                `# 🌿 自然语言编程示例\n# 这是一个图灵完备的中文编程语言\n\n设 数字 为 8\n打印 "计算 " 加 数字 加 " 的阶乘..."\n\n定义 阶乘 接收 n\n  如果 n 小于等于 1 那么\n    返回 1\n  否则\n    返回 n 乘 调用 阶乘 使用 n 减 1\n  结束\n结束\n\n打印 数字 加 "! = " 加 调用 阶乘 使用 数字\n\n# 循环示例\n设 i 为 1\n当 i 小于等于 5 循环\n  打印 "循环第 " 加 i 加 " 次"\n  设 i 为 i 加 1\n结束`;
+
+            editor.value = defaultCode;
+
+            function updateLineNumbers() {
+                const lines = editor.value.split('\n');
+                const html = lines.map((_, i) => `<span>${i + 1}</span>`).join('');
+                lineNumbers.innerHTML = html;
+                // Sync scroll
+                lineNumbers.scrollTop = editor.scrollTop;
+            }
+
+            function syncScroll() {
+                lineNumbers.scrollTop = editor.scrollTop;
+            }
+
+            editor.addEventListener('input', updateLineNumbers);
+            editor.addEventListener('scroll', syncScroll);
+            editor.addEventListener('keydown', (e) => {
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    const start = editor.selectionStart;
+                    const end = editor.selectionEnd;
+                    editor.value = editor.value.slice(0, start) + '  ' + editor.value.slice(end);
+                    editor.selectionStart = editor.selectionEnd = start + 2;
+                    updateLineNumbers();
+                }
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    runCode();
+                }
+            });
+
+            // Save to localStorage
+            function saveToLocal() {
+                try {
+                    localStorage.setItem('nlp_code', editor.value);
+                } catch (e) { /* ignore */ }
+            }
+            editor.addEventListener('input', saveToLocal);
+
+            function loadFromLocal() {
+                try {
+                    const saved = localStorage.getItem('nlp_code');
+                    if (saved && saved.trim()) {
+                        editor.value = saved;
+                    }
+                } catch (e) { /* ignore */ }
+            }
+
+            function clearOutput() {
+                outputArea.innerHTML = '';
+                stepCountEl.textContent = '0';
+                lineCountEl.textContent = '0';
+                statusBadge.textContent = '⏳ 就绪';
+                statusBadge.style.color = 'var(--text-dim)';
+            }
+
+            function addOutputLine(text, type = 'normal') {
+                if (outputArea.querySelector('.output-empty')) {
+                    outputArea.innerHTML = '';
+                }
+                const div = document.createElement('div');
+                div.className = `output-line output-${type}`;
+                div.textContent = text;
+                outputArea.appendChild(div);
+                outputArea.scrollTop = outputArea.scrollHeight;
+                lineCountEl.textContent = String(parseInt(lineCountEl.textContent || '0') + 1);
+            }
+
+            function runCode() {
+                clearOutput();
+                const code = editor.value;
+                if (!code.trim()) {
+                    addOutputLine('（空程序）', 'warning');
+                    statusBadge.textContent = '⚠️ 空程序';
+                    statusBadge.style.color = 'var(--warning)';
+                    return;
+                }
+
+                statusBadge.textContent = '🔄 解析中…';
+                statusBadge.style.color = 'var(--accent)';
+
+                const startTime = performance.now();
+                try {
+                    const tokens = tokenize(code);
+                    const parser = new Parser(tokens);
+                    const ast = parser.parseProgram();
+
+                    if (ast.length === 0) {
+                        addOutputLine('（程序没有可执行的语句）', 'warning');
+                        statusBadge.textContent = '⚠️ 空程序';
+                        statusBadge.style.color = 'var(--warning)';
+                        return;
+                    }
+
+                    statusBadge.textContent = '⚡ 执行中…';
+                    statusBadge.style.color = 'var(--accent)';
+
+                    // Use setTimeout to allow UI to update before long-running code
+                    setTimeout(() => {
+                        try {
+                            const evaluator = new Evaluator();
+                            evaluator.evalProgram(ast);
+
+                            const elapsed = performance.now() - startTime;
+                            stepCountEl.textContent = String(evaluator.stepCount);
+                            statusBadge.textContent = `✅ 完成 (${elapsed.toFixed(1)}ms)`;
+                            statusBadge.style.color = 'var(--success)';
+
+                            if (evaluator.output.length === 0) {
+                                addOutputLine('（程序执行完毕，没有输出）', 'normal');
+                            } else {
+                                evaluator.output.forEach(line => addOutputLine(line, 'normal'));
+                            }
+                        } catch (err) {
+                            const elapsed = performance.now() - startTime;
+                            statusBadge.textContent = `❌ 错误 (${elapsed.toFixed(1)}ms)`;
+                            statusBadge.style.color = 'var(--error)';
+                            addOutputLine('运行时错误: ' + err.message, 'error');
+                        }
+                    }, 30);
+
+                } catch (err) {
+                    statusBadge.textContent = '❌ 语法错误';
+                    statusBadge.style.color = 'var(--error)';
+                    addOutputLine('语法错误: ' + err.message, 'error');
+                }
+            }
+
+            runBtn.addEventListener('click', runCode);
+            clearBtn.addEventListener('click', () => {
+                editor.value = '';
+                clearOutput();
+                updateLineNumbers();
+                saveToLocal();
+                editor.focus();
+            });
+
+            helpBtn.addEventListener('click', () => {
+                helpModal.style.display = 'flex';
+            });
+            closeHelpBtn.addEventListener('click', () => {
+                helpModal.style.display = 'none';
+            });
+            helpModal.addEventListener('click', (e) => {
+                if (e.target === helpModal) {
+                    helpModal.style.display = 'none';
+                }
+            });
+
+            exampleSelect.addEventListener('change', () => {
+                const idx = parseInt(exampleSelect.value);
+                if (!isNaN(idx) && idx >= 0 && idx < examples.length) {
+                    editor.value = examples[idx].code;
+                    updateLineNumbers();
+                    saveToLocal();
+                    clearOutput();
+                    statusBadge.textContent = '📂 已加载示例';
+                    statusBadge.style.color = 'var(--accent)';
+                }
+                exampleSelect.value = '';
+            });
+
+            // Initialize
+            loadFromLocal();
+            updateLineNumbers();
+
+            // Keyboard shortcut hint
+            console.log('🌿 自然语言编程解释器已加载 — 按 Ctrl+Enter 运行代码');
+        })();
+    </script>
+</body>
+</html>
