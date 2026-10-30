@@ -4,6 +4,13 @@
 
   var doc = document;
   var root = doc.documentElement;
+  var scriptEl =
+    doc.currentScript ||
+    doc.querySelector('script[src$="assets/js/main.js"]');
+  var siteRoot =
+    scriptEl && scriptEl.src
+      ? scriptEl.src.replace(/assets\/js\/main\.js.*$/, "")
+      : new URL("./", window.location.href).href;
 
   /* ---------- theme toggle ---------- */
   var themeBtn = doc.querySelector("[data-theme-toggle]");
@@ -205,7 +212,7 @@
     }
     renderResults("");
     if (!searchData) {
-      fetch("/assets/search.json")
+      fetch(siteRoot + "assets/search.json")
         .then(function (r) {
           return r.json();
         })
@@ -213,7 +220,13 @@
           searchData = data;
           renderResults(searchInput ? searchInput.value : "");
         })
-        .catch(function () {});
+        .catch(function () {
+          searchData = [];
+          if (resultsBox) {
+            resultsBox.innerHTML =
+              '<li class="search-empty">file:// 下无法读取搜索索引，请用本地服务器打开（python3 -m http.server）。</li>';
+          }
+        });
     }
   }
 
@@ -252,7 +265,7 @@
     items.slice(0, 12).forEach(function (item) {
       var li = doc.createElement("li");
       var a = doc.createElement("a");
-      a.href = item.url;
+      a.href = new URL(item.url.replace(/^\//, ""), siteRoot).href;
       var t = doc.createElement("div");
       t.className = "r-title";
       t.textContent = item.title;
@@ -321,11 +334,12 @@
   });
 
   /* ---------- active nav ---------- */
-  var path = window.location.pathname.replace(/\/index\.html$/, "/");
+  var here = window.location.pathname.replace(/\/index\.html$/, "/");
   doc.querySelectorAll(".site-nav a[href]").forEach(function (a) {
-    var href = a.getAttribute("href");
-    if (href === path || (href !== "/" && path.indexOf(href) === 0)) {
-      a.setAttribute("aria-current", "page");
-    }
+    try {
+      var resolved = new URL(a.getAttribute("href"), window.location.href);
+      var target = resolved.pathname.replace(/\/index\.html$/, "/");
+      if (target === here) a.setAttribute("aria-current", "page");
+    } catch (e) {}
   });
 })();

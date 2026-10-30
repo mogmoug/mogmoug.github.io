@@ -9,15 +9,17 @@
     <link rel="canonical" href="https://mogmoug.github.io/archive.html" />
     <meta name="theme-color" content="#f5fbf7" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#080f0c" media="(prefers-color-scheme: dark)" />
-    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/assets/mog.png" type="image/png" sizes="460x460" />
+    <link rel="apple-touch-icon" href="/assets/mog.png" />
     <link rel="alternate" type="application/atom+xml" title="Mogmoug Blog" href="/feed.xml" />
     <link rel="stylesheet" href="/assets/css/style.css" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Mogmoug" />
-    <meta property="og:title" content="文章归档 — Mogmoug" />
+    <meta property="og:title" content="文章归档" />
     <meta property="og:description" content="Mogmoug 博客的全部文章归档，按年份排列。" />
     <meta property="og:url" content="https://mogmoug.github.io/archive.html" />
     <meta property="og:locale" content="zh_CN" />
+    
     <meta name="twitter:card" content="summary" />
     <script>
       (function () {
@@ -34,21 +36,30 @@
         } catch (e) {}
       })();
     </script>
+    
   </head>
   <body>
+    
     <a class="skip-link" href="#main">跳到正文</a>
 
     <header class="site-header">
       <div class="wrap header-inner">
-        <a class="brand" href="/">
-          <span class="brand-dot" aria-hidden="true"></span>
+        <a class="brand" href="/index.html">
+          <img class="brand-logo" src="/assets/mog.png" alt="" width="28" height="28" />
           <span>Mogmoug</span>
         </a>
         <nav class="site-nav" data-nav aria-label="主导航">
-          <a href="/">首页</a>
-          <a href="/archive.html">归档</a>
+          
+          <a href="/index.html">首页</a>
+          
+          <a href="/archive.html" aria-current="page">归档</a>
+          
           <a href="/tags.html">标签</a>
+          
+          <a href="/demos/index.html">Demo</a>
+          
           <a href="/about.html">关于</a>
+          
         </nav>
         <div class="nav-actions">
           <button class="icon-btn" type="button" data-search-open aria-label="搜索（按 / 键）">
@@ -76,39 +87,56 @@
     </header>
 
     <main id="main">
-      <div class="wrap">
-        <header class="page-head">
-          <h1>文章归档</h1>
-          <p>所有写过的文章，按时间倒序排列。目前共 2 篇，持续更新中。</p>
-        </header>
+      
+<div class="wrap">
+  <header class="page-head">
+    <h1>文章归档</h1>
+    <p>所有写过的文章，按时间倒序排列。目前共 2 篇，持续更新中。</p>
+  </header>
 
-        <section class="archive-year" aria-labelledby="year-2026">
-          <h2 id="year-2026">2026</h2>
-          <ul class="archive-list">
-            <li>
-              <time datetime="2026-09-24">09-24</time>
-              <a href="/posts/civtext-retro.html">用 16 分钟做一款文字版文明：Civtext 项目复盘</a>
-            </li>
-            <li>
-              <time datetime="2026-09-24">09-24</time>
-              <a href="/posts/rustlings-01.html">学习记录 1 · Rustlings 前五章与 quiz1</a>
-            </li>
-          </ul>
-        </section>
-      </div>
+  
+  <section class="archive-year" aria-labelledby="year-2026">
+    <h2 id="year-2026">2026</h2>
+    <ul class="archive-list">
+      
+      <li>
+        <time datetime="2026-09-24">09-24</time>
+        <a href="/posts/rustlings-01.html">学习记录 1 · Rustlings 前五章与 quiz1</a>
+      </li>
+      
+      <li>
+        <time datetime="2026-09-24">09-24</time>
+        <a href="/posts/civtext-retro.html">用 16 分钟做一款文字版文明：Civtext 项目复盘</a>
+      </li>
+      
+    </ul>
+  </section>
+  
+</div>
+
     </main>
 
     <footer class="site-footer">
       <div class="wrap footer-inner">
         <p>© 2026 Mogmoug · 用好奇心写代码</p>
         <div class="footer-links">
+          
           <a href="/archive.html">归档</a>
+          
           <a href="/tags.html">标签</a>
+          
+          <a href="/demos/index.html">Demo</a>
+          
           <a href="/feed.xml">RSS</a>
+          
+          
           <a href="https://github.com/mogmoug" rel="me noopener" target="_blank">GitHub</a>
+          
+          <a href="https://space.bilibili.com/485986360" rel="me noopener" target="_blank">Bilibili</a>
+          
         </div>
       </div>
-      <div class="wrap footer-note">手写静态站 · 无框架 · 无追踪</div>
+      <div class="wrap footer-note">Eleventy 构建 · 无追踪</div>
     </footer>
 
     <button class="back-top" type="button" data-back-top aria-label="回到顶部">
@@ -131,6 +159,7 @@
       </div>
     </div>
 
+    
     <script src="/assets/js/main.js" defer></script>
   </body>
 </html>

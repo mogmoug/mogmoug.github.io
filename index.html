@@ -4,26 +4,22 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Mogmoug · 项目复盘与学习笔记</title>
-    <meta
-      name="description"
-      content="Mogmoug 的个人博客：记录 Rust、JavaScript、C 的学习过程，项目复盘，以及和 AI 一起写代码的实践。"
-    />
+    <meta name="description" content="Mogmoug 的个人博客：记录 Rust、JavaScript、C 的学习过程，项目复盘，以及和 AI 一起写代码的实践。" />
     <meta name="author" content="Mogmoug" />
     <link rel="canonical" href="https://mogmoug.github.io/" />
     <meta name="theme-color" content="#f5fbf7" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#080f0c" media="(prefers-color-scheme: dark)" />
-    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/assets/mog.png" type="image/png" sizes="460x460" />
+    <link rel="apple-touch-icon" href="/assets/mog.png" />
     <link rel="alternate" type="application/atom+xml" title="Mogmoug Blog" href="/feed.xml" />
     <link rel="stylesheet" href="/assets/css/style.css" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Mogmoug" />
     <meta property="og:title" content="Mogmoug · 项目复盘与学习笔记" />
-    <meta
-      property="og:description"
-      content="记录 Rust、JavaScript、C 的学习过程，项目复盘，以及和 AI 一起写代码的实践。"
-    />
+    <meta property="og:description" content="Mogmoug 的个人博客：记录 Rust、JavaScript、C 的学习过程，项目复盘，以及和 AI 一起写代码的实践。" />
     <meta property="og:url" content="https://mogmoug.github.io/" />
     <meta property="og:locale" content="zh_CN" />
+    
     <meta name="twitter:card" content="summary" />
     <script>
       (function () {
@@ -40,31 +36,41 @@
         } catch (e) {}
       })();
     </script>
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "Blog",
-        "name": "Mogmoug",
-        "url": "https://mogmoug.github.io/",
-        "description": "记录 Rust、JavaScript、C 的学习过程，项目复盘，以及和 AI 一起写代码的实践。",
-        "author": { "@type": "Person", "name": "Mogmoug", "url": "https://github.com/mogmoug" }
-      }
-    </script>
+    
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Blog",
+  "name": "Mogmoug",
+  "url": "https://mogmoug.github.io/",
+  "description": "Mogmoug 的个人博客：记录 Rust、JavaScript、C 的学习过程，项目复盘，以及和 AI 一起写代码的实践。",
+  "author": { "@type": "Person", "name": "Mogmoug", "url": "https://github.com/mogmoug" }
+}
+</script>
+
   </head>
   <body>
+    
     <a class="skip-link" href="#main">跳到正文</a>
 
     <header class="site-header">
       <div class="wrap header-inner">
-        <a class="brand" href="/">
-          <span class="brand-dot" aria-hidden="true"></span>
+        <a class="brand" href="/index.html">
+          <img class="brand-logo" src="/assets/mog.png" alt="" width="28" height="28" />
           <span>Mogmoug</span>
         </a>
         <nav class="site-nav" data-nav aria-label="主导航">
-          <a href="/">首页</a>
+          
+          <a href="/index.html">首页</a>
+          
           <a href="/archive.html">归档</a>
+          
           <a href="/tags.html">标签</a>
+          
+          <a href="/demos/index.html">Demo</a>
+          
           <a href="/about.html">关于</a>
+          
         </nav>
         <div class="nav-actions">
           <button class="icon-btn" type="button" data-search-open aria-label="搜索（按 / 键）">
@@ -92,101 +98,178 @@
     </header>
 
     <main id="main">
-      <section class="hero">
-        <div class="wrap">
-          <span class="hero-kicker">
-            <span class="pulse" aria-hidden="true"></span>
-            正在学习 · 持续输出
-          </span>
-          <h1>你好，我是 <span class="gradient">Mogmoug</span></h1>
-          <p class="lead">
-            一个正在学习 Rust、JavaScript 和 C 的未来开发者。这里记录项目复盘、学习笔记，
-            以及和 AI 一起写代码的实践——把踩过的坑，写成下次能用的路标。
-          </p>
-          <div class="hero-chips">
-            <a class="chip" href="/tags.html#rust"><span class="dot"></span>Rust</a>
-            <a class="chip" href="/tags.html"><span class="dot blue"></span>JavaScript</a>
-            <a class="chip" href="/tags.html"><span class="dot"></span>C</a>
-            <a class="chip" href="/tags.html"><span class="dot blue"></span>AI 辅助开发</a>
-            <a class="chip" href="/archive.html"><span class="dot"></span>项目复盘</a>
-          </div>
-        </div>
-      </section>
+      
+<section class="hero">
+  <div class="wrap">
+    <span class="hero-kicker">
+      <span class="pulse" aria-hidden="true"></span>
+      正在学习 · 持续输出
+    </span>
+    <h1>你好，我是 <span class="gradient">Mogmoug</span></h1>
+    <p class="lead">
+      一个正在学习 Rust、JavaScript 和 C 的未来开发者。这里记录项目复盘、学习笔记，
+      以及和 AI 一起写代码的实践——把踩过的坑，写成下次能用的路标。
+    </p>
+    <div class="hero-chips">
+      <a class="chip" href="/tags.html#rust"><span class="dot"></span>Rust</a>
+      <a class="chip" href="/tags.html"><span class="dot blue"></span>JavaScript</a>
+      <a class="chip" href="/tags.html"><span class="dot"></span>C</a>
+      <a class="chip" href="/tags.html"><span class="dot blue"></span>AI 辅助开发</a>
+      <a class="chip" href="/archive.html"><span class="dot"></span>项目复盘</a>
+    </div>
+  </div>
+</section>
 
-      <section class="section">
-        <div class="wrap">
-          <div class="section-head">
-            <h2>最新文章</h2>
-            <a class="more" href="/archive.html">查看全部 →</a>
-          </div>
-          <div class="post-grid">
-            <article class="post-card">
-              <div class="meta">
-                <time datetime="2026-09-24">2026-09-24</time>
-                <span>·</span>
-                <span>约 6 分钟</span>
-              </div>
-              <h3><a href="/posts/rustlings-01.html">学习记录 1 · Rustlings 前五章与 quiz1</a></h3>
-              <p>
-                从 00_intro 到 04_primitive_types，一次把 Rust 的变量、函数、条件与基础类型过了一遍。
-                附上安装步骤、常用命令，以及最容易踩的五个坑。
-              </p>
-              <div class="card-tags">
-                <span class="tag">rustlings</span>
-                <span class="tag blue">rust</span>
-                <span class="tag">学习记录</span>
-              </div>
-            </article>
-
-            <article class="post-card">
-              <div class="meta">
-                <time datetime="2026-09-24">2026-09-24</time>
-                <span>·</span>
-                <span>约 5 分钟</span>
-              </div>
-              <h3><a href="/posts/civtext-retro.html">用 16 分钟做一款文字版文明：Civtext 项目复盘</a></h3>
-              <p>
-                花 ¥3.1983、调用 DeepSeek 16 分钟，做出一个能玩的网页文字版《文明》原型。
-                玩法跑通之后，最值钱的收获其实是那条教训：AI 开发前必须先做规划。
-              </p>
-              <div class="card-tags">
-                <span class="tag">civtext</span>
-                <span class="tag blue">nodejs</span>
-                <span class="tag">项目复盘</span>
-              </div>
-            </article>
-          </div>
+<section class="section">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>最新文章</h2>
+      <a class="more" href="/archive.html">查看全部 →</a>
+    </div>
+    <div class="post-grid">
+      
+      
+      <article class="post-card">
+        <div class="meta">
+          <time datetime="2026-09-24">2026-09-24</time>
+          <span>·</span>
+          <span>约 6 分钟</span>
         </div>
-      </section>
-
-      <section class="section">
-        <div class="wrap">
-          <div class="callout blue">
-            <span class="callout-icon" aria-hidden="true">✦</span>
-            <div>
-              <span class="callout-title">这个博客是怎么做的</span>
-              <p>
-                手写 HTML / CSS / JavaScript，没有任何框架和第三方运行时依赖；深浅色主题跟随系统，
-                全站可以离线打开，部署在 GitHub Pages 上。按 <kbd>/</kbd> 或 <kbd>Ctrl</kbd> +
-                <kbd>K</kbd> 可以搜索文章。
-              </p>
-            </div>
-          </div>
+        <h3><a href="/posts/rustlings-01.html">学习记录 1 · Rustlings 前五章与 quiz1</a></h3>
+        <p>Rustlings 从 00_intro 到 04_primitive_types 的学习记录：安装步骤、常用命令、已完成内容、五个易错点和下一步计划。</p>
+        <div class="card-tags">
+          
+          <span class="tag">rustlings</span>
+          
+          <span class="tag blue">rust</span>
+          
+          <span class="tag">学习记录</span>
+          
         </div>
-      </section>
+      </article>
+      
+      
+      
+      <article class="post-card">
+        <div class="meta">
+          <time datetime="2026-09-24">2026-09-24</time>
+          <span>·</span>
+          <span>约 5 分钟</span>
+        </div>
+        <h3><a href="/posts/civtext-retro.html">用 16 分钟做一款文字版文明：Civtext 项目复盘</a></h3>
+        <p>用 DeepSeek 在 16 分钟内、以 ¥3.1983 的成本做出网页文字版《文明》原型：开发方法、成本数据、完成情况与复盘教训。</p>
+        <div class="card-tags">
+          
+          <span class="tag">civtext</span>
+          
+          <span class="tag blue">nodejs</span>
+          
+          <span class="tag">项目复盘</span>
+          
+        </div>
+      </article>
+      
+      
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>小 Demo 游乐场</h2>
+      <a class="more" href="/demos/index.html">全部 56 个 →</a>
+    </div>
+    <p class="section-intro">
+      一堆纯前端单文件小实验：物理模拟、3D 小游戏、系统桌面、AI 界面……点开即玩。
+    </p>
+    <div class="post-grid demo-grid">
+      
+      <a class="post-card demo-card" href="/demos/3d-racer-car.html" target="_blank" rel="noopener">
+        <div class="meta"><span class="demo-cat">3D 与游戏</span><span class="size">62K</span></div>
+        <h3>3D 极速狂飙</h3>
+        <p>3D 赛车游戏</p>
+        <span class="open">打开 Demo ↗</span>
+      </a>
+      
+      <a class="post-card demo-card" href="/demos/terrain-generator.html" target="_blank" rel="noopener">
+        <div class="meta"><span class="demo-cat">3D 与游戏</span><span class="size">34K</span></div>
+        <h3>真实地形生成器</h3>
+        <p>程序化噪声地形 Procedural Terrain</p>
+        <span class="open">打开 Demo ↗</span>
+      </a>
+      
+      <a class="post-card demo-card" href="/demos/windows-sim.html" target="_blank" rel="noopener">
+        <div class="meta"><span class="demo-cat">系统与终端模拟</span><span class="size">85K</span></div>
+        <h3>Windows 模拟</h3>
+        <p>浏览器里的 Windows 桌面</p>
+        <span class="open">打开 Demo ↗</span>
+      </a>
+      
+      <a class="post-card demo-card" href="/demos/turingmachine.html" target="_blank" rel="noopener">
+        <div class="meta"><span class="demo-cat">系统与终端模拟</span><span class="size">67K</span></div>
+        <h3>图灵机模拟器</h3>
+        <p>可编写纸带的图灵机</p>
+        <span class="open">打开 Demo ↗</span>
+      </a>
+      
+      <a class="post-card demo-card" href="/demos/quizdeskdemo.html" target="_blank" rel="noopener">
+        <div class="meta"><span class="demo-cat">AI 与聊天</span><span class="size">54K</span></div>
+        <h3>AI 刷题学习桌</h3>
+        <p>智能刷题与错题整理</p>
+        <span class="open">打开 Demo ↗</span>
+      </a>
+      
+      <a class="post-card demo-card" href="/demos/2dsolarsys.html" target="_blank" rel="noopener">
+        <div class="meta"><span class="demo-cat">物理与科学模拟</span><span class="size">58K</span></div>
+        <h3>2D 太阳系</h3>
+        <p>真实比例的太阳系行星运行</p>
+        <span class="open">打开 Demo ↗</span>
+      </a>
+      
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="callout blue">
+      <span class="callout-icon" aria-hidden="true">✦</span>
+      <div>
+        <span class="callout-title">这个博客是怎么做的</span>
+        <p>
+          用 Eleventy 把 Markdown 构建成纯静态 HTML，没有第三方运行时依赖；深浅色主题跟随系统，
+          部署在 GitHub Pages 上。按 <kbd>/</kbd> 或 <kbd>Ctrl</kbd> +
+          <kbd>K</kbd> 可以搜索文章。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
     </main>
 
     <footer class="site-footer">
       <div class="wrap footer-inner">
         <p>© 2026 Mogmoug · 用好奇心写代码</p>
         <div class="footer-links">
+          
           <a href="/archive.html">归档</a>
+          
           <a href="/tags.html">标签</a>
+          
+          <a href="/demos/index.html">Demo</a>
+          
           <a href="/feed.xml">RSS</a>
+          
+          
           <a href="https://github.com/mogmoug" rel="me noopener" target="_blank">GitHub</a>
+          
+          <a href="https://space.bilibili.com/485986360" rel="me noopener" target="_blank">Bilibili</a>
+          
         </div>
       </div>
-      <div class="wrap footer-note">手写静态站 · 无框架 · 无追踪</div>
+      <div class="wrap footer-note">Eleventy 构建 · 无追踪</div>
     </footer>
 
     <button class="back-top" type="button" data-back-top aria-label="回到顶部">
@@ -209,6 +292,7 @@
       </div>
     </div>
 
+    
     <script src="/assets/js/main.js" defer></script>
   </body>
 </html>

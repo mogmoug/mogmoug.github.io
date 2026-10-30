@@ -4,30 +4,26 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>用 16 分钟做一款文字版文明：Civtext 项目复盘 — Mogmoug</title>
-    <meta
-      name="description"
-      content="用 DeepSeek 在 16 分钟内、以 ¥3.1983 的成本做出网页文字版《文明》原型：开发方法、成本数据、完成情况与复盘教训。"
-    />
+    <meta name="description" content="用 DeepSeek 在 16 分钟内、以 ¥3.1983 的成本做出网页文字版《文明》原型：开发方法、成本数据、完成情况与复盘教训。" />
     <meta name="author" content="Mogmoug" />
     <link rel="canonical" href="https://mogmoug.github.io/posts/civtext-retro.html" />
     <meta name="theme-color" content="#f5fbf7" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#080f0c" media="(prefers-color-scheme: dark)" />
-    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/assets/mog.png" type="image/png" sizes="460x460" />
+    <link rel="apple-touch-icon" href="/assets/mog.png" />
     <link rel="alternate" type="application/atom+xml" title="Mogmoug Blog" href="/feed.xml" />
     <link rel="stylesheet" href="/assets/css/style.css" />
     <meta property="og:type" content="article" />
     <meta property="og:site_name" content="Mogmoug" />
     <meta property="og:title" content="用 16 分钟做一款文字版文明：Civtext 项目复盘" />
-    <meta
-      property="og:description"
-      content="用 DeepSeek 在 16 分钟内、以 ¥3.1983 的成本做出网页文字版《文明》原型。"
-    />
+    <meta property="og:description" content="用 DeepSeek 在 16 分钟内、以 ¥3.1983 的成本做出网页文字版《文明》原型：开发方法、成本数据、完成情况与复盘教训。" />
     <meta property="og:url" content="https://mogmoug.github.io/posts/civtext-retro.html" />
     <meta property="og:locale" content="zh_CN" />
+    
     <meta property="article:published_time" content="2026-09-24" />
-    <meta property="article:tag" content="civtext" />
-    <meta property="article:tag" content="nodejs" />
-    <meta property="article:tag" content="项目复盘" />
+    <meta property="article:modified_time" content="2026-10-30" />
+    <meta property="article:tag" content="civtext" /><meta property="article:tag" content="nodejs" /><meta property="article:tag" content="项目复盘" />
+    
     <meta name="twitter:card" content="summary" />
     <script>
       (function () {
@@ -44,20 +40,22 @@
         } catch (e) {}
       })();
     </script>
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "BlogPosting",
-        "headline": "用 16 分钟做一款文字版文明：Civtext 项目复盘",
-        "description": "用 DeepSeek 在 16 分钟内、以 ¥3.1983 的成本做出网页文字版《文明》原型。",
-        "datePublished": "2026-09-24",
-        "dateModified": "2026-10-30",
-        "url": "https://mogmoug.github.io/posts/civtext-retro.html",
-        "author": { "@type": "Person", "name": "Mogmoug", "url": "https://github.com/mogmoug" },
-        "keywords": ["civtext", "nodejs", "项目复盘", "AI 辅助开发"],
-        "inLanguage": "zh-CN"
-      }
-    </script>
+    
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "用 16 分钟做一款文字版文明：Civtext 项目复盘",
+  "description": "用 DeepSeek 在 16 分钟内、以 ¥3.1983 的成本做出网页文字版《文明》原型：开发方法、成本数据、完成情况与复盘教训。",
+  "datePublished": "2026-09-24",
+  "dateModified": "2026-10-30",
+  "url": "https://mogmoug.github.io/posts/civtext-retro.html",
+  "author": { "@type": "Person", "name": "Mogmoug", "url": "https://github.com/mogmoug" },
+  "keywords": ["civtext","nodejs","项目复盘"],
+  "inLanguage": "zh-CN"
+}
+</script>
+
   </head>
   <body>
     <div class="progress" data-progress aria-hidden="true"></div>
@@ -65,15 +63,22 @@
 
     <header class="site-header">
       <div class="wrap header-inner">
-        <a class="brand" href="/">
-          <span class="brand-dot" aria-hidden="true"></span>
+        <a class="brand" href="/index.html">
+          <img class="brand-logo" src="/assets/mog.png" alt="" width="28" height="28" />
           <span>Mogmoug</span>
         </a>
         <nav class="site-nav" data-nav aria-label="主导航">
-          <a href="/">首页</a>
+          
+          <a href="/index.html">首页</a>
+          
           <a href="/archive.html">归档</a>
+          
           <a href="/tags.html">标签</a>
+          
+          <a href="/demos/index.html">Demo</a>
+          
           <a href="/about.html">关于</a>
+          
         </nav>
         <div class="nav-actions">
           <button class="icon-btn" type="button" data-search-open aria-label="搜索（按 / 键）">
@@ -101,157 +106,160 @@
     </header>
 
     <main id="main">
-      <div class="wrap">
-        <header class="article-head">
-          <nav class="breadcrumb" aria-label="面包屑">
-            <a href="/">首页</a> / <a href="/archive.html">归档</a> / <span>项目复盘</span>
-          </nav>
-          <h1>用 16 分钟做一款文字版文明：Civtext 项目复盘</h1>
-          <div class="article-meta">
-            <time datetime="2026-09-24">2026-09-24</time>
-            <span class="sep" aria-hidden="true"></span>
-            <span>约 5 分钟</span>
-            <span class="sep" aria-hidden="true"></span>
-            <span>civtext · nodejs · 项目复盘</span>
-          </div>
-        </header>
+      
+<div class="wrap">
+  <header class="article-head">
+    <nav class="breadcrumb" aria-label="面包屑">
+      <a href="/index.html">首页</a> / <a href="/archive.html">归档</a> / <span>项目复盘</span>
+    </nav>
+    <h1>用 16 分钟做一款文字版文明：Civtext 项目复盘</h1>
+    <div class="article-meta">
+      <time datetime="2026-09-24">2026-09-24</time>
+      <span class="sep" aria-hidden="true"></span>
+      <span>约 5 分钟</span>
+      <span class="sep" aria-hidden="true"></span>
+      <span>civtext · nodejs · 项目复盘</span>
+    </div>
+  </header>
 
-        <div class="article-layout">
-          <article class="prose">
-            <div class="callout">
-              <span class="callout-icon" aria-hidden="true">🏛️</span>
-              <div>
-                <span class="callout-title">项目速览</span>
-                <p>
-                  一个用 Node.js + 原生前端做的网页文字版《文明》。没有炫酷特效，只有字符地图、数字和决策。
-                  总耗时约 16 分钟，API 成本 ¥3.1983，基本玩法跑通。
-                </p>
-              </div>
-            </div>
+  <div class="article-layout">
+    <article class="prose">
+      <div class="callout">
+  <span class="callout-icon" aria-hidden="true">🏛️</span>
+  <div>
+    <span class="callout-title">项目速览</span>
+    <p>
+      一个用 Node.js + 原生前端做的网页文字版《文明》。没有炫酷特效，只有字符地图、数字和决策。
+      总耗时约 16 分钟，API 成本 ¥3.1983，基本玩法跑通。
+    </p>
+  </div>
+</div>
+<h2>项目介绍</h2>
+<p>这是一个使用 Node.js 开发的网页文字版《文明》游戏。玩家通过文本界面体验最基础的文明玩法：造单位、扩张、决策。项目不追求炫酷特效，重点验证核心游戏循环，以及 AI 辅助开发的完整流程。</p>
+<h2>开发方法</h2>
+<p>使用 <strong>DeepSeek Harness 最新版</strong>开发，核心提示词只有两句：</p>
+<blockquote>
+<p>「用 NodeJS 做一个文字版的文明游戏，不需要炫酷的特效。」</p>
+</blockquote>
+<blockquote>
+<p>「实际上我希望可以做一个网页端的文字游戏，实现最基础的功能，代码行数限制在 1 万行以内。」</p>
+</blockquote>
+<p>第一句给了方向，第二句补上了形态和边界。<strong>边界</strong>这一点很关键——「1 万行以内」和「网页端」把范围收窄之后，AI 才不至于漫无目的地发挥。</p>
+<h2>成本与耗时</h2>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>数据</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DeepSeek API 调用费用</td>
+<td>¥3.1983</td>
+</tr>
+<tr>
+<td>输入</td>
+<td>54.6K tokens</td>
+</tr>
+<tr>
+<td>缓存</td>
+<td>16.8M tokens</td>
+</tr>
+<tr>
+<td>输出</td>
+<td>141K tokens</td>
+</tr>
+<tr>
+<td>定价类型</td>
+<td>峰时定价</td>
+</tr>
+<tr>
+<td>开发耗时</td>
+<td>2026-09-24 14:09–14:25，约 16 分钟</td>
+</tr>
+</tbody>
+</table>
+<h2>完成情况</h2>
+<ul>
+<li>基本游戏玩法已实现，可以正常开局和推进回合。</li>
+<li>AI 算法测试通过。</li>
+<li>没有做额外的美术、音效与存档系统——这是刻意的取舍。</li>
+</ul>
+<h2>项目反思</h2>
+<p>应该先具体规划好项目，再交给 AI 完成。如果没有明确的功能范围、模块拆分和验收标准，AI 很容易生成大量需要返工的内容，从而浪费时间和 API 成本。</p>
+<div class="callout blue">
+  <span class="callout-icon" aria-hidden="true">🧭</span>
+  <div>
+    <span class="callout-title">如果重来一次</span>
+    <p>
+      先写一页纸的需求：核心循环、数据结构、界面分区、验收清单；再把任务拆成小步，
+      让 AI 一次只改一个模块。这样即使方向错了，返工成本也可控。
+    </p>
+  </div>
+</div>
+<h2>一句话总结</h2>
+<p>用 DeepSeek Harness 在约 16 分钟内、以 ¥3.1983 的 API 成本，完成了一个 Node.js 网页文字版文明游戏原型：基本玩法实现，AI 测试通过；核心教训是——<strong>AI 开发前必须先做规划</strong>。</p>
 
-            <h2>项目介绍</h2>
-            <p>
-              这是一个使用 Node.js 开发的网页文字版《文明》游戏。玩家通过文本界面体验最基础的文明玩法：
-              造单位、扩张、决策。项目不追求炫酷特效，重点验证核心游戏循环，以及 AI 辅助开发的完整流程。
-            </p>
 
-            <h2>开发方法</h2>
-            <p>使用 <strong>DeepSeek Harness 最新版</strong>开发，核心提示词只有两句：</p>
-            <blockquote>
-              <p>「用 NodeJS 做一个文字版的文明游戏，不需要炫酷的特效。」</p>
-            </blockquote>
-            <blockquote>
-              <p>「实际上我希望可以做一个网页端的文字游戏，实现最基础的功能，代码行数限制在 1 万行以内。」</p>
-            </blockquote>
-            <p>
-              第一句给了方向，第二句补上了形态和边界。<strong>边界</strong>这一点很关键——「1 万行以内」和「网页端」
-              把范围收窄之后，AI 才不至于漫无目的地发挥。
-            </p>
-
-            <h2>成本与耗时</h2>
-            <table>
-              <thead>
-                <tr>
-                  <th>项目</th>
-                  <th>数据</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>DeepSeek API 调用费用</td>
-                  <td>¥3.1983</td>
-                </tr>
-                <tr>
-                  <td>输入</td>
-                  <td>54.6K tokens</td>
-                </tr>
-                <tr>
-                  <td>缓存</td>
-                  <td>16.8M tokens</td>
-                </tr>
-                <tr>
-                  <td>输出</td>
-                  <td>141K tokens</td>
-                </tr>
-                <tr>
-                  <td>定价类型</td>
-                  <td>峰时定价</td>
-                </tr>
-                <tr>
-                  <td>开发耗时</td>
-                  <td>2026-09-24 14:09–14:25，约 16 分钟</td>
-                </tr>
-              </tbody>
-            </table>
-
-            <h2>完成情况</h2>
-            <ul>
-              <li>基本游戏玩法已实现，可以正常开局和推进回合。</li>
-              <li>AI 算法测试通过。</li>
-              <li>没有做额外的美术、音效与存档系统——这是刻意的取舍。</li>
-            </ul>
-
-            <h2>项目反思</h2>
-            <p>
-              应该先具体规划好项目，再交给 AI 完成。如果没有明确的功能范围、模块拆分和验收标准，
-              AI 很容易生成大量需要返工的内容，从而浪费时间和 API 成本。
-            </p>
-            <div class="callout blue">
-              <span class="callout-icon" aria-hidden="true">🧭</span>
-              <div>
-                <span class="callout-title">如果重来一次</span>
-                <p>
-                  先写一页纸的需求：核心循环、数据结构、界面分区、验收清单；再把任务拆成小步，
-                  让 AI 一次只改一个模块。这样即使方向错了，返工成本也可控。
-                </p>
-              </div>
-            </div>
-
-            <h2>一句话总结</h2>
-            <p>
-              用 DeepSeek Harness 在约 16 分钟内、以 ¥3.1983 的 API 成本，完成了一个 Node.js 网页文字版文明游戏原型：
-              基本玩法实现，AI 测试通过；核心教训是——<strong>AI 开发前必须先做规划</strong>。
-            </p>
-
-            <footer class="post-footer">
-              <div class="tags">
-                <a class="tag" href="/tags.html#civtext">civtext</a>
-                <a class="tag blue" href="/tags.html#nodejs">nodejs</a>
-                <a class="tag" href="/tags.html#项目复盘">项目复盘</a>
-              </div>
-              <a class="btn" href="/archive.html">全部文章 →</a>
-            </footer>
-
-            <nav class="post-nav" aria-label="翻页">
-              <a href="/posts/rustlings-01.html">
-                <span class="label">上一篇</span>
-                <span class="title">学习记录 1 · Rustlings 前五章与 quiz1</span>
-              </a>
-              <a class="next" href="/archive.html">
-                <span class="label">返回</span>
-                <span class="title">文章归档</span>
-              </a>
-            </nav>
-          </article>
-
-          <aside class="toc" data-toc aria-label="文章目录">
-            <p class="toc-title">目录</p>
-          </aside>
+      <footer class="post-footer">
+        <div class="tags">
+          
+          <a class="tag" href="/tags.html#civtext">civtext</a>
+          
+          <a class="tag blue" href="/tags.html#nodejs">nodejs</a>
+          
+          <a class="tag" href="/tags.html#项目复盘">项目复盘</a>
+          
         </div>
-      </div>
+        <a class="btn" href="/archive.html">全部文章 →</a>
+      </footer>
+
+      <nav class="post-nav" aria-label="翻页">
+        
+        <a href="/posts/rustlings-01.html">
+          <span class="label">上一篇</span>
+          <span class="title">学习记录 1 · Rustlings 前五章与 quiz1</span>
+        </a>
+        
+        
+        <a class="next" href="/archive.html">
+          <span class="label">返回</span>
+          <span class="title">文章归档</span>
+        </a>
+        
+      </nav>
+    </article>
+
+    <aside class="toc" data-toc aria-label="文章目录">
+      <p class="toc-title">目录</p>
+    </aside>
+  </div>
+</div>
+
     </main>
 
     <footer class="site-footer">
       <div class="wrap footer-inner">
         <p>© 2026 Mogmoug · 用好奇心写代码</p>
         <div class="footer-links">
+          
           <a href="/archive.html">归档</a>
+          
           <a href="/tags.html">标签</a>
+          
+          <a href="/demos/index.html">Demo</a>
+          
           <a href="/feed.xml">RSS</a>
+          
+          
           <a href="https://github.com/mogmoug" rel="me noopener" target="_blank">GitHub</a>
+          
+          <a href="https://space.bilibili.com/485986360" rel="me noopener" target="_blank">Bilibili</a>
+          
         </div>
       </div>
-      <div class="wrap footer-note">手写静态站 · 无框架 · 无追踪</div>
+      <div class="wrap footer-note">Eleventy 构建 · 无追踪</div>
     </footer>
 
     <button class="back-top" type="button" data-back-top aria-label="回到顶部">
@@ -274,6 +282,7 @@
       </div>
     </div>
 
+    
     <script src="/assets/js/main.js" defer></script>
   </body>
 </html>

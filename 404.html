@@ -5,11 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>页面走丢了 — Mogmoug</title>
     <meta name="description" content="404：这个页面不存在。" />
-    <meta name="robots" content="noindex" />
+    <meta name="author" content="Mogmoug" />
+    <link rel="canonical" href="https://mogmoug.github.io/404.html" />
     <meta name="theme-color" content="#f5fbf7" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#080f0c" media="(prefers-color-scheme: dark)" />
-    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/assets/mog.png" type="image/png" sizes="460x460" />
+    <link rel="apple-touch-icon" href="/assets/mog.png" />
+    <link rel="alternate" type="application/atom+xml" title="Mogmoug Blog" href="/feed.xml" />
     <link rel="stylesheet" href="/assets/css/style.css" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Mogmoug" />
+    <meta property="og:title" content="页面走丢了 — Mogmoug" />
+    <meta property="og:description" content="404：这个页面不存在。" />
+    <meta property="og:url" content="https://mogmoug.github.io/404.html" />
+    <meta property="og:locale" content="zh_CN" />
+    
+    <meta name="twitter:card" content="summary" />
     <script>
       (function () {
         try {
@@ -25,21 +36,32 @@
         } catch (e) {}
       })();
     </script>
+    
+<meta name="robots" content="noindex" />
+
   </head>
   <body>
+    
     <a class="skip-link" href="#main">跳到正文</a>
 
     <header class="site-header">
       <div class="wrap header-inner">
-        <a class="brand" href="/">
-          <span class="brand-dot" aria-hidden="true"></span>
+        <a class="brand" href="/index.html">
+          <img class="brand-logo" src="/assets/mog.png" alt="" width="28" height="28" />
           <span>Mogmoug</span>
         </a>
         <nav class="site-nav" data-nav aria-label="主导航">
-          <a href="/">首页</a>
+          
+          <a href="/index.html">首页</a>
+          
           <a href="/archive.html">归档</a>
+          
           <a href="/tags.html">标签</a>
+          
+          <a href="/demos/index.html">Demo</a>
+          
           <a href="/about.html">关于</a>
+          
         </nav>
         <div class="nav-actions">
           <button class="icon-btn" type="button" data-search-open aria-label="搜索（按 / 键）">
@@ -67,29 +89,62 @@
     </header>
 
     <main id="main">
-      <div class="wrap error-page">
-        <div>
-          <div class="error-code">404</div>
-          <p>这个页面走丢了，可能是链接过期，或者我还没写。</p>
-          <a class="btn" href="/">← 回到首页</a>
-          <a class="btn blue" href="/archive.html">看看归档</a>
-        </div>
-      </div>
+      
+<div class="wrap error-page">
+  <div>
+    <div class="error-code">404</div>
+    <p>这个页面走丢了，可能是链接过期，或者我还没写。</p>
+    <a class="btn" href="/index.html">← 回到首页</a>
+    <a class="btn blue" href="/archive.html">看看归档</a>
+  </div>
+</div>
+
     </main>
 
     <footer class="site-footer">
       <div class="wrap footer-inner">
         <p>© 2026 Mogmoug · 用好奇心写代码</p>
         <div class="footer-links">
+          
           <a href="/archive.html">归档</a>
+          
           <a href="/tags.html">标签</a>
+          
+          <a href="/demos/index.html">Demo</a>
+          
           <a href="/feed.xml">RSS</a>
+          
+          
           <a href="https://github.com/mogmoug" rel="me noopener" target="_blank">GitHub</a>
+          
+          <a href="https://space.bilibili.com/485986360" rel="me noopener" target="_blank">Bilibili</a>
+          
         </div>
       </div>
-      <div class="wrap footer-note">手写静态站 · 无框架 · 无追踪</div>
+      <div class="wrap footer-note">Eleventy 构建 · 无追踪</div>
     </footer>
 
+    <button class="back-top" type="button" data-back-top aria-label="回到顶部">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="m6 15 6-6 6 6" />
+      </svg>
+    </button>
+
+    <div class="search-modal" data-search-modal role="dialog" aria-modal="true" aria-label="搜索文章" aria-hidden="true">
+      <div class="search-panel">
+        <div class="search-input-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </svg>
+          <input class="search-input" type="search" placeholder="搜索文章、标签…" data-search-input autocomplete="off" />
+          <span class="search-kbd">Esc</span>
+        </div>
+        <ul class="search-results" data-search-results></ul>
+      </div>
+    </div>
+
+    
     <script src="/assets/js/main.js" defer></script>
   </body>
 </html>

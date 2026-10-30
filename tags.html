@@ -4,20 +4,22 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>标签 — Mogmoug</title>
-    <meta name="description" content="按标签浏览 Mogmoug 博客的文章：rustlings、rust、civtext、nodejs、项目复盘等。" />
+    <meta name="description" content="按标签浏览 Mogmoug 博客的文章。" />
     <meta name="author" content="Mogmoug" />
     <link rel="canonical" href="https://mogmoug.github.io/tags.html" />
     <meta name="theme-color" content="#f5fbf7" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#080f0c" media="(prefers-color-scheme: dark)" />
-    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/assets/mog.png" type="image/png" sizes="460x460" />
+    <link rel="apple-touch-icon" href="/assets/mog.png" />
     <link rel="alternate" type="application/atom+xml" title="Mogmoug Blog" href="/feed.xml" />
     <link rel="stylesheet" href="/assets/css/style.css" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Mogmoug" />
-    <meta property="og:title" content="标签 — Mogmoug" />
+    <meta property="og:title" content="标签" />
     <meta property="og:description" content="按标签浏览 Mogmoug 博客的文章。" />
     <meta property="og:url" content="https://mogmoug.github.io/tags.html" />
     <meta property="og:locale" content="zh_CN" />
+    
     <meta name="twitter:card" content="summary" />
     <script>
       (function () {
@@ -34,21 +36,30 @@
         } catch (e) {}
       })();
     </script>
+    
   </head>
   <body>
+    
     <a class="skip-link" href="#main">跳到正文</a>
 
     <header class="site-header">
       <div class="wrap header-inner">
-        <a class="brand" href="/">
-          <span class="brand-dot" aria-hidden="true"></span>
+        <a class="brand" href="/index.html">
+          <img class="brand-logo" src="/assets/mog.png" alt="" width="28" height="28" />
           <span>Mogmoug</span>
         </a>
         <nav class="site-nav" data-nav aria-label="主导航">
-          <a href="/">首页</a>
+          
+          <a href="/index.html">首页</a>
+          
           <a href="/archive.html">归档</a>
-          <a href="/tags.html">标签</a>
+          
+          <a href="/tags.html" aria-current="page">标签</a>
+          
+          <a href="/demos/index.html">Demo</a>
+          
           <a href="/about.html">关于</a>
+          
         </nav>
         <div class="nav-actions">
           <button class="icon-btn" type="button" data-search-open aria-label="搜索（按 / 键）">
@@ -76,94 +87,127 @@
     </header>
 
     <main id="main">
-      <div class="wrap">
-        <header class="page-head">
-          <h1>标签</h1>
-          <p>按主题浏览文章。点击标签跳到对应列表。</p>
+      
+<div class="wrap">
+  <header class="page-head">
+    <h1>标签</h1>
+    <p>按主题浏览文章。点击标签跳到对应列表。</p>
 
-          <div class="tag-cloud">
-            <a href="#rustlings">rustlings <span class="count">1</span></a>
-            <a href="#rust">rust <span class="count">1</span></a>
-            <a href="#学习记录">学习记录 <span class="count">1</span></a>
-            <a href="#civtext">civtext <span class="count">1</span></a>
-            <a href="#nodejs">nodejs <span class="count">1</span></a>
-            <a href="#项目复盘">项目复盘 <span class="count">1</span></a>
-          </div>
-        </header>
+    <div class="tag-cloud">
+      
+      <a href="#项目复盘">项目复盘 <span class="count">1</span></a>
+      
+      <a href="#学习记录">学习记录 <span class="count">1</span></a>
+      
+      <a href="#civtext">civtext <span class="count">1</span></a>
+      
+      <a href="#nodejs">nodejs <span class="count">1</span></a>
+      
+      <a href="#rust">rust <span class="count">1</span></a>
+      
+      <a href="#rustlings">rustlings <span class="count">1</span></a>
+      
+    </div>
+  </header>
 
-        <section class="archive-year" id="rustlings" aria-labelledby="h-rustlings">
-          <h2 id="h-rustlings"># rustlings</h2>
-          <ul class="archive-list">
-            <li>
-              <time datetime="2026-09-24">09-24</time>
-              <a href="/posts/rustlings-01.html">学习记录 1 · Rustlings 前五章与 quiz1</a>
-            </li>
-          </ul>
-        </section>
+  
+  <section class="archive-year" id="项目复盘" aria-labelledby="h-tag-1">
+    <h2 id="h-tag-1"># 项目复盘</h2>
+    <ul class="archive-list">
+      
+      <li>
+        <time datetime="2026-09-24">09-24</time>
+        <a href="/posts/civtext-retro.html">用 16 分钟做一款文字版文明：Civtext 项目复盘</a>
+      </li>
+      
+    </ul>
+  </section>
+  
+  <section class="archive-year" id="学习记录" aria-labelledby="h-tag-2">
+    <h2 id="h-tag-2"># 学习记录</h2>
+    <ul class="archive-list">
+      
+      <li>
+        <time datetime="2026-09-24">09-24</time>
+        <a href="/posts/rustlings-01.html">学习记录 1 · Rustlings 前五章与 quiz1</a>
+      </li>
+      
+    </ul>
+  </section>
+  
+  <section class="archive-year" id="civtext" aria-labelledby="h-tag-3">
+    <h2 id="h-tag-3"># civtext</h2>
+    <ul class="archive-list">
+      
+      <li>
+        <time datetime="2026-09-24">09-24</time>
+        <a href="/posts/civtext-retro.html">用 16 分钟做一款文字版文明：Civtext 项目复盘</a>
+      </li>
+      
+    </ul>
+  </section>
+  
+  <section class="archive-year" id="nodejs" aria-labelledby="h-tag-4">
+    <h2 id="h-tag-4"># nodejs</h2>
+    <ul class="archive-list">
+      
+      <li>
+        <time datetime="2026-09-24">09-24</time>
+        <a href="/posts/civtext-retro.html">用 16 分钟做一款文字版文明：Civtext 项目复盘</a>
+      </li>
+      
+    </ul>
+  </section>
+  
+  <section class="archive-year" id="rust" aria-labelledby="h-tag-5">
+    <h2 id="h-tag-5"># rust</h2>
+    <ul class="archive-list">
+      
+      <li>
+        <time datetime="2026-09-24">09-24</time>
+        <a href="/posts/rustlings-01.html">学习记录 1 · Rustlings 前五章与 quiz1</a>
+      </li>
+      
+    </ul>
+  </section>
+  
+  <section class="archive-year" id="rustlings" aria-labelledby="h-tag-6">
+    <h2 id="h-tag-6"># rustlings</h2>
+    <ul class="archive-list">
+      
+      <li>
+        <time datetime="2026-09-24">09-24</time>
+        <a href="/posts/rustlings-01.html">学习记录 1 · Rustlings 前五章与 quiz1</a>
+      </li>
+      
+    </ul>
+  </section>
+  
+</div>
 
-        <section class="archive-year" id="rust" aria-labelledby="h-rust">
-          <h2 id="h-rust"># rust</h2>
-          <ul class="archive-list">
-            <li>
-              <time datetime="2026-09-24">09-24</time>
-              <a href="/posts/rustlings-01.html">学习记录 1 · Rustlings 前五章与 quiz1</a>
-            </li>
-          </ul>
-        </section>
-
-        <section class="archive-year" id="学习记录" aria-labelledby="h-learning">
-          <h2 id="h-learning"># 学习记录</h2>
-          <ul class="archive-list">
-            <li>
-              <time datetime="2026-09-24">09-24</time>
-              <a href="/posts/rustlings-01.html">学习记录 1 · Rustlings 前五章与 quiz1</a>
-            </li>
-          </ul>
-        </section>
-
-        <section class="archive-year" id="civtext" aria-labelledby="h-civtext">
-          <h2 id="h-civtext"># civtext</h2>
-          <ul class="archive-list">
-            <li>
-              <time datetime="2026-09-24">09-24</time>
-              <a href="/posts/civtext-retro.html">用 16 分钟做一款文字版文明：Civtext 项目复盘</a>
-            </li>
-          </ul>
-        </section>
-
-        <section class="archive-year" id="nodejs" aria-labelledby="h-nodejs">
-          <h2 id="h-nodejs"># nodejs</h2>
-          <ul class="archive-list">
-            <li>
-              <time datetime="2026-09-24">09-24</time>
-              <a href="/posts/civtext-retro.html">用 16 分钟做一款文字版文明：Civtext 项目复盘</a>
-            </li>
-          </ul>
-        </section>
-
-        <section class="archive-year" id="项目复盘" aria-labelledby="h-retro">
-          <h2 id="h-retro"># 项目复盘</h2>
-          <ul class="archive-list">
-            <li>
-              <time datetime="2026-09-24">09-24</time>
-              <a href="/posts/civtext-retro.html">用 16 分钟做一款文字版文明：Civtext 项目复盘</a>
-            </li>
-          </ul>
-        </section>
-      </div>
     </main>
 
     <footer class="site-footer">
       <div class="wrap footer-inner">
         <p>© 2026 Mogmoug · 用好奇心写代码</p>
         <div class="footer-links">
+          
           <a href="/archive.html">归档</a>
+          
           <a href="/tags.html">标签</a>
+          
+          <a href="/demos/index.html">Demo</a>
+          
           <a href="/feed.xml">RSS</a>
+          
+          
           <a href="https://github.com/mogmoug" rel="me noopener" target="_blank">GitHub</a>
+          
+          <a href="https://space.bilibili.com/485986360" rel="me noopener" target="_blank">Bilibili</a>
+          
         </div>
       </div>
-      <div class="wrap footer-note">手写静态站 · 无框架 · 无追踪</div>
+      <div class="wrap footer-note">Eleventy 构建 · 无追踪</div>
     </footer>
 
     <button class="back-top" type="button" data-back-top aria-label="回到顶部">
@@ -186,6 +230,7 @@
       </div>
     </div>
 
+    
     <script src="/assets/js/main.js" defer></script>
   </body>
 </html>

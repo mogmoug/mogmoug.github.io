@@ -7,22 +7,28 @@
     <priority>1.0</priority>
   </url>
   <url>
+    <loc>https://mogmoug.github.io/about.html</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://mogmoug.github.io/archive.html</loc>
     <lastmod>2026-10-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mogmoug.github.io/tags.html</loc>
+    <loc>https://mogmoug.github.io/demos/</loc>
     <lastmod>2026-10-30</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
+    <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://mogmoug.github.io/about.html</loc>
+    <loc>https://mogmoug.github.io/posts/civtext-retro.html</loc>
     <lastmod>2026-10-30</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
+    <changefreq>yearly</changefreq>
+    <priority>0.9</priority>
   </url>
   <url>
     <loc>https://mogmoug.github.io/posts/rustlings-01.html</loc>
@@ -31,9 +37,9 @@
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://mogmoug.github.io/posts/civtext-retro.html</loc>
+    <loc>https://mogmoug.github.io/tags.html</loc>
     <lastmod>2026-10-30</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.9</priority>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
   </url>
 </urlset>
